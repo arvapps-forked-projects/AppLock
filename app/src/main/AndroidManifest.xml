@@ -20,6 +20,7 @@
         android:name=".AppLockApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -43,6 +44,16 @@
             android:name=".PasswordOverlayScreen"
             android:exported="false"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
+            android:name=".SetPasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppLock" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppLock" />
 
         <service
             android:name=".AppLockService"
