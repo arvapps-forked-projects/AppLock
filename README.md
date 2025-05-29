@@ -3,6 +3,8 @@
 An open-source Android application that allows users to lock their apps with a password or pattern.
 It provides a simple and effective way to secure sensitive applications on Android devices.
 
+<br/>
+
 ## Screenshots
 
 <div style="display:flex; justify-content:center;">
@@ -20,8 +22,15 @@ It provides a simple and effective way to secure sensitive applications on Andro
         alt="Search" width="24%" />
 </div>
 
+<br/>
+
 ## Features
 
 - Lock apps with a pin
 - Customizable lock screen
 - Expressive Material You design
+
+## Download
+
+Download the APK
+from [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/release/app-release.apk)
