@@ -58,6 +58,13 @@ applications.
 
 <br>
 
+## Donate
+
+If you find this project helpful, consider supporting it by donating via PayPal:
+
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/pranavpurwar)
+
 ## 📱 Perfect For
 
 - Privacy-conscious users who share devices with others
