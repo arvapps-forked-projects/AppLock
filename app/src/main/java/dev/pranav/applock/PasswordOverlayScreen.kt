@@ -17,9 +17,8 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,6 +45,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -118,6 +118,7 @@ class PasswordOverlayScreen : FragmentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun setupWindowFlags() {
         // Set the activity to appear over the lock screen and stay on top
         window.addFlags(
@@ -136,6 +137,7 @@ class PasswordOverlayScreen : FragmentActivity() {
         window.attributes = layoutParams
     }
 
+    @Suppress("DEPRECATION")
     private fun setupReapplicableWindowFlags() {
         // Set only the flags that can be safely reapplied after window creation
         window.addFlags(
@@ -238,14 +240,13 @@ class PasswordOverlayScreen : FragmentActivity() {
             // FIXED: Use the package manager to launch the correct app instead of creating an intent with the package as action
             try {
                 // Get the launcher activity for the package
-                val packageManager = packageManager
                 val launchIntent = packageManager.getLaunchIntentForPackage(packageToUnlock)
 
                 if (launchIntent != null) {
                     // Add flags to properly launch the app
                     launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                     startActivity(launchIntent)
-                    finishAndRemoveTask()
+                    Log.d(TAG, "Launched intent for package: $packageToUnlock")
                 } else {
                     Log.w(TAG, "No launch intent found for package: $packageToUnlock")
                 }
@@ -283,6 +284,7 @@ class PasswordOverlayScreen : FragmentActivity() {
         applyUserPreferences()
     }
 
+    @Suppress("DEPRECATION")
     override fun onPause() {
         super.onPause()
 
@@ -375,7 +377,7 @@ fun PasswordScreen(
 
         Text(
             text = "Enter password to continue",
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMediumEmphasized,
             textAlign = TextAlign.Center
         )
 
@@ -426,8 +428,8 @@ fun PasswordIndicators(
             val scale by animateFloatAsState(
                 targetValue = if (filled) 1.2f else if (isNext) 1.1f else 1.0f,
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = Spring.DampingRatioHighBouncy,
+                    stiffness = Spring.StiffnessHigh
                 ),
                 label = "indicatorScale"
             )
@@ -435,8 +437,18 @@ fun PasswordIndicators(
             AnimatedContent(
                 targetState = indicatorState,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(300)) togetherWith
-                            fadeOut(animationSpec = tween(150))
+                    scaleIn(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessHigh
+                        )
+                    ) togetherWith scaleOut(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessHigh
+                        )
+                    )
+
                 },
                 label = "indicatorAnimation"
             ) { state ->
@@ -467,7 +479,7 @@ fun PasswordIndicators(
 
 @Composable
 fun KeypadSection(
-    passwordState: androidx.compose.runtime.MutableState<String>,
+    passwordState: MutableState<String>,
     maxLength: Int,
     appLockService: AppLockService?,
     activity: FragmentActivity,
@@ -535,7 +547,7 @@ fun KeypadSection(
 }
 
 private fun addDigitToPassword(
-    passwordState: androidx.compose.runtime.MutableState<String>,
+    passwordState: MutableState<String>,
     digit: String,
     maxLength: Int
 ) {
@@ -546,7 +558,7 @@ private fun addDigitToPassword(
 
 private fun handleKeypadSpecialButton(
     key: String,
-    passwordState: androidx.compose.runtime.MutableState<String>,
+    passwordState: MutableState<String>,
     maxLength: Int,
     appLockService: AppLockService?,
     activity: FragmentActivity
@@ -563,8 +575,30 @@ private fun handleKeypadSpecialButton(
             if (passwordState.value.length == maxLength) {
                 appLockService?.let {
                     if (it.validatePassword(passwordState.value)) {
-                        it.unlockApp(AppLockService.currentLockedPackage ?: "")
-                        activity.finish()
+                        val packageToUnlock = AppLockService.currentLockedPackage ?: ""
+                        it.unlockApp(packageToUnlock)
+                        try {
+                            // Get the launcher activity for the package
+                            val launchIntent =
+                                activity.packageManager.getLaunchIntentForPackage(packageToUnlock)
+
+                            if (launchIntent != null) {
+                                // Add flags to properly launch the app
+                                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                activity.startActivity(launchIntent)
+                                Log.d(
+                                    "PasswordOverlayScreen",
+                                    "Launched intent for package: $packageToUnlock"
+                                )
+                            } else {
+                                Log.w(
+                                    "PasswordOverlayScreen",
+                                    "No launch intent found for package: $packageToUnlock"
+                                )
+                            }
+                        } catch (e: Exception) {
+                            Log.e("PasswordOverlayScreen", "Error launching app: ${e.message}")
+                        }
                     } else {
                         passwordState.value = ""
                     }

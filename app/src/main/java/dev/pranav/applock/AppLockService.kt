@@ -249,7 +249,6 @@ class AppLockService : Service() {
 
         // If the current foreground app is the one temporarily unlocked, do nothing further.
         if (foregroundPackage == temporarilyUnlockedPackage) {
-            Log.d(TAG, "$foregroundPackage is temporarily unlocked, ignoring.")
             if (currentLockedPackage == foregroundPackage) { // Ensure consistency
                 currentLockedPackage = null
             }

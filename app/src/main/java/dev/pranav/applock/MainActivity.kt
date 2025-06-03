@@ -1,37 +1,53 @@
 package dev.pranav.applock
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import dev.pranav.applock.ui.theme.AppLockTheme
 
@@ -40,37 +56,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Check if usage access permission is granted
-        if (!hasUsagePermission()) {
-            // If not, redirect to settings
-            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            Log.d("AppLock", "Redirecting to usage access settings")
-            startActivity(intent)
-        }
-        //check if app has permission to draw over other apps
-        if (!Settings.canDrawOverlays(this)) {
-            // If not, redirect to settings
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            Log.d("AppLock", "Redirecting to overlay permission settings")
-            startActivity(intent)
+        // Check if we should show the app intro
+        if (AppIntroActivity.shouldShowIntro(this)) {
+            // Launch the intro activity
+            startActivity(Intent(this, AppIntroActivity::class.java))
+            finish()
+            return
         }
 
-        // android 14 notification permission
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (ContextCompat.checkSelfPermission(
-                    this, Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                Log.d("AppLock", "Redirecting to notification permission settings")
-                startActivity(intent)
-            }
-        }
-
+        // Start the app lock service
         startForegroundService(Intent(this, AppLockService::class.java))
 
         // Check if password is set, if not, redirect to SetPasswordActivity
@@ -87,33 +81,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppLockTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Main(
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                Main()
             }
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        finish() // Close MainActivity when user navigates away
-    }
-
-    fun checkPermissions(): Boolean {
-        // checks if all required permissions are granted
-        val permissions = arrayOf(
-            Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.SYSTEM_ALERT_WINDOW
-        )
-        return permissions.all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalAnimationApi::class)
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalAnimationApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun Main(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -121,74 +99,131 @@ fun Main(modifier: Modifier = Modifier) {
 
     val launcherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
 
-    val apps = launcherApps.getActivityList(null, android.os.Process.myUserHandle())
-        .mapNotNull { it.applicationInfo }
-        .filter { it.enabled && it.packageName != context.packageName }
-        .sortedBy { it.loadLabel(context.packageManager).toString() }
+    // Get all apps and sort them for efficient searching
+    val allApps = remember {
+        launcherApps.getActivityList(null, android.os.Process.myUserHandle())
+            .mapNotNull { it.applicationInfo }
+            .filter { it.enabled && it.packageName != context.packageName }
+            .sortedBy { it.loadLabel(context.packageManager).toString().lowercase() }
+    }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp)
-    ) {
-        // Header with Settings and Set PIN buttons
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 24.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "App Lock",
-                    style = MaterialTheme.typography.headlineSmall
-                )
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearchActive by remember { mutableStateOf(false) }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+    // Filter apps based on search query with improved search algorithm
+    val filteredApps = remember(searchQuery) {
+        if (searchQuery.isEmpty()) {
+            allApps
+        } else {
+            val query = searchQuery.lowercase()
+            // Use binary search-like approach for better performance
+            // First, find apps that start with the query (higher priority)
+            val startsWithMatches = allApps.filter {
+                it.loadLabel(context.packageManager).toString().lowercase().startsWith(query)
+            }
+
+            // Then find apps that contain the query but don't start with it
+            val containsMatches = if (query.length > 1) {
+                allApps.filter { app ->
+                    val appName = app.loadLabel(context.packageManager).toString().lowercase()
+                    !appName.startsWith(query) && appName.contains(query)
+                }
+            } else {
+                emptyList()
+            }
+
+            // Combine both results, prioritizing exact matches
+            startsWithMatches + containsMatches
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("App Lock") },
+                actions = {
                     // Settings button
-                    androidx.compose.material3.IconButton(
+                    IconButton(
                         onClick = {
                             context.startActivity(Intent(context, SettingsActivity::class.java))
                         }
                     ) {
-                        androidx.compose.material3.Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Settings,
+                        Icon(
+                            imageVector = Icons.Default.Settings,
                             contentDescription = "Settings"
                         )
                     }
-
-                    // Set PIN button
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            context.startActivity(Intent(context, SetPasswordActivity::class.java))
-                        }
-                    ) {
-                        Text("Set PIN")
-                    }
-                }
-            }
-        }
-
-        // List of apps
-        items(apps.size) { index ->
-            val appInfo = apps[index]
-            AppItem(
-                appInfo = appInfo,
-                context = context,
-                onClick = { isChecked ->
-                    if (isChecked) {
-                        // Lock the app
-                        Log.d("AppLock", "Locking app: ${appInfo.packageName}")
-                        appLockService?.addLockedApp(appInfo.packageName)
-                    } else {
-                        // Unlock the app
-                        Log.d("AppLock", "Unlocking app: ${appInfo.packageName}")
-                        appLockService?.removeLockedApp(appInfo.packageName)
-                    }
                 }
             )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Search field with simplified focus management
+            val focusManager = LocalFocusManager.current
+
+            OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search apps") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search"
+                    )
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.large,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        // Clear focus when Done is pressed on keyboard
+                        focusManager.clearFocus()
+                    }
+                )
+            )
+
+            // App list in LazyColumn
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                // List of filtered apps
+                items(filteredApps.size) { index ->
+                    val appInfo = filteredApps[index]
+                    AppItem(
+                        appInfo = appInfo,
+                        context = context,
+                        onClick = { isChecked ->
+                            if (isChecked) {
+                                // Lock the app
+                                Log.d("AppLock", "Locking app: ${appInfo.packageName}")
+                                appLockService?.addLockedApp(appInfo.packageName)
+                            } else {
+                                // Unlock the app
+                                Log.d("AppLock", "Unlocking app: ${appInfo.packageName}")
+                                appLockService?.removeLockedApp(appInfo.packageName)
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -219,8 +254,9 @@ fun AppItem(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            .padding(8.dp)
+            .clickable { /* No-op, just to consume click events */ },
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Image(

@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.pranav.applock.ui.Backspace
@@ -82,6 +83,7 @@ class SetPasswordActivity : ComponentActivity() {
             }
         }
 
+        // Shuffle shape order
         shapes.shuffle()
 
         setContent {
@@ -114,25 +116,43 @@ fun SetPasswordScreen(
     var passwordState by remember { mutableStateOf("") }
     var confirmPasswordState by remember { mutableStateOf("") }
     var isConfirmationMode by remember { mutableStateOf(false) }
+    var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) } // Start with verification mode if not first time setup
     var showMismatchError by remember { mutableStateOf(false) }
     var showLengthError by remember { mutableStateOf(false) }
+    var showInvalidOldPasswordError by remember { mutableStateOf(false) }
     val maxLength = 6
+
+    // Get app lock service for password validation
+    val context = LocalContext.current
+    val appLockService = remember {
+        (context.applicationContext as AppLockApplication).appLockServiceInstance
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = if (isFirstTimeSetup) "Welcome to App Lock" else if (isConfirmationMode) "Confirm PIN" else "Set PIN") }
+                title = {
+                    Text(
+                        text = when {
+                            isFirstTimeSetup -> "Welcome to App Lock"
+                            isVerifyOldPasswordMode -> "Enter Current PIN"
+                            isConfirmationMode -> "Confirm PIN"
+                            else -> "Set New PIN"
+                        }
+                    )
+                }
             )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .padding(bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // First-time setup welcome message
             if (isFirstTimeSetup && !isConfirmationMode) {
@@ -145,16 +165,16 @@ fun SetPasswordScreen(
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = "Secure Your Apps",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMediumEmphasized,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
                             text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
@@ -165,7 +185,7 @@ fun SetPasswordScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             // Title with tooltip
@@ -174,7 +194,11 @@ fun SetPasswordScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = if (isConfirmationMode) "Confirm your PIN" else "Create a secure PIN",
+                    text = when {
+                        isVerifyOldPasswordMode -> "Enter your current PIN"
+                        isConfirmationMode -> "Confirm your new PIN"
+                        else -> "Create a new PIN"
+                    },
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
                 )
@@ -188,11 +212,12 @@ fun SetPasswordScreen(
                             )
                         ) {
                             Text(
-                                text = if (isConfirmationMode)
-                                    "Please enter the same PIN again to confirm"
-                                else
-                                    "Create a 6-digit PIN to protect your apps",
-                                modifier = Modifier.padding(16.dp),
+                                text = when {
+                                    isVerifyOldPasswordMode -> "Enter your current PIN to continue"
+                                    isConfirmationMode -> "Please enter the same PIN again to confirm"
+                                    else -> "Create a 6-digit PIN to protect your apps"
+                                },
+                                modifier = Modifier.padding(8.dp),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
@@ -230,13 +255,25 @@ fun SetPasswordScreen(
                 )
             }
 
+            if (showInvalidOldPasswordError) {
+                Text(
+                    text = "Incorrect PIN. Please try again.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+
             // PIN dots indicator
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(vertical = 24.dp)
+                modifier = Modifier.padding(vertical = 20.dp)
             ) {
-                val currentPassword =
-                    if (isConfirmationMode) confirmPasswordState else passwordState
+                val currentPassword = when {
+                    isVerifyOldPasswordMode -> passwordState
+                    isConfirmationMode -> confirmPasswordState
+                    else -> passwordState
+                }
 
                 repeat(maxLength) { index ->
                     val filled = index < currentPassword.length
@@ -259,6 +296,7 @@ fun SetPasswordScreen(
                         label = "indicatorScale"
                     )
 
+                    // Transition between shapes
                     AnimatedContent(
                         targetState = indicatorState, transitionSpec = {
                             fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
@@ -292,9 +330,12 @@ fun SetPasswordScreen(
                 }
             }
 
-            // Instruction text
             Text(
-                text = if (isConfirmationMode) "Re-enter your PIN to confirm" else "Enter a 6-digit PIN",
+                text = when {
+                    isVerifyOldPasswordMode -> "Enter your current PIN"
+                    isConfirmationMode -> "Re-enter your new PIN to confirm"
+                    else -> "Enter a 6-digit PIN"
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.alpha(0.8f),
                 textAlign = TextAlign.Center
@@ -302,113 +343,186 @@ fun SetPasswordScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Keypad
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 48.dp)
             ) {
+                // Number rows
                 KeypadRow(
-                    keys = listOf("1", "2", "3"), onKeyClick = { key ->
-                        handleKeyPress(
-                            key,
-                            isConfirmationMode,
-                            maxLength,
-                            passwordState,
-                            confirmPasswordState
-                        ) { newPassword, newConfirmPassword ->
-                            passwordState = newPassword
-                            confirmPasswordState = newConfirmPassword
+                    keys = listOf("1", "2", "3"),
+                    onKeyClick = { key ->
+                        when {
+                            isVerifyOldPasswordMode -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
+
+                            isConfirmationMode -> {
+                                if (confirmPasswordState.length < maxLength) {
+                                    confirmPasswordState += key
+                                }
+                            }
+
+                            else -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
                         }
                     }
                 )
 
                 KeypadRow(
-                    keys = listOf("4", "5", "6"), onKeyClick = { key ->
-                        handleKeyPress(
-                            key,
-                            isConfirmationMode,
-                            maxLength,
-                            passwordState,
-                            confirmPasswordState
-                        ) { newPassword, newConfirmPassword ->
-                            passwordState = newPassword
-                            confirmPasswordState = newConfirmPassword
+                    keys = listOf("4", "5", "6"),
+                    onKeyClick = { key ->
+                        when {
+                            isVerifyOldPasswordMode -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
+
+                            isConfirmationMode -> {
+                                if (confirmPasswordState.length < maxLength) {
+                                    confirmPasswordState += key
+                                }
+                            }
+
+                            else -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
                         }
                     }
                 )
 
                 KeypadRow(
-                    keys = listOf("7", "8", "9"), onKeyClick = { key ->
-                        handleKeyPress(
-                            key,
-                            isConfirmationMode,
-                            maxLength,
-                            passwordState,
-                            confirmPasswordState
-                        ) { newPassword, newConfirmPassword ->
-                            passwordState = newPassword
-                            confirmPasswordState = newConfirmPassword
+                    keys = listOf("7", "8", "9"),
+                    onKeyClick = { key ->
+                        when {
+                            isVerifyOldPasswordMode -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
+
+                            isConfirmationMode -> {
+                                if (confirmPasswordState.length < maxLength) {
+                                    confirmPasswordState += key
+                                }
+                            }
+
+                            else -> {
+                                if (passwordState.length < maxLength) {
+                                    passwordState += key
+                                }
+                            }
                         }
                     }
                 )
 
+                // Bottom row with backspace, 0, and proceed
                 KeypadRow(
                     keys = listOf("backspace", "0", "proceed"),
                     icons = listOf(
                         Backspace,
                         null,
-                        if (isConfirmationMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
+                        if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
                     ),
                     onKeyClick = { key ->
                         when (key) {
                             "0" -> {
-                                handleKeyPress(
-                                    key,
-                                    isConfirmationMode,
-                                    maxLength,
-                                    passwordState,
-                                    confirmPasswordState
-                                ) { newPassword, newConfirmPassword ->
-                                    passwordState = newPassword
-                                    confirmPasswordState = newConfirmPassword
+                                // Handle '0' press based on current mode
+                                when {
+                                    isVerifyOldPasswordMode -> {
+                                        if (passwordState.length < maxLength) {
+                                            passwordState += "0"
+                                        }
+                                    }
+
+                                    isConfirmationMode -> {
+                                        if (confirmPasswordState.length < maxLength) {
+                                            confirmPasswordState += "0"
+                                        }
+                                    }
+
+                                    else -> {
+                                        if (passwordState.length < maxLength) {
+                                            passwordState += "0"
+                                        }
+                                    }
                                 }
                             }
 
                             "backspace" -> {
-                                if (isConfirmationMode) {
-                                    if (confirmPasswordState.isNotEmpty()) {
-                                        confirmPasswordState = confirmPasswordState.dropLast(1)
+                                when {
+                                    isVerifyOldPasswordMode -> {
+                                        if (passwordState.isNotEmpty()) {
+                                            passwordState = passwordState.dropLast(1)
+                                        }
                                     }
-                                } else {
-                                    if (passwordState.isNotEmpty()) {
-                                        passwordState = passwordState.dropLast(1)
+
+                                    isConfirmationMode -> {
+                                        if (confirmPasswordState.isNotEmpty()) {
+                                            confirmPasswordState = confirmPasswordState.dropLast(1)
+                                        }
+                                    }
+
+                                    else -> {
+                                        if (passwordState.isNotEmpty()) {
+                                            passwordState = passwordState.dropLast(1)
+                                        }
                                     }
                                 }
                                 showMismatchError = false
                                 showLengthError = false
+                                showInvalidOldPasswordError = false
                             }
 
                             "proceed" -> {
-                                if (!isConfirmationMode) {
-                                    if (passwordState.length == maxLength) {
-                                        isConfirmationMode = true
-                                        showLengthError = false
-                                    } else {
-                                        showLengthError = true
-                                    }
-                                } else {
-                                    if (confirmPasswordState.length == maxLength) {
-                                        if (passwordState == confirmPasswordState) {
-                                            // Password confirmed
-                                            onPasswordSet(passwordState)
+                                when {
+                                    isVerifyOldPasswordMode -> {
+                                        if (passwordState.length == maxLength) {
+                                            // Verify the old password
+                                            if (appLockService?.validatePassword(passwordState) == true) {
+                                                // Old password is correct, proceed to setting new password
+                                                isVerifyOldPasswordMode = false
+                                                passwordState = "" // Clear for new password
+                                                showInvalidOldPasswordError = false
+                                            } else {
+                                                // Old password is incorrect
+                                                showInvalidOldPasswordError = true
+                                                passwordState = ""
+                                            }
                                         } else {
-                                            // Password mismatch
-                                            showMismatchError = true
-                                            confirmPasswordState = ""
+                                            showLengthError = true
                                         }
-                                    } else {
-                                        showLengthError = true
+                                    }
+
+                                    !isConfirmationMode -> {
+                                        if (passwordState.length == maxLength) {
+                                            isConfirmationMode = true
+                                            showLengthError = false
+                                        } else {
+                                            showLengthError = true
+                                        }
+                                    }
+
+                                    else -> {
+                                        if (confirmPasswordState.length == maxLength) {
+                                            if (passwordState == confirmPasswordState) {
+                                                // Password confirmed
+                                                onPasswordSet(passwordState)
+                                            } else {
+                                                // Password mismatch
+                                                showMismatchError = true
+                                                confirmPasswordState = ""
+                                            }
+                                        } else {
+                                            showLengthError = true
+                                        }
                                     }
                                 }
                             }
@@ -417,42 +531,38 @@ fun SetPasswordScreen(
                 )
             }
 
-            // Cancel button (only in confirmation mode)
-            if (isConfirmationMode) {
+            // Cancel button
+            if (isVerifyOldPasswordMode || isConfirmationMode) {
                 TextButton(
                     onClick = {
-                        isConfirmationMode = false
-                        confirmPasswordState = ""
-                        showMismatchError = false
-                        showLengthError = false
+                        if (isVerifyOldPasswordMode) {
+                            // Just exit the activity when canceling from verification mode
+                            context.let {
+                                if (it is android.app.Activity) {
+                                    it.finish()
+                                }
+                            }
+                        } else {
+                            // Reset to verification mode or new password mode
+                            if (!isFirstTimeSetup) {
+                                isVerifyOldPasswordMode = true
+                                isConfirmationMode = false
+                            } else {
+                                isConfirmationMode = false
+                            }
+                            passwordState = ""
+                            confirmPasswordState = ""
+                            showMismatchError = false
+                            showLengthError = false
+                            showInvalidOldPasswordError = false
+                        }
                     },
                     modifier = Modifier.padding(bottom = 16.dp)
                 ) {
-                    Text("Start Over")
+                    Text(if (isVerifyOldPasswordMode) "Cancel" else "Start Over")
                 }
             }
         }
     }
 }
 
-// Helper function to handle key presses
-private fun handleKeyPress(
-    key: String,
-    isConfirmationMode: Boolean,
-    maxLength: Int,
-    passwordState: String,
-    confirmPasswordState: String,
-    updateStates: (String, String) -> Unit
-) {
-    if (key.length == 1 && key[0].isDigit()) {
-        if (isConfirmationMode) {
-            if (confirmPasswordState.length < maxLength) {
-                updateStates(passwordState, confirmPasswordState + key)
-            }
-        } else {
-            if (passwordState.length < maxLength) {
-                updateStates(passwordState + key, confirmPasswordState)
-            }
-        }
-    }
-}

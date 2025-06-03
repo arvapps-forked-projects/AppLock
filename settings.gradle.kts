@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "App Lock"
 include(":app")
+include(":appintro")

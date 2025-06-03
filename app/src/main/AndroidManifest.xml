@@ -39,6 +39,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".AppIntroActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppLock" />
 
         <activity
             android:name=".PasswordOverlayScreen"
