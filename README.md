@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
-  <img src="screenshots/ic_launcher.png" alt="AppLock" width="120" height="120"/>
+  <img src="screenshots/ic_screenshot.png" alt="AppLock" height="400" />
 </div>
 
 <h1 align="center"><b>AppLock</b></h1>
@@ -25,7 +25,7 @@
 </div>
 
 <br>
-<p align="center"><em>AppLock in action: Securing your personal apps with style.</em></p>
+<p align="center"><em>AppLock in action: Securing your sensitive apps.</em></p>
 <br>
 
 ## ✨ Elegant App Protection
