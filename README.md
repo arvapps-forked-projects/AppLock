@@ -28,7 +28,7 @@
 <p align="center"><em>AppLock in action: Securing your sensitive apps.</em></p>
 <br>
 
-## ✨ Elegant App Protection
+## ✨ App Protection
 
 **AppLock** provides powerful app protection with an intuitive Material You interface, seamlessly
 integrating with your device's aesthetic while ensuring robust security for your private
