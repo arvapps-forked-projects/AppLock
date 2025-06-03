@@ -138,7 +138,8 @@ fun SetPasswordScreen(
                             isVerifyOldPasswordMode -> "Enter Current PIN"
                             isConfirmationMode -> "Confirm PIN"
                             else -> "Set New PIN"
-                        }
+                        },
+                        style = MaterialTheme.typography.titleLargeEmphasized,
                     )
                 }
             )

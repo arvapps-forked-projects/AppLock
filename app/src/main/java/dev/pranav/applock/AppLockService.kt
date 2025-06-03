@@ -64,6 +64,9 @@ class AppLockService : Service() {
         super.onDestroy()
         handler.removeCallbacks(appMonitorRunnable)
         (applicationContext as AppLockApplication).appLockServiceInstance = null
+        // remove the notification when service is destroyed
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.cancel(NOTIFICATION_ID)
     }
 
     private fun createNotificationChannel() {

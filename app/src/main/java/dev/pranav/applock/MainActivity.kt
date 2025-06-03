@@ -37,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -142,7 +143,12 @@ fun Main(modifier: Modifier = Modifier) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("App Lock") },
+                title = {
+                    Text(
+                        "App Lock",
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                    )
+                },
                 actions = {
                     // Settings button
                     IconButton(
@@ -242,12 +248,12 @@ fun AppItem(
     val isLocked = appLockService?.isAppLocked(appInfo.packageName) ?: false
 
     // Using a key parameter with remember forces it to recompose when the key changes
-    val isChecked = androidx.compose.runtime.remember(isLocked) {
-        androidx.compose.runtime.mutableStateOf(isLocked)
+    val isChecked = remember(isLocked) {
+        mutableStateOf(isLocked)
     }
 
     // Force recomposition on each pass to ensure state is fresh
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         isChecked.value = isLocked
     }
 
