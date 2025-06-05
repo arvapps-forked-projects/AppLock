@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
-  <img src="screenshots/ic_screenshot.png" alt="AppLock" height="400" />
+  <img src="fastlane/metadata/android/en-US/images/featureGraphic.png" alt="AppLock" height="400" />
 </div>
 
 <h1 align="center"><b>AppLock</b></h1>
