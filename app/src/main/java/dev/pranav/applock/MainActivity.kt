@@ -66,7 +66,6 @@ class MainActivity : ComponentActivity() {
 
         // Check if we should show the app intro
         if (AppIntroActivity.shouldShowIntro(this)) {
-            // Launch the intro activity
             startActivity(Intent(this, AppIntroActivity::class.java))
             finish()
             return
@@ -85,9 +84,11 @@ class MainActivity : ComponentActivity() {
             setupIntent.putExtra("FIRST_TIME_SETUP", true)
             startActivity(setupIntent)
         } else {
-            startActivity(Intent(this, PasswordOverlayScreen::class.java).apply {
-                putExtra("FROM_MAIN_ACTIVITY", true)
-            })
+            if (!intent.hasExtra("FIRST_TIME_SETUP")) {
+                startActivity(Intent(this, PasswordOverlayScreen::class.java).apply {
+                    putExtra("FROM_MAIN_ACTIVITY", true)
+                })
+            }
         }
 
         setContent {

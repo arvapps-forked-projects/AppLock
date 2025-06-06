@@ -1,5 +1,6 @@
 package dev.pranav.applock
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -93,6 +94,11 @@ class SetPasswordActivity : ComponentActivity() {
                             (applicationContext as AppLockApplication).appLockServiceInstance
                         appLockService?.setPassword(password)
                         Toast.makeText(this, "Password set successfully", Toast.LENGTH_SHORT).show()
+                        startActivity(
+                            Intent(this, MainActivity::class.java).apply {
+                                putExtra("FIRST_TIME_SETUP", isFirstTimeSetup)
+                            }
+                        )
                         finish()
                     }
                 )
