@@ -1,4 +1,4 @@
-package dev.pranav.applock.ui
+package dev.pranav.applock.ui.icons
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType

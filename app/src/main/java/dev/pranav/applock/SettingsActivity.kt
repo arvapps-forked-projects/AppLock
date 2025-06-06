@@ -1,5 +1,6 @@
 package dev.pranav.applock
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -8,22 +9,28 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Card
-import androidx.compose.material3.Divider
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +48,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
+import dev.pranav.applock.ui.icons.BrightnessHigh
+import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 class SettingsActivity : ComponentActivity() {
@@ -58,13 +68,13 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UseKtx")
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
     onBackPressed: () -> Unit
 ) {
     val context = LocalContext.current
-    val appLockService = (context.applicationContext as AppLockApplication).appLockServiceInstance
 
     // Load settings values
     val prefs = context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE)
@@ -94,7 +104,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleLargeEmphasized
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {
                         Icon(
@@ -110,51 +125,50 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Text(
-                    text = "Lock Screen Settings",
+                    text = "Lock Screen Customization",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth()
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        // Maximum Brightness Option
+                    Column {
                         SettingItem(
-                            icon = Icons.Default.Star,
+                            icon = BrightnessHigh,
                             title = "Maximum Brightness",
-                            description = "Display lock screen at maximum brightness",
+                            description = "Display lock screen at maximum brightness for clarity",
                             checked = useMaxBrightness,
                             onCheckedChange = { isChecked ->
                                 useMaxBrightness = isChecked
-                                prefs.edit().putBoolean("use_max_brightness", isChecked).apply()
+                                prefs.edit { putBoolean("use_max_brightness", isChecked) }
                             }
                         )
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
 
-                        // Fingerprint Authentication Option
                         SettingItem(
-                            icon = Icons.Default.Lock,
-                            title = "Fingerprint Authentication",
+                            icon = Fingerprint,
+                            title = "Biometric Unlock",
                             description = if (isBiometricAvailable)
-                                "Use fingerprint to unlock apps"
+                                "Use your fingerprint or face to unlock apps"
                             else
-                                "Fingerprint not available on this device",
+                                "Biometric authentication not available on this device",
                             checked = useBiometricAuth && isBiometricAvailable,
                             enabled = isBiometricAvailable,
                             onCheckedChange = { isChecked ->
                                 useBiometricAuth = isChecked
-                                prefs.edit().putBoolean("use_biometric_auth", isChecked).apply()
+                                prefs.edit { putBoolean("use_biometric_auth", isChecked) }
                             }
                         )
                     }
@@ -162,7 +176,7 @@ fun SettingsScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -171,14 +185,25 @@ fun SettingsScreen(
                     androidx.compose.material3.Button(
                         onClick = {
                             context.startActivity(Intent(context, SetPasswordActivity::class.java))
-                        }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                        contentPadding = PaddingValues(
+                            horizontal = 24.dp,
+                            vertical = 12.dp
+                        )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = "Change PIN",
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier
+                                .size(40.dp)
+                                .padding(end = 8.dp)
                         )
-                        Text("Change PIN")
+                        Text(
+                            "Change PIN",
+                            style = MaterialTheme.typography.labelLargeEmphasized
+                        )
                     }
                 }
             }
@@ -195,39 +220,36 @@ fun SettingItem(
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val checked = remember { mutableStateOf(checked) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable {
+                checked.value = !checked.value
+                onCheckedChange(checked.value)
+            }
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(end = 16.dp)
+            contentDescription = title,
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.primary
         )
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = description,
+                description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                    alpha = 0.6f
-                )
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
         Switch(
-            checked = checked,
+            checked = checked.value,
             onCheckedChange = onCheckedChange,
-            enabled = enabled
+            enabled = enabled,
         )
     }
 }

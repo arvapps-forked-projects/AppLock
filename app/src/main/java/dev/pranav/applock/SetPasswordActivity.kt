@@ -58,7 +58,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.pranav.applock.ui.Backspace
+import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 class SetPasswordActivity : ComponentActivity() {
