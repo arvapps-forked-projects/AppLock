@@ -30,7 +30,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.AppLock">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,7 +45,10 @@
 
         <activity
             android:name=".PasswordOverlayScreen"
+            android:excludeFromRecents="true"
             android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <activity
@@ -58,12 +60,6 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.AppLock" />
-
-        <service
-            android:name=".AppLockService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".AppLockService"

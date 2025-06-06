@@ -76,22 +76,18 @@ class PasswordOverlayScreen : FragmentActivity() {
     companion object {
         private const val TAG = "PasswordOverlay"
 
-        // Static field to track the currently active instance
         private var activeInstance: PasswordOverlayScreen? = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Finish any existing instances of PasswordOverlayScreen
         activeInstance?.let { existingInstance ->
             if (!existingInstance.isFinishing && existingInstance != this) {
-                Log.d(TAG, "Finishing previous PasswordOverlayScreen instance")
                 existingInstance.finishAndRemoveTask()
             }
         }
 
-        // Register this as the active instance
         activeInstance = this
 
         enableEdgeToEdge()
@@ -104,6 +100,15 @@ class PasswordOverlayScreen : FragmentActivity() {
         // Apply user preferences
         applyUserPreferences()
 
+        val fromMainActivity = intent.getBooleanExtra("FROM_MAIN_ACTIVITY", false)
+
+        if (intent.hasExtra("FROM_MAIN_ACTIVITY") && intent.hasExtra("locked_package")) {
+            Log.d(
+                TAG,
+                "Launch intent contains both source flag and package information"
+            ) // Keep this log as it might be important for debugging specific launch scenarios
+        }
+
         // Set up the UI
         setContent {
             AppLockTheme {
@@ -111,6 +116,7 @@ class PasswordOverlayScreen : FragmentActivity() {
                     PasswordScreen(
                         modifier = Modifier.padding(innerPadding),
                         showBiometricButton = shouldShowBiometricButton(),
+                        fromMainActivity = fromMainActivity,
                         onBiometricAuth = { showBiometricPromptIfNotShowing() }
                     )
                 }
@@ -203,15 +209,12 @@ class PasswordOverlayScreen : FragmentActivity() {
     private val authenticationCallback = object : BiometricPrompt.AuthenticationCallback() {
         override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
             super.onAuthenticationError(errorCode, errString)
-            Log.d(TAG, "Biometric authentication error: $errorCode - $errString")
             resetBiometricFlags()
-
             Log.w(TAG, "Authentication error: $errString")
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
             super.onAuthenticationSucceeded(result)
-            Log.d(TAG, "Biometric authentication succeeded")
             resetBiometricFlags()
             handleSuccessfulAuthentication()
         }
@@ -227,26 +230,27 @@ class PasswordOverlayScreen : FragmentActivity() {
 
     private fun handleSuccessfulAuthentication() {
         val packageToUnlock =
-            intent.getStringExtra("locked_package") ?: AppLockService.currentLockedPackage
+            intent.getStringExtra("locked_package")
+
+        if (packageToUnlock.isNullOrEmpty()) {
+            // treat as if main activity is requesting unlock
+            AppLockService.isOverlayActive = false
+            resetBiometricFlags()
+            finishAndRemoveTask()
+        }
 
         val appLockService = (applicationContext as AppLockApplication).appLockServiceInstance
         if (packageToUnlock != null && appLockService != null) {
-            Log.d(TAG, "Unlocking package via biometric: $packageToUnlock")
             appLockService.temporarilyUnlockApp(packageToUnlock)
             AppLockService.isOverlayActive = false
             resetBiometricFlags()
-            Log.d(TAG, "Finishing lock screen to reveal: $packageToUnlock")
 
-            // FIXED: Use the package manager to launch the correct app instead of creating an intent with the package as action
             try {
-                // Get the launcher activity for the package
                 val launchIntent = packageManager.getLaunchIntentForPackage(packageToUnlock)
 
                 if (launchIntent != null) {
-                    // Add flags to properly launch the app
                     launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                     startActivity(launchIntent)
-                    Log.d(TAG, "Launched intent for package: $packageToUnlock")
                 } else {
                     Log.w(TAG, "No launch intent found for package: $packageToUnlock")
                 }
@@ -272,7 +276,6 @@ class PasswordOverlayScreen : FragmentActivity() {
             val appLockService = (applicationContext as AppLockApplication).appLockServiceInstance
             appLockService?.isBiometricAuthInProgress = true
 
-            Log.d(TAG, "Starting biometric authentication, flags set")
             biometricPrompt.authenticate(promptInfo)
         }
     }
@@ -303,30 +306,11 @@ class PasswordOverlayScreen : FragmentActivity() {
         // Start a delayed operation to finish the activity if it stays in background
         Handler(Looper.getMainLooper()).postDelayed({
             if (movedToBackground && !isFinishing && !isDestroyed) {
-                Log.d(TAG, "Activity remained in background, finishing it")
                 AppLockService.isOverlayActive = false
                 AppLockService.currentLockedPackage = null
-                finishAndRemoveTask()
+                finishAndRemoveTask() // This completely removes the activity from the back stack
             }
         }, 500) // Small delay to see if we're truly going to background
-    }
-
-    override fun onStop() {
-        super.onStop()
-        Log.d(TAG, "PasswordOverlayScreen onStop called")
-
-        // If we're stopping without having unlocked the app, we should finish
-        // to prevent the lock screen from staying in the back stack
-        if (AppLockService.isOverlayActive &&
-            !isFinishing &&
-            !isChangingConfigurations
-        ) {
-
-            Log.d(TAG, "Finishing lock screen in onStop as user navigated away without unlocking")
-            AppLockService.isOverlayActive = false
-            AppLockService.currentLockedPackage = null
-            finishAndRemoveTask() // This completely removes the activity from the back stack
-        }
     }
 
     override fun onDestroy() {
@@ -360,7 +344,8 @@ val shapes = mutableListOf(
 fun PasswordScreen(
     modifier: Modifier = Modifier,
     showBiometricButton: Boolean = false,
-    onBiometricAuth: () -> Unit = {}
+    fromMainActivity: Boolean = false,
+    onBiometricAuth: () -> Unit = {},
 ) {
     val passwordState = remember { mutableStateOf("") }
     val maxLength = 6
@@ -398,6 +383,7 @@ fun PasswordScreen(
             appLockService = appLockService,
             activity = activity,
             showBiometricButton = showBiometricButton,
+            fromMainActivity = fromMainActivity,
             onBiometricAuth = onBiometricAuth
         )
     }
@@ -484,6 +470,7 @@ fun KeypadSection(
     appLockService: AppLockService?,
     activity: FragmentActivity,
     showBiometricButton: Boolean,
+    fromMainActivity: Boolean = false,
     onBiometricAuth: () -> Unit
 ) {
     Column(
@@ -521,6 +508,7 @@ fun KeypadSection(
                     passwordState = passwordState,
                     maxLength = maxLength,
                     appLockService = appLockService,
+                    fromMainActivity = fromMainActivity,
                     activity = activity
                 )
             }
@@ -561,6 +549,7 @@ private fun handleKeypadSpecialButton(
     passwordState: MutableState<String>,
     maxLength: Int,
     appLockService: AppLockService?,
+    fromMainActivity: Boolean,
     activity: FragmentActivity
 ) {
     when (key) {
@@ -575,21 +564,22 @@ private fun handleKeypadSpecialButton(
             if (passwordState.value.length == maxLength) {
                 appLockService?.let {
                     if (it.validatePassword(passwordState.value)) {
+                        if (fromMainActivity) {
+                            // If coming from MainActivity, unlock the app and finish the overlay
+                            AppLockService.isOverlayActive = false
+                            AppLockService.currentLockedPackage = null
+                            activity.finish()
+                        }
+
                         val packageToUnlock = AppLockService.currentLockedPackage ?: ""
                         it.unlockApp(packageToUnlock)
                         try {
-                            // Get the launcher activity for the package
                             val launchIntent =
                                 activity.packageManager.getLaunchIntentForPackage(packageToUnlock)
 
                             if (launchIntent != null) {
-                                // Add flags to properly launch the app
                                 launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                                 activity.startActivity(launchIntent)
-                                Log.d(
-                                    "PasswordOverlayScreen",
-                                    "Launched intent for package: $packageToUnlock"
-                                )
                             } else {
                                 Log.w(
                                     "PasswordOverlayScreen",

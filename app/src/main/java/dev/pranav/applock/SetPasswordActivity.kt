@@ -66,7 +66,6 @@ class SetPasswordActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Check if this is the first time setup
         val isFirstTimeSetup = intent.getBooleanExtra("FIRST_TIME_SETUP", false)
 
         onBackPressedDispatcher.addCallback {
@@ -79,11 +78,10 @@ class SetPasswordActivity : ComponentActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
-                finish() // Allow back press to exit if not first time setup
+                finish()
             }
         }
 
-        // Shuffle shape order
         shapes.shuffle()
 
         setContent {
@@ -116,13 +114,12 @@ fun SetPasswordScreen(
     var passwordState by remember { mutableStateOf("") }
     var confirmPasswordState by remember { mutableStateOf("") }
     var isConfirmationMode by remember { mutableStateOf(false) }
-    var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) } // Start with verification mode if not first time setup
+    var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) }
     var showMismatchError by remember { mutableStateOf(false) }
     var showLengthError by remember { mutableStateOf(false) }
     var showInvalidOldPasswordError by remember { mutableStateOf(false) }
     val maxLength = 6
 
-    // Get app lock service for password validation
     val context = LocalContext.current
     val appLockService = remember {
         (context.applicationContext as AppLockApplication).appLockServiceInstance
@@ -155,7 +152,6 @@ fun SetPasswordScreen(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // First-time setup welcome message
             if (isFirstTimeSetup && !isConfirmationMode) {
                 Card(
                     modifier = Modifier
@@ -189,7 +185,6 @@ fun SetPasswordScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Title with tooltip
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -237,7 +232,6 @@ fun SetPasswordScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Error messages
             if (showMismatchError) {
                 Text(
                     text = "PINs don't match. Try again.",
@@ -265,7 +259,6 @@ fun SetPasswordScreen(
                 )
             }
 
-            // PIN dots indicator
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.padding(vertical = 20.dp)
@@ -297,7 +290,6 @@ fun SetPasswordScreen(
                         label = "indicatorScale"
                     )
 
-                    // Transition between shapes
                     AnimatedContent(
                         targetState = indicatorState, transitionSpec = {
                             fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
@@ -348,7 +340,6 @@ fun SetPasswordScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Number rows
                 KeypadRow(
                     keys = listOf("1", "2", "3"),
                     onKeyClick = { key ->
@@ -424,7 +415,6 @@ fun SetPasswordScreen(
                     }
                 )
 
-                // Bottom row with backspace, 0, and proceed
                 KeypadRow(
                     keys = listOf("backspace", "0", "proceed"),
                     icons = listOf(
@@ -435,7 +425,6 @@ fun SetPasswordScreen(
                     onKeyClick = { key ->
                         when (key) {
                             "0" -> {
-                                // Handle '0' press based on current mode
                                 when {
                                     isVerifyOldPasswordMode -> {
                                         if (passwordState.length < maxLength) {
@@ -486,14 +475,11 @@ fun SetPasswordScreen(
                                 when {
                                     isVerifyOldPasswordMode -> {
                                         if (passwordState.length == maxLength) {
-                                            // Verify the old password
                                             if (appLockService?.validatePassword(passwordState) == true) {
-                                                // Old password is correct, proceed to setting new password
                                                 isVerifyOldPasswordMode = false
-                                                passwordState = "" // Clear for new password
+                                                passwordState = ""
                                                 showInvalidOldPasswordError = false
                                             } else {
-                                                // Old password is incorrect
                                                 showInvalidOldPasswordError = true
                                                 passwordState = ""
                                             }
@@ -514,10 +500,8 @@ fun SetPasswordScreen(
                                     else -> {
                                         if (confirmPasswordState.length == maxLength) {
                                             if (passwordState == confirmPasswordState) {
-                                                // Password confirmed
                                                 onPasswordSet(passwordState)
                                             } else {
-                                                // Password mismatch
                                                 showMismatchError = true
                                                 confirmPasswordState = ""
                                             }
@@ -532,19 +516,16 @@ fun SetPasswordScreen(
                 )
             }
 
-            // Cancel button
             if (isVerifyOldPasswordMode || isConfirmationMode) {
                 TextButton(
                     onClick = {
                         if (isVerifyOldPasswordMode) {
-                            // Just exit the activity when canceling from verification mode
                             context.let {
                                 if (it is android.app.Activity) {
                                     it.finish()
                                 }
                             }
                         } else {
-                            // Reset to verification mode or new password mode
                             if (!isFirstTimeSetup) {
                                 isVerifyOldPasswordMode = true
                                 isConfirmationMode = false
@@ -566,4 +547,3 @@ fun SetPasswordScreen(
         }
     }
 }
-

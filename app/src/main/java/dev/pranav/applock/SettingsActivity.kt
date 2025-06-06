@@ -76,7 +76,6 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    // Load settings values
     val prefs = context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE)
     var useMaxBrightness by remember {
         mutableStateOf(
@@ -95,7 +94,6 @@ fun SettingsScreen(
         )
     }
 
-    // Check if biometric authentication is available on the device
     val biometricManager = BiometricManager.from(context)
     val isBiometricAvailable = remember {
         biometricManager.canAuthenticate(Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
@@ -220,13 +218,16 @@ fun SettingItem(
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val checked = remember { mutableStateOf(checked) }
+    val itemChecked =
+        remember { mutableStateOf(checked) } // Renamed to avoid conflict with parameter
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                checked.value = !checked.value
-                onCheckedChange(checked.value)
+            .clickable(enabled = enabled) { // Ensure clickable respects enabled state
+                if (enabled) {
+                    itemChecked.value = !itemChecked.value
+                    onCheckedChange(itemChecked.value)
+                }
             }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -236,19 +237,32 @@ fun SettingItem(
             imageVector = icon,
             contentDescription = title,
             modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
+                alpha = 0.38f
+            ) // Adjust icon tint when disabled
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = 0.38f
+                )
+            )
             Text(
                 description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                    alpha = 0.38f
+                )
             )
         }
         Switch(
-            checked = checked.value,
-            onCheckedChange = onCheckedChange,
+            checked = itemChecked.value,
+            onCheckedChange = {
+                itemChecked.value = it
+                onCheckedChange(it)
+            },
             enabled = enabled,
         )
     }

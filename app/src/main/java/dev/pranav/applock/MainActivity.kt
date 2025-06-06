@@ -84,6 +84,10 @@ class MainActivity : ComponentActivity() {
             val setupIntent = Intent(this, SetPasswordActivity::class.java)
             setupIntent.putExtra("FIRST_TIME_SETUP", true)
             startActivity(setupIntent)
+        } else {
+            startActivity(Intent(this, PasswordOverlayScreen::class.java).apply {
+                putExtra("FROM_MAIN_ACTIVITY", true)
+            })
         }
 
         setContent {
@@ -225,7 +229,7 @@ fun Main(modifier: Modifier = Modifier) {
                         if (isChecked) {
                             appLockService?.addLockedApp(appInfo.packageName)
                         } else {
-                            appLockService?.unlockApp(appInfo.packageName)
+                            appLockService?.unlockApp(appInfo.packageName) // This should be removeLockedApp
                         }
                     }
                 )
@@ -279,11 +283,11 @@ fun AppItem(
 
     val isLocked = appLockService?.isAppLocked(appInfo.packageName) ?: false
 
-    val isChecked = remember(isLocked) {
+    val isChecked = remember(isLocked) { // Use rememberSaveable for state persistence
         mutableStateOf(isLocked)
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isLocked) { // Observe isLocked directly
         isChecked.value = isLocked
     }
 

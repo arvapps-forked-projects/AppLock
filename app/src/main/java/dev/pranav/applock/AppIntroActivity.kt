@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import dev.pranav.appintro.AppIntro
 import dev.pranav.appintro.IntroPage
 import dev.pranav.applock.ui.theme.AppLockTheme
@@ -53,7 +53,8 @@ class AppIntroActivity : ComponentActivity() {
                                 markIntroAsCompleted()
 
                                 // Create a smooth transition to the main activity
-                                val intent = Intent(this, MainActivity::class.java)
+                                val intent = Intent(this, SetPasswordActivity::class.java)
+                                intent.putExtra("FIRST_TIME_SETUP", true)
 
                                 // Add flag to clear the activity stack to prevent back navigation to intro
                                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -103,7 +104,7 @@ class AppIntroActivity : ComponentActivity() {
     private fun markIntroAsCompleted() {
         // Save a flag indicating that the intro has been shown
         val sharedPrefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        sharedPrefs.edit().putBoolean(PREF_INTRO_SHOWN, true).apply()
+        sharedPrefs.edit { putBoolean(PREF_INTRO_SHOWN, true) }
     }
 
     companion object {
@@ -172,7 +173,6 @@ fun AppIntroWithTheme(
                     // If not, redirect to settings
                     val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    Log.d("AppLock", "Redirecting to usage access settings")
                     context.startActivity(intent)
                     false // Do not proceed to next page
                 } else {
@@ -196,7 +196,6 @@ fun AppIntroWithTheme(
                     // If not, redirect to settings
                     val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    Log.d("AppLock", "Redirecting to overlay permission settings")
                     context.startActivity(intent)
                     false // Do not proceed to next page
                 } else {
@@ -228,7 +227,6 @@ fun AppIntroWithTheme(
                         val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         intent.putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        Log.d("AppLock", "Redirecting to notification permission settings")
                         context.startActivity(intent)
                         false // Do not proceed to next page
                     } else {

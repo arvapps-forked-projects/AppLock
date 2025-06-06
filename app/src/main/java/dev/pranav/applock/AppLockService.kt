@@ -64,7 +64,6 @@ class AppLockService : Service() {
         super.onDestroy()
         handler.removeCallbacks(appMonitorRunnable)
         (applicationContext as AppLockApplication).appLockServiceInstance = null
-        // remove the notification when service is destroyed
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.cancel(NOTIFICATION_ID)
     }
@@ -75,18 +74,16 @@ class AppLockService : Service() {
             "App Lock Service Channel",
             NotificationManager.IMPORTANCE_LOW
         )
-        // Add description to make the channel's purpose clear
         serviceChannel.description = "Shows when App Lock is running to protect your apps"
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(serviceChannel)
     }
 
     private fun createNotification(): Notification {
-        // Import required for NotificationCompat
         val builder = androidx.core.app.NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("AppLock Active")
             .setContentText("Protecting your locked applications")
-            .setSmallIcon(R.drawable.ic_notification) // This requires a notification icon in your drawable resources
+            .setSmallIcon(R.drawable.ic_notification)
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
 
@@ -166,7 +163,7 @@ class AppLockService : Service() {
         }
 
         // Handle locked app detection
-        if (shouldShowLockScreen(recentLockedAppActivities, detectedForegroundPackage)) {
+        if (shouldShowLockScreen(detectedForegroundPackage)) {
             return // Lock screen shown, no further processing needed in this cycle
         }
 
@@ -178,7 +175,6 @@ class AppLockService : Service() {
 
 
     private fun shouldShowLockScreen(
-        recentLockedAppActivities: Set<String>,
         detectedForegroundPackage: String?
     ): Boolean {
         if (detectedForegroundPackage == null) return false
@@ -349,10 +345,6 @@ class AppLockService : Service() {
         return lockedApps.contains(packageName)
     }
 
-    fun isAppTemporarilyUnlocked(packageName: String): Boolean {
-        return temporarilyUnlockedPackage == packageName
-    }
-
     fun validatePassword(password: String): Boolean {
         val sharedPrefs = getSharedPreferences("app_lock_prefs", MODE_PRIVATE)
         val storedPassword = sharedPrefs.getString("password", "123456")
@@ -379,22 +371,10 @@ class AppLockService : Service() {
         saveLockedApps()
     }
 
-    fun removeLockedApp(packageName: String) {
-        lockedApps.remove(packageName)
-        if (temporarilyUnlockedPackage == packageName) { // If removing a temp unlocked app, clear its state
-            temporarilyUnlockedPackage = null
-        }
-        saveLockedApps()
-    }
-
     private fun saveLockedApps() {
         val sharedPrefs = getSharedPreferences("app_lock_prefs", MODE_PRIVATE)
         sharedPrefs.edit { putStringSet("locked_apps", lockedApps) }
         Log.d(TAG, "Saved locked apps: $lockedApps")
-    }
-
-    fun getLockedApps(): Set<String> {
-        return lockedApps.toSet() // Return a copy
     }
 
     private fun isLauncherApp(packageName: String?): Boolean {
