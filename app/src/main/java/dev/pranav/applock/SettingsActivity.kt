@@ -12,12 +12,9 @@ import androidx.biometric.BiometricManager.Authenticators
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,12 +23,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +46,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,7 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
+import dev.pranav.applock.ui.icons.Github
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 class SettingsActivity : ComponentActivity() {
@@ -78,6 +80,7 @@ fun SettingsScreen(
     onBackPressed: () -> Unit
 ) {
     val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) }
 
     val prefs = context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE)
     var useMaxBrightness by remember {
@@ -102,6 +105,35 @@ fun SettingsScreen(
         biometricManager.canAuthenticate(Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Support Development") },
+            text = { Text("Hi, I'm Pranav, the developer of App Lock. I'm a student developer passionate about creating useful apps. If you find it helpful, please consider supporting its development with a small donation. Any amount is greatly appreciated and helps me continue to improve the app and work on new features. Thank you for your support!") },
+            confirmButton = {
+                FilledTonalButton(
+                    onClick = {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                "https://paypal.me/pranavpurwar".toUri()
+                            )
+                        )
+                        showDialog = false
+                    }
+                ) {
+                    Text("Donate")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,7 +150,7 @@ fun SettingsScreen(
                             contentDescription = "Back"
                         )
                     }
-                }
+                },
             )
         }
     ) { innerPadding ->
@@ -162,7 +194,7 @@ fun SettingsScreen(
                             icon = Fingerprint,
                             title = "Biometric Unlock",
                             description = if (isBiometricAvailable)
-                                "Use your fingerprint or face to unlock apps"
+                                "Use your fingerprint to unlock apps"
                             else
                                 "Biometric authentication not available on this device",
                             checked = useBiometricAuth && isBiometricAvailable,
@@ -177,72 +209,88 @@ fun SettingsScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Security",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
 
-                Row(
+                ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
                 ) {
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            context.startActivity(Intent(context, SetPasswordActivity::class.java))
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
-                        contentPadding = PaddingValues(
-                            horizontal = 24.dp,
-                            vertical = 12.dp
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Change PIN",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(end = 8.dp)
-                        )
-                        Text(
-                            "Change PIN",
-                            style = MaterialTheme.typography.labelLargeEmphasized
+                    Column {
+                        ActionSettingItem(
+                            icon = Icons.Default.Lock,
+                            title = "Change PIN",
+                            onClick = {
+                                context.startActivity(
+                                    Intent(
+                                        context,
+                                        SetPasswordActivity::class.java
+                                    )
+                                )
+                            }
                         )
                     }
                 }
             }
 
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "About & Support",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(
+                        top = 0.dp,
+                        bottom = 12.dp
+                    )
+                )
 
-                Row(
+                ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(16.dp),
                 ) {
-                    ElevatedButton(
-                        onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    "https://paypal.me/pranavpurwar".toUri()
-                                )
-                            )
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
-                        contentPadding = PaddingValues(
-                            horizontal = 24.dp,
-                            vertical = 12.dp
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Favorite, // Or Icons.Filled.MonetizationOn
-                            contentDescription = "Support us",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(end = 8.dp)
+                    Column {
+                        ActionSettingItem(
+                            icon = Icons.Filled.Favorite,
+                            title = "Support Development",
+                            onClick = { showDialog = true }
                         )
-                        Text(
-                            "Support us",
-                            style = MaterialTheme.typography.labelLargeEmphasized,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        ActionSettingItem(
+                            icon = Github,
+                            title = "View Source Code",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://github.com/PranavPurwar/AppLock".toUri()
+                                )
+                                context.startActivity(intent)
+                            }
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+
+                        ActionSettingItem(
+                            icon = Icons.Filled.Person,
+                            title = "Developer Profile",
+                            onClick = {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://github.com/PranavPurwar".toUri()
+                                )
+                                context.startActivity(intent)
+                            }
                         )
                     }
                 }
@@ -253,22 +301,19 @@ fun SettingsScreen(
 
 @Composable
 fun SettingItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     description: String,
     checked: Boolean,
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val itemChecked =
-        remember { mutableStateOf(checked) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) {
                 if (enabled) {
-                    itemChecked.value = !itemChecked.value
-                    onCheckedChange(itemChecked.value)
+                    onCheckedChange(!checked)
                 }
             }
             .padding(16.dp),
@@ -293,19 +338,47 @@ fun SettingItem(
             )
             Text(
                 description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                style = MaterialTheme.typography.bodySmall,
+                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(
                     alpha = 0.38f
                 )
             )
         }
         Switch(
-            checked = itemChecked.value,
-            onCheckedChange = {
-                itemChecked.value = it
-                onCheckedChange(it)
-            },
+            checked = checked,
+            onCheckedChange = null, // Click handling is on the Row
             enabled = enabled,
+            modifier = Modifier.padding(start = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun ActionSettingItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconTint: Color = MaterialTheme.colorScheme.primary
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            modifier = Modifier.size(28.dp),
+            tint = iconTint
+        )
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

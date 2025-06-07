@@ -662,7 +662,7 @@ fun KeypadRow(
                             imageVector = icons[keys.indexOf(key)]!!,
                             contentDescription = key,
                             modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     } else {
                         Text(

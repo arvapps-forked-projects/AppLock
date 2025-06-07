@@ -45,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -132,6 +133,7 @@ fun SetPasswordScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         topBar = {
             TopAppBar(
                 title = {
@@ -144,7 +146,10 @@ fun SetPasswordScreen(
                         },
                         style = MaterialTheme.typography.titleLargeEmphasized,
                     )
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                )
             )
         }
     ) { innerPadding ->
@@ -240,7 +245,7 @@ fun SetPasswordScreen(
 
             if (showMismatchError) {
                 Text(
-                    text = "PINs don't match. Try again.",
+                    text = "PINs don\'t match. Try again.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(8.dp)

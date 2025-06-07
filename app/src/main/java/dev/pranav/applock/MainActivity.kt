@@ -84,6 +84,7 @@ class MainActivity : ComponentActivity() {
             val setupIntent = Intent(this, SetPasswordActivity::class.java)
             setupIntent.putExtra("FIRST_TIME_SETUP", true)
             startActivity(setupIntent)
+            finish()
         } else {
             if (!intent.hasExtra("FIRST_TIME_SETUP")) {
                 startActivity(Intent(this, PasswordOverlayScreen::class.java).apply {
@@ -159,14 +160,14 @@ fun Main(modifier: Modifier = Modifier) {
                             contentDescription = "Settings"
                         )
                     }
-                }
+                },
             )
         }
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(innerPadding)
+                .fillMaxSize()
         ) {
             // Search field with simplified focus management
             val focusManager = LocalFocusManager.current

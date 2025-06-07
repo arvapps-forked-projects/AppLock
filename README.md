@@ -62,8 +62,7 @@ applications.
 
 If you find this project helpful, consider supporting it by donating via PayPal:
 
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/pranavpurwar)
+[<img src="https://img.shields.io/badge/Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" height="40" alt="Donate via PayPal">](https://paypal.me/pranavpurwar)
 
 ## 📱 Perfect For
 
