@@ -1,5 +1,6 @@
 [versions]
 agp = "8.12.0-alpha03"
+autostarter = "1.1.0"
 biometric = "1.4.0-alpha02"
 kotlin = "2.1.21"
 coreKtx = "1.16.0"
@@ -16,6 +17,7 @@ material = "1.10.0"
 [libraries]
 androidx-biometric = { module = "androidx.biometric:biometric-ktx", version.ref = "biometric" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+autostarter = { module = "com.github.judemanutd:autostarter", version.ref = "autostarter" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

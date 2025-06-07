@@ -1,8 +1,9 @@
-package dev.pranav.applock
+package dev.pranav.applock.services
 
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
@@ -11,7 +12,12 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
+import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.MainActivity
+import dev.pranav.applock.PasswordOverlayScreen
+import dev.pranav.applock.R
 
 class AppLockService : Service() {
 
@@ -72,7 +78,7 @@ class AppLockService : Service() {
         val serviceChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             "App Lock Service Channel",
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         )
         serviceChannel.description = "Shows when App Lock is running to protect your apps"
         val manager = getSystemService(NotificationManager::class.java)
@@ -80,18 +86,18 @@ class AppLockService : Service() {
     }
 
     private fun createNotification(): Notification {
-        val builder = androidx.core.app.NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("AppLock Active")
             .setContentText("Protecting your locked applications")
             .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setOngoing(true)
 
         // Create a PendingIntent for when the notification is tapped
         val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = android.app.PendingIntent.getActivity(
+        val pendingIntent = PendingIntent.getActivity(
             this, 0, notificationIntent,
-            android.app.PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE
         )
         builder.setContentIntent(pendingIntent)
 
@@ -222,10 +228,6 @@ class AppLockService : Service() {
                 if (isLauncherApp(getCurrentForegroundApp())) {
                     Log.d(TAG, "Clearing temporarily unlocked app after home screen timeout")
                     temporarilyUnlockedPackage = null
-                    // If overlay was for this app and somehow still active (should not be), clear it.
-                    if (currentLockedPackage == temporarilyUnlockedPackage) {
-                        currentLockedPackage = null
-                    }
                 }
             }, HOME_SCREEN_LOCK_DELAY_MS)
         } else if (currentLockedPackage != null) {

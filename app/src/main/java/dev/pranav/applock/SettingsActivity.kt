@@ -24,9 +24,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -49,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
@@ -174,7 +177,7 @@ fun SettingsScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -205,6 +208,45 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    ElevatedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    "https://paypal.me/pranavpurwar".toUri()
+                                )
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                        contentPadding = PaddingValues(
+                            horizontal = 24.dp,
+                            vertical = 12.dp
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite, // Or Icons.Filled.MonetizationOn
+                            contentDescription = "Support us",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .padding(end = 8.dp)
+                        )
+                        Text(
+                            "Support us",
+                            style = MaterialTheme.typography.labelLargeEmphasized,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -219,11 +261,11 @@ fun SettingItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val itemChecked =
-        remember { mutableStateOf(checked) } // Renamed to avoid conflict with parameter
+        remember { mutableStateOf(checked) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { // Ensure clickable respects enabled state
+            .clickable(enabled = enabled) {
                 if (enabled) {
                     itemChecked.value = !itemChecked.value
                     onCheckedChange(itemChecked.value)
@@ -239,7 +281,7 @@ fun SettingItem(
             modifier = Modifier.size(28.dp),
             tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
                 alpha = 0.38f
-            ) // Adjust icon tint when disabled
+            )
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

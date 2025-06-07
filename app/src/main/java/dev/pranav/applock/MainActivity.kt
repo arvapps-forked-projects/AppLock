@@ -56,6 +56,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import dev.pranav.applock.services.AppLockService
 import dev.pranav.applock.ui.theme.AppLockTheme
 import kotlinx.coroutines.delay
 

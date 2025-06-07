@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import dev.pranav.applock.services.AppLockService
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.theme.AppLockTheme
 import java.util.concurrent.Executor
@@ -72,6 +73,10 @@ class PasswordOverlayScreen : FragmentActivity() {
 
     // Add a flag to track if this activity was moved to the background
     private var movedToBackground = false
+
+    // Handler and Runnable for delayed finish
+    private val activityHandler = Handler(Looper.getMainLooper())
+    private var finishActivityRunnable: Runnable? = null
 
     companion object {
         private const val TAG = "PasswordOverlay"
@@ -132,7 +137,8 @@ class PasswordOverlayScreen : FragmentActivity() {
                     WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+                    WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_SECURE // Prevent content from appearing in recents thumbnails
         )
 
         // Set window type - this can ONLY be done during window creation (in onCreate)
@@ -151,7 +157,8 @@ class PasswordOverlayScreen : FragmentActivity() {
                     WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
                     WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+                    WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_SECURE // Prevent content from appearing in recents thumbnails
         )
     }
 
@@ -282,6 +289,10 @@ class PasswordOverlayScreen : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        movedToBackground = false // Reset flag when activity resumes
+        // Cancel any pending delayed finish operation
+        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
+
         // Only apply flags that can be safely changed after window creation
         setupReapplicableWindowFlags()
         applyUserPreferences()
@@ -294,23 +305,40 @@ class PasswordOverlayScreen : FragmentActivity() {
         // Mark that we're potentially moving to background
         movedToBackground = true
 
-        // Clear flags
+        // Clear flags that might interfere or are not needed when paused
         window.clearFlags(
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or // Cleared as it might not be over keyguard if paused long
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD  // Same as above
         )
 
-        // Start a delayed operation to finish the activity if it stays in background
-        Handler(Looper.getMainLooper()).postDelayed({
+        // Cancel any existing runnable before posting a new one
+        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
+        finishActivityRunnable = Runnable {
             if (movedToBackground && !isFinishing && !isDestroyed) {
                 AppLockService.isOverlayActive = false
-                AppLockService.currentLockedPackage = null
-                finishAndRemoveTask() // This completely removes the activity from the back stack
+                // Do NOT set AppLockService.currentLockedPackage = null here.
+                // The app remains locked if the overlay is dismissed this way (e.g. timeout).
+                finishAndRemoveTask()
             }
-        }, 500) // Small delay to see if we're truly going to background
+        }
+        // Start a delayed operation to finish the activity if it stays in background
+        activityHandler.postDelayed(finishActivityRunnable!!, 500) // Small delay
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Cancel any delayed runnable from onPause, as we are definitively stopping.
+        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
+
+        if (!isFinishing) {
+            AppLockService.isOverlayActive = false
+            // Do NOT set AppLockService.currentLockedPackage = null here.
+            // The app it was locking is still locked if dismissed by going to recents.
+            finishAndRemoveTask() // Finish immediately when no longer visible
+        }
     }
 
     override fun onDestroy() {
