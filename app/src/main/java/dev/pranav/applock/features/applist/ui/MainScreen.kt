@@ -176,7 +176,10 @@ fun AppList(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(apps.size) { index ->
+        items(
+            apps.size,
+            key = { index -> apps[index].packageName }
+        ) { index ->
             val appInfo = apps[index]
             AppItem(
                 appInfo = appInfo,

@@ -28,11 +28,13 @@
 <p align="center"><em>AppLock in action: Securing your sensitive apps.</em></p>
 <br>
 
-## ✨ App Protection
+## ✨ Unparalleled App Protection
 
-**AppLock** provides powerful app protection with an intuitive Material You interface, seamlessly
-integrating with your device's aesthetic while ensuring robust security for your private
-applications.
+**AppLock: Your Digital Guardian.** Experience the next level of app security with AppLock. We
+provide cutting-edge protection for your sensitive applications, wrapped in a gorgeous, adaptive
+Material You interface. Not only does it look great, but it's built on a robust Clean Architecture,
+ensuring reliability and a seamless user experience. Keep your private data truly private,
+effortlessly.
 
 <br>
 
@@ -55,6 +57,7 @@ applications.
 - **Persistence Layer** - Reliable data storage with preference encryption
 - **Custom Animations** - Smooth transitions and micro-interactions
 - **Permission Handling** - Intuitive flows for necessary system access
+- **🏛️ Clean Architecture** - Robust and maintainable codebase structure.
 
 <br>
 
@@ -82,6 +85,7 @@ AppLock serves as an excellent reference implementation for:
 - Foreground service implementation with notifications
 - Real-time app monitoring techniques
 - Practical UI implementation with Jetpack Compose
+- Clean Architecture principles in an Android app.
 
 ```bash
 # Clone and build

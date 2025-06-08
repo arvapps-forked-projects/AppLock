@@ -15,11 +15,11 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -51,6 +50,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +66,9 @@ import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.services.AppLockService
 import dev.pranav.applock.ui.icons.Backspace
+import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
 class PasswordOverlayActivity : FragmentActivity() {
@@ -404,6 +406,20 @@ fun PasswordOverlayScreen(
         val appLockService =
             (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
 
+        val onPasswordChangeLambda = remember { { showError = false } }
+        val onPinIncorrectLambda = remember { { showError = true } }
+
+        val onPinAttemptForSection = remember(onPinAttempt) {
+            { pin: String ->
+                if (onPinAttempt == null) false
+                else {
+                    val result = onPinAttempt.invoke(pin)
+                    showError = !result
+                    result
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -453,17 +469,9 @@ fun PasswordOverlayScreen(
                 fromMainActivity = fromMainActivity,
                 onBiometricAuth = onBiometricAuth,
                 onAuthSuccess = onAuthSuccess,
-                onPinAttempt = { pin ->
-                    val result = onPinAttempt?.invoke(pin) ?: false
-                    showError = !result
-                    result
-                },
-                onPasswordChange = {
-                    showError = false
-                },
-                onPinIncorrect = {
-                    showError = true
-                }
+                onPinAttempt = onPinAttemptForSection,
+                onPasswordChange = onPasswordChangeLambda,
+                onPinIncorrect = onPinIncorrectLambda
             )
         }
     }
@@ -493,9 +501,9 @@ fun PasswordIndicators(
 
             val scale by animateFloatAsState(
                 targetValue = if (filled) 1.2f else if (isNext) 1.1f else 1.0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioHighBouncy,
-                    stiffness = Spring.StiffnessHigh
+                animationSpec = tween(
+                    durationMillis = 100, // Further reduced duration
+                    easing = FastOutSlowInEasing
                 ),
                 label = "indicatorScale"
             )
@@ -503,19 +511,10 @@ fun PasswordIndicators(
             AnimatedContent(
                 targetState = indicatorState,
                 transitionSpec = {
-                    scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessHigh
-                        )
-                    ) togetherWith scaleOut(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessHigh
-                        )
-                    )
+                    fadeIn(animationSpec = tween(durationMillis = 100)) togetherWith
+                            fadeOut(animationSpec = tween(durationMillis = 100))
                 },
-                label = "indicatorAnimation"
+                label = "indicatorStateAnimation"
             ) { state ->
                 val shape = when (state) {
                     "filled" -> shapes[index % shapes.size].toShape()
@@ -550,9 +549,45 @@ fun KeypadSection(
     onPasswordChange: () -> Unit,
     onPinIncorrect: () -> Unit
 ) {
-    val localPasswordState = passwordState
-    val localAppLockService = appLockService
     val context = LocalContext.current
+
+    val onDigitKeyClick = remember(passwordState, maxLength, onPasswordChange) {
+        { key: String ->
+            addDigitToPassword(
+                passwordState,
+                key,
+                maxLength,
+                onPasswordChange
+            )
+        }
+    }
+
+    val onSpecialKeyClick = remember(
+        passwordState,
+        maxLength,
+        appLockService,
+        fromMainActivity,
+        onAuthSuccess,
+        onPinAttempt,
+        context,
+        onPasswordChange,
+        onPinIncorrect
+    ) {
+        { key: String ->
+            handleKeypadSpecialButtonLogic(
+                key = key,
+                passwordState = passwordState,
+                maxLength = maxLength,
+                appLockService = appLockService,
+                fromMainActivity = fromMainActivity,
+                onAuthSuccess = onAuthSuccess,
+                onPinAttempt = onPinAttempt,
+                contextForVibrate = context,
+                onPasswordChange = onPasswordChange,
+                onPinIncorrect = onPinIncorrect
+            )
+        }
+    }
 
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -561,54 +596,20 @@ fun KeypadSection(
     ) {
         KeypadRow(
             keys = listOf("1", "2", "3"),
-            onKeyClick = { key ->
-                addDigitToPassword(
-                    passwordState,
-                    key,
-                    maxLength,
-                    onPasswordChange
-                )
-            }
+            onKeyClick = onDigitKeyClick
         )
         KeypadRow(
             keys = listOf("4", "5", "6"),
-            onKeyClick = { key ->
-                addDigitToPassword(
-                    passwordState,
-                    key,
-                    maxLength,
-                    onPasswordChange
-                )
-            }
+            onKeyClick = onDigitKeyClick
         )
         KeypadRow(
             keys = listOf("7", "8", "9"),
-            onKeyClick = { key ->
-                addDigitToPassword(
-                    passwordState,
-                    key,
-                    maxLength,
-                    onPasswordChange
-                )
-            }
+            onKeyClick = onDigitKeyClick
         )
         KeypadRow(
             keys = listOf("backspace", "0", "proceed"),
             icons = listOf(Backspace, null, Icons.AutoMirrored.Rounded.KeyboardArrowRight),
-            onKeyClick = { key ->
-                handleKeypadSpecialButtonLogic(
-                    key = key,
-                    passwordState = localPasswordState,
-                    maxLength = maxLength,
-                    appLockService = localAppLockService,
-                    fromMainActivity = fromMainActivity,
-                    onAuthSuccess = onAuthSuccess,
-                    onPinAttempt = onPinAttempt,
-                    contextForVibrate = context,
-                    onPasswordChange = onPasswordChange,
-                    onPinIncorrect = onPinIncorrect // Pass new callback
-                )
-            }
+            onKeyClick = onSpecialKeyClick
         )
         if (showBiometricButton) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -618,7 +619,7 @@ fun KeypadSection(
                 shape = CircleShape,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Lock,
+                    imageVector = Fingerprint,
                     contentDescription = "Biometric Authentication",
                     modifier = Modifier.size(24.dp),
                     tint = MaterialTheme.colorScheme.onSurface
@@ -654,7 +655,7 @@ private fun handleKeypadSpecialButtonLogic(
 ) {
 
     when (key) {
-        "0" -> addDigitToPassword(passwordState, key, maxLength, onPasswordChange) // Pass callback
+        "0" -> addDigitToPassword(passwordState, key, maxLength, onPasswordChange)
         "backspace" -> {
             if (passwordState.value.isNotEmpty()) {
                 passwordState.value = passwordState.value.dropLast(1)
@@ -705,6 +706,7 @@ fun KeypadRow(
     onKeyClick: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -716,7 +718,9 @@ fun KeypadRow(
             val interactionSource = remember { MutableInteractionSource() }
             ElevatedButton(
                 onClick = {
-                    vibrate(context, 50)
+                    scope.launch {
+                        vibrate(context, 50)
+                    }
                     onKeyClick(key)
                 },
                 modifier = Modifier
