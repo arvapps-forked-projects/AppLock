@@ -11,10 +11,10 @@ import androidx.compose.ui.unit.dp
 
 val Backspace: ImageVector
     get() {
-        if (_undefined != null) {
-            return _undefined!!
+        if (_backspace != null) {
+            return _backspace!!
         }
-        _undefined = ImageVector.Builder(
+        _backspace = ImageVector.Builder(
             name = "Backspace",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
@@ -70,7 +70,7 @@ val Backspace: ImageVector
                 close()
             }
         }.build()
-        return _undefined!!
+        return _backspace!!
     }
 
-private var _undefined: ImageVector? = null
+private var _backspace: ImageVector? = null

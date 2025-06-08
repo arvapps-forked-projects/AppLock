@@ -1,4 +1,4 @@
-package dev.pranav.applock
+package dev.pranav.applock.features.applist.domain
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -99,3 +99,4 @@ class AppSearchManager(private val context: Context) {
         return appNameCache[app] ?: app.loadLabel(context.packageManager).toString()
     }
 }
+

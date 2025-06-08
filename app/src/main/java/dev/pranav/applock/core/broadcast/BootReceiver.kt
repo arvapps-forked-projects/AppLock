@@ -1,4 +1,4 @@
-package dev.pranav.applock
+package dev.pranav.applock.core.broadcast
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -24,3 +24,4 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 }
+

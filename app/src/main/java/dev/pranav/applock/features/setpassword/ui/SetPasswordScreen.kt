@@ -1,12 +1,8 @@
-package dev.pranav.applock
+package dev.pranav.applock.features.setpassword.ui
 
-import android.content.Intent
-import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
@@ -60,53 +56,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController // Keep this as it's used for navigation
+import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.features.lockscreen.ui.KeypadRow
+import dev.pranav.applock.features.lockscreen.ui.shapes
 import dev.pranav.applock.ui.icons.Backspace
-import dev.pranav.applock.ui.theme.AppLockTheme
 
-class SetPasswordActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-
-        val isFirstTimeSetup = intent.getBooleanExtra("FIRST_TIME_SETUP", false)
-
-        onBackPressedDispatcher.addCallback {
-            val isFirstTimeSetup = intent.getBooleanExtra("FIRST_TIME_SETUP", false)
-
-            if (isFirstTimeSetup) {
-                Toast.makeText(
-                    this@SetPasswordActivity,
-                    "Please set a PIN to continue",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                finish()
-            }
-        }
-
-        shapes.shuffle()
-
-        setContent {
-            AppLockTheme {
-                SetPasswordScreen(
-                    isFirstTimeSetup = isFirstTimeSetup,
-                    onPasswordSet = { password ->
-                        val appLockService =
-                            (applicationContext as AppLockApplication).appLockServiceInstance
-                        appLockService?.setPassword(password)
-                        Toast.makeText(this, "Password set successfully", Toast.LENGTH_SHORT).show()
-                        startActivity(
-                            Intent(this, MainActivity::class.java).apply {
-                                putExtra("FIRST_TIME_SETUP", isFirstTimeSetup)
-                            }
-                        )
-                        finish()
-                    }
-                )
-            }
-        }
-    }
-}
+// SetPasswordActivity can be removed if this screen is solely managed by Navigation
+// For now, let's assume it might still be launched directly or its logic is adapted here.
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -115,13 +73,20 @@ class SetPasswordActivity : ComponentActivity() {
 )
 @Composable
 fun SetPasswordScreen(
-    isFirstTimeSetup: Boolean = false,
-    onPasswordSet: (String) -> Unit
+    navController: NavController,
+    // isFirstTimeSetup might be passed as a NavArgument if this is a composable destination
+    // For now, we assume it's handled or passed via ViewModel or similar state holder
 ) {
     var passwordState by remember { mutableStateOf("") }
     var confirmPasswordState by remember { mutableStateOf("") }
     var isConfirmationMode by remember { mutableStateOf(false) }
+    // Logic for isVerifyOldPasswordMode and isFirstTimeSetup needs to be adapted
+    // based on how this screen is reached via navigation (e.g., NavArguments)
+    val activity = LocalContext.current as? ComponentActivity
+    val isFirstTimeSetup = activity?.intent?.getBooleanExtra("FIRST_TIME_SETUP", false)
+        ?: true // Default to true if not an activity or no extra
     var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) }
+
     var showMismatchError by remember { mutableStateOf(false) }
     var showLengthError by remember { mutableStateOf(false) }
     var showInvalidOldPasswordError by remember { mutableStateOf(false) }
@@ -129,7 +94,22 @@ fun SetPasswordScreen(
 
     val context = LocalContext.current
     val appLockService = remember {
-        (context.applicationContext as AppLockApplication).appLockServiceInstance
+        (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
+    }
+
+    // Handle back press within the composable if it's part of NavHost
+    // If this screen replaces an Activity, the Activity's onBackPressedDispatcher would be used.
+    activity?.onBackPressedDispatcher?.addCallback(activity) {
+        if (isFirstTimeSetup) {
+            Toast.makeText(context, "Please set a PIN to continue", Toast.LENGTH_SHORT).show()
+        } else {
+            // If in NavHost, use navController.popBackStack() or finish activity if it\'s standalone
+            if (navController.previousBackStackEntry != null) {
+                navController.popBackStack()
+            } else {
+                activity.finish()
+            }
+        }
     }
 
     Scaffold(
@@ -163,7 +143,7 @@ fun SetPasswordScreen(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (isFirstTimeSetup && !isConfirmationMode) {
+            if (isFirstTimeSetup && !isConfirmationMode && !isVerifyOldPasswordMode) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -181,9 +161,7 @@ fun SetPasswordScreen(
                             style = MaterialTheme.typography.titleMediumEmphasized,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-
                         Spacer(modifier = Modifier.height(6.dp))
-
                         Text(
                             text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -192,7 +170,6 @@ fun SetPasswordScreen(
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
@@ -209,7 +186,6 @@ fun SetPasswordScreen(
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
                 )
-
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
                     tooltip = {
@@ -245,13 +221,12 @@ fun SetPasswordScreen(
 
             if (showMismatchError) {
                 Text(
-                    text = "PINs don\'t match. Try again.",
+                    text = "PINs don't match. Try again.",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(8.dp)
                 )
             }
-
             if (showLengthError) {
                 Text(
                     text = "PIN must be 6 digits",
@@ -260,7 +235,6 @@ fun SetPasswordScreen(
                     modifier = Modifier.padding(8.dp)
                 )
             }
-
             if (showInvalidOldPasswordError) {
                 Text(
                     text = "Incorrect PIN. Please try again.",
@@ -279,33 +253,25 @@ fun SetPasswordScreen(
                     isConfirmationMode -> confirmPasswordState
                     else -> passwordState
                 }
-
                 repeat(maxLength) { index ->
                     val filled = index < currentPassword.length
                     val isNext = index == currentPassword.length && index < maxLength
-
                     val indicatorState = remember(filled, isNext) {
                         when {
-                            filled -> "filled"
-                            isNext -> "next"
-                            else -> "empty"
+                            filled -> "filled"; isNext -> "next"; else -> "empty"
                         }
                     }
-
                     val scale by animateFloatAsState(
                         targetValue = if (filled) 1.2f else if (isNext) 1.1f else 1.0f,
                         animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
+                            Spring.DampingRatioMediumBouncy,
+                            Spring.StiffnessLow
                         ),
                         label = "indicatorScale"
                     )
-
                     AnimatedContent(
                         targetState = indicatorState, transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
-                                animationSpec = tween(150)
-                            )
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(150))
                         }, label = "indicatorAnimation"
                     ) { state ->
                         val shape = when (state) {
@@ -313,22 +279,15 @@ fun SetPasswordScreen(
                             "next" -> MaterialShapes.Diamond.toShape()
                             else -> MaterialShapes.Circle.toShape()
                         }
-
                         val color = when (state) {
                             "filled" -> MaterialTheme.colorScheme.primary
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         }
-
                         Box(
                             modifier = Modifier
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
+                                .graphicsLayer { scaleX = scale; scaleY = scale }
                                 .size(24.dp)
-                                .background(
-                                    color = color, shape = shape
-                                )
+                                .background(color = color, shape = shape)
                         )
                     }
                 }
@@ -351,81 +310,106 @@ fun SetPasswordScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                val onKeyClick: (String) -> Unit = { key ->
+                    val currentActivePassword = when {
+                        isVerifyOldPasswordMode -> passwordState
+                        isConfirmationMode -> confirmPasswordState
+                        else -> passwordState
+                    }
+                    val updatePassword: (String) -> Unit = when {
+                        isVerifyOldPasswordMode -> { newPass -> passwordState = newPass }
+                        isConfirmationMode -> { newPass -> confirmPasswordState = newPass }
+                        else -> { newPass -> passwordState = newPass }
+                    }
+
+                    when (key) {
+                        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" -> {
+                            if (currentActivePassword.length < maxLength) {
+                                updatePassword(currentActivePassword + key)
+                            }
+                        }
+
+                        "backspace" -> {
+                            if (currentActivePassword.isNotEmpty()) {
+                                updatePassword(currentActivePassword.dropLast(1))
+                            }
+                            showMismatchError = false
+                            showLengthError = false
+                            showInvalidOldPasswordError = false
+                        }
+
+                        "proceed" -> {
+                            when {
+                                isVerifyOldPasswordMode -> {
+                                    if (passwordState.length == maxLength) {
+                                        if (appLockService?.validatePassword(passwordState) == true) {
+                                            isVerifyOldPasswordMode = false
+                                            passwordState = "" // Clear for setting new PIN
+                                            showInvalidOldPasswordError = false
+                                        } else {
+                                            showInvalidOldPasswordError = true
+                                            passwordState = ""
+                                        }
+                                    } else {
+                                        showLengthError = true
+                                    }
+                                }
+
+                                !isConfirmationMode -> {
+                                    if (passwordState.length == maxLength) {
+                                        isConfirmationMode = true
+                                        showLengthError = false
+                                    } else {
+                                        showLengthError = true
+                                    }
+                                }
+
+                                else -> { // Confirmation mode
+                                    if (confirmPasswordState.length == maxLength) {
+                                        if (passwordState == confirmPasswordState) {
+                                            appLockService?.setPassword(passwordState)
+                                            Toast.makeText(
+                                                context,
+                                                "Password set successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            // Navigate to Main screen after setting password
+                                            navController.navigate(Screen.Main.route) {
+                                                popUpTo(Screen.SetPassword.route) {
+                                                    inclusive = true
+                                                }
+                                                if (isFirstTimeSetup) {
+                                                    // If it was first time setup, also pop AppIntro
+                                                    popUpTo(Screen.AppIntro.route) {
+                                                        inclusive = true
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            showMismatchError = true
+                                            confirmPasswordState = ""
+                                        }
+                                    } else {
+                                        showLengthError = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 KeypadRow(
                     keys = listOf("1", "2", "3"),
-                    onKeyClick = { key ->
-                        when {
-                            isVerifyOldPasswordMode -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-
-                            isConfirmationMode -> {
-                                if (confirmPasswordState.length < maxLength) {
-                                    confirmPasswordState += key
-                                }
-                            }
-
-                            else -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-                        }
-                    }
+                    onKeyClick = onKeyClick
                 )
-
                 KeypadRow(
                     keys = listOf("4", "5", "6"),
-                    onKeyClick = { key ->
-                        when {
-                            isVerifyOldPasswordMode -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-
-                            isConfirmationMode -> {
-                                if (confirmPasswordState.length < maxLength) {
-                                    confirmPasswordState += key
-                                }
-                            }
-
-                            else -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-                        }
-                    }
+                    onKeyClick = onKeyClick
                 )
-
                 KeypadRow(
                     keys = listOf("7", "8", "9"),
-                    onKeyClick = { key ->
-                        when {
-                            isVerifyOldPasswordMode -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-
-                            isConfirmationMode -> {
-                                if (confirmPasswordState.length < maxLength) {
-                                    confirmPasswordState += key
-                                }
-                            }
-
-                            else -> {
-                                if (passwordState.length < maxLength) {
-                                    passwordState += key
-                                }
-                            }
-                        }
-                    }
+                    onKeyClick = onKeyClick
                 )
-
                 KeypadRow(
                     keys = listOf("backspace", "0", "proceed"),
                     icons = listOf(
@@ -433,97 +417,7 @@ fun SetPasswordScreen(
                         null,
                         if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
                     ),
-                    onKeyClick = { key ->
-                        when (key) {
-                            "0" -> {
-                                when {
-                                    isVerifyOldPasswordMode -> {
-                                        if (passwordState.length < maxLength) {
-                                            passwordState += "0"
-                                        }
-                                    }
-
-                                    isConfirmationMode -> {
-                                        if (confirmPasswordState.length < maxLength) {
-                                            confirmPasswordState += "0"
-                                        }
-                                    }
-
-                                    else -> {
-                                        if (passwordState.length < maxLength) {
-                                            passwordState += "0"
-                                        }
-                                    }
-                                }
-                            }
-
-                            "backspace" -> {
-                                when {
-                                    isVerifyOldPasswordMode -> {
-                                        if (passwordState.isNotEmpty()) {
-                                            passwordState = passwordState.dropLast(1)
-                                        }
-                                    }
-
-                                    isConfirmationMode -> {
-                                        if (confirmPasswordState.isNotEmpty()) {
-                                            confirmPasswordState = confirmPasswordState.dropLast(1)
-                                        }
-                                    }
-
-                                    else -> {
-                                        if (passwordState.isNotEmpty()) {
-                                            passwordState = passwordState.dropLast(1)
-                                        }
-                                    }
-                                }
-                                showMismatchError = false
-                                showLengthError = false
-                                showInvalidOldPasswordError = false
-                            }
-
-                            "proceed" -> {
-                                when {
-                                    isVerifyOldPasswordMode -> {
-                                        if (passwordState.length == maxLength) {
-                                            if (appLockService?.validatePassword(passwordState) == true) {
-                                                isVerifyOldPasswordMode = false
-                                                passwordState = ""
-                                                showInvalidOldPasswordError = false
-                                            } else {
-                                                showInvalidOldPasswordError = true
-                                                passwordState = ""
-                                            }
-                                        } else {
-                                            showLengthError = true
-                                        }
-                                    }
-
-                                    !isConfirmationMode -> {
-                                        if (passwordState.length == maxLength) {
-                                            isConfirmationMode = true
-                                            showLengthError = false
-                                        } else {
-                                            showLengthError = true
-                                        }
-                                    }
-
-                                    else -> {
-                                        if (confirmPasswordState.length == maxLength) {
-                                            if (passwordState == confirmPasswordState) {
-                                                onPasswordSet(passwordState)
-                                            } else {
-                                                showMismatchError = true
-                                                confirmPasswordState = ""
-                                            }
-                                        } else {
-                                            showLengthError = true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    onKeyClick = onKeyClick
                 )
             }
 
@@ -531,24 +425,25 @@ fun SetPasswordScreen(
                 TextButton(
                     onClick = {
                         if (isVerifyOldPasswordMode) {
-                            context.let {
-                                if (it is android.app.Activity) {
-                                    it.finish()
-                                }
+                            // If in NavHost, use navController.popBackStack() or finish activity
+                            if (navController.previousBackStackEntry != null) {
+                                navController.popBackStack()
+                            } else {
+                                activity?.finish()
                             }
-                        } else {
+                        } else { // isConfirmationMode
+                            isConfirmationMode = false // Go back to entering the first PIN
+                            // If not first time setup and user clicked "Start Over" from confirm, go to verify old PIN
                             if (!isFirstTimeSetup) {
                                 isVerifyOldPasswordMode = true
-                                isConfirmationMode = false
-                            } else {
-                                isConfirmationMode = false
                             }
-                            passwordState = ""
-                            confirmPasswordState = ""
-                            showMismatchError = false
-                            showLengthError = false
-                            showInvalidOldPasswordError = false
                         }
+                        // Reset states
+                        passwordState = ""
+                        confirmPasswordState = ""
+                        showMismatchError = false
+                        showLengthError = false
+                        showInvalidOldPasswordError = false
                     },
                     modifier = Modifier.padding(bottom = 16.dp)
                 ) {

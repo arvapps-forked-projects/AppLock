@@ -1,4 +1,4 @@
-package dev.pranav.applock
+package dev.pranav.applock.features.appintro.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -6,120 +6,37 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
+import androidx.navigation.NavController
 import dev.pranav.appintro.AppIntro
 import dev.pranav.appintro.IntroPage
+import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.core.utils.hasUsagePermission
+import dev.pranav.applock.core.utils.launchProprietaryOemSettings
+import dev.pranav.applock.features.appintro.domain.AppIntroManager
 import dev.pranav.applock.ui.icons.BatterySaver
-import dev.pranav.applock.ui.theme.AppLockTheme
-import dev.pranav.applock.utils.launchProprietaryOemSettings
-
-class AppIntroActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        var isTransitioning by mutableStateOf(false)
-
-        setContent {
-            AppLockTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    AppIntroWithTheme(
-                        onFinish = {
-                            if (!isTransitioning) {
-                                isTransitioning = true
-
-                                markIntroAsCompleted()
-
-                                val intent = Intent(this, SetPasswordActivity::class.java)
-                                intent.putExtra("FIRST_TIME_SETUP", true)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-
-                                val options = ActivityOptionsCompat.makeCustomAnimation(
-                                    this,
-                                    android.R.anim.fade_in,
-                                    android.R.anim.fade_out
-                                )
-                                startActivity(intent, options.toBundle())
-                                finishAfterTransition()
-                            }
-                        },
-                        onSkip = {
-                            if (!isTransitioning) {
-                                isTransitioning = true
-                                markIntroAsCompleted()
-                                val intent = Intent(this, MainActivity::class.java)
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                val options = ActivityOptionsCompat.makeCustomAnimation(
-                                    this,
-                                    android.R.anim.fade_in,
-                                    android.R.anim.fade_out
-                                )
-                                startActivity(intent, options.toBundle())
-                                finishAfterTransition()
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private fun markIntroAsCompleted() {
-        val sharedPrefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        sharedPrefs.edit { putBoolean(PREF_INTRO_SHOWN, true) }
-    }
-
-    companion object {
-        private const val PREF_INTRO_SHOWN = "intro_shown"
-
-        fun shouldShowIntro(context: Context): Boolean {
-            val sharedPrefs = context.getSharedPreferences("app_prefs", MODE_PRIVATE)
-            return !sharedPrefs.getBoolean(PREF_INTRO_SHOWN, false)
-        }
-    }
-}
 
 @SuppressLint("BatteryLife")
 @Composable
-fun AppIntroWithTheme(
-    onSkip: () -> Unit,
-    onFinish: () -> Unit
-) {
-    val securityBlue = Color(0xFF1A73E8)
-    val safetyGreen = Color(0xFF129E5E)
-    val permissionOrange = Color(0xFFF57C00)
-    val notificationYellow = Color(0xFFFFB300)
-    val welcomeBlue = Color(0xFF3F51B5)
-    val batterySaverOrange = Color(0xFFFF9800)
-
+fun AppIntroScreen(navController: NavController) {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
 
@@ -156,7 +73,7 @@ fun AppIntroWithTheme(
             null
         }
 
-    LaunchedEffect(key1 = context) {
+    LaunchedEffect(key1 = context) { // Re-check permissions when context changes or on resume
         usagePermissionGranted = context.hasUsagePermission()
         overlayPermissionGranted = Settings.canDrawOverlays(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -170,13 +87,19 @@ fun AppIntroWithTheme(
             powerManager.isIgnoringBatteryOptimizations(context.packageName)
     }
 
+    val onFinishCallback = {
+        AppIntroManager.markIntroAsCompleted(context)
+        navController.navigate(Screen.SetPassword.route) {
+            popUpTo(Screen.AppIntro.route) { inclusive = true }
+        }
+    }
 
     val introPages = listOf(
         IntroPage(
             title = "Welcome to AppLock",
             description = "Protect your apps and privacy with AppLock. We'll guide you through a quick setup.",
             icon = Icons.Filled.Lock,
-            backgroundColor = welcomeBlue,
+            backgroundColor = Color(0xFF3F51B5), // welcomeBlue
             contentColor = Color.White,
             onNext = { true }
         ),
@@ -184,7 +107,7 @@ fun AppIntroWithTheme(
             title = "Secure Your Apps",
             description = "Keep your private apps protected with advanced locking mechanisms",
             icon = Icons.Default.Lock,
-            backgroundColor = securityBlue,
+            backgroundColor = Color(0xFF1A73E8), // securityBlue
             contentColor = Color.White,
             onNext = { true }
         ),
@@ -192,7 +115,7 @@ fun AppIntroWithTheme(
             title = "Usage Stats Permission",
             description = "AppLock needs permission to monitor app usage to protect your apps. Tap 'Allow' and enable usage access for AppLock.",
             icon = Icons.Default.Lock,
-            backgroundColor = permissionOrange,
+            backgroundColor = Color(0xFFF57C00), // permissionOrange
             contentColor = Color.White,
             onNext = {
                 usagePermissionGranted = context.hasUsagePermission()
@@ -210,7 +133,7 @@ fun AppIntroWithTheme(
             title = "Display Over Apps",
             description = "AppLock needs permission to display over other apps to show the lock screen. Tap 'Allow' and enable the permission.",
             icon = Icons.Default.Lock,
-            backgroundColor = permissionOrange,
+            backgroundColor = Color(0xFFF57C00), // permissionOrange
             contentColor = Color.White,
             onNext = {
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
@@ -228,7 +151,7 @@ fun AppIntroWithTheme(
             title = "Disable Battery Optimization",
             description = "To ensure AppLock runs reliably in the background, please disable battery optimizations for the app. Tap 'Next' to open settings.",
             icon = BatterySaver,
-            backgroundColor = batterySaverOrange,
+            backgroundColor = Color(0xFFFF9800), // batterySaverOrange
             contentColor = Color.White,
             onNext = {
                 val powerManager =
@@ -251,7 +174,7 @@ fun AppIntroWithTheme(
             else
                 "Notification permission is automatically granted on your Android version.",
             icon = Icons.Default.Notifications,
-            backgroundColor = notificationYellow,
+            backgroundColor = Color(0xFFFFB300), // notificationYellow
             contentColor = Color.White,
             onNext = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -276,12 +199,12 @@ fun AppIntroWithTheme(
             title = "Complete Privacy",
             description = "Your data never leaves your device. AppLock protects your privacy at all times.",
             icon = Icons.Default.Lock,
-            backgroundColor = safetyGreen,
+            backgroundColor = Color(0xFF129E5E), // safetyGreen
             contentColor = Color.White,
             onNext = {
+                // Re-check all permissions before finishing
                 usagePermissionGranted = context.hasUsagePermission()
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
-
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationPermissionGranted = ContextCompat.checkSelfPermission(
                         context,
@@ -311,12 +234,20 @@ fun AppIntroWithTheme(
 
     AppIntro(
         pages = introPages,
-        onSkip = onSkip,
-        onFinish = onFinish,
-        showSkipButton = false,
+        onSkip = { /* Decide if skip should navigate to main or set password */
+            AppIntroManager.markIntroAsCompleted(context)
+            // For now, skipping also leads to password setup or main screen if password already set.
+            // This logic will be handled by MainActivity's initial routing.
+            navController.navigate(Screen.SetPassword.route) { // Or Screen.Main.route if password exists
+                popUpTo(Screen.AppIntro.route) { inclusive = true }
+            }
+        },
+        onFinish = onFinishCallback,
+        showSkipButton = false, // As per original AppIntroActivity, skip was not directly leading to MainActivity
         useAnimatedPager = true,
         nextButtonText = "Next",
         skipButtonText = "Skip",
         finishButtonText = "Get Started"
     )
 }
+

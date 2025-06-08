@@ -41,28 +41,13 @@
         </activity>
 
         <activity
-            android:name=".AppIntroActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AppLock" />
-
-        <activity
-            android:name=".PasswordOverlayScreen"
+            android:name=".features.lockscreen.ui.PasswordOverlayActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:noHistory="true"
             android:relinquishTaskIdentity="true"
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-
-        <activity
-            android:name=".SetPasswordActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AppLock" />
-
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AppLock" />
 
         <service
             android:name=".services.AppLockService"
@@ -71,7 +56,7 @@
             android:foregroundServiceType="dataSync" />
 
         <receiver
-            android:name=".BootReceiver"
+            android:name=".core.broadcast.BootReceiver"
             android:enabled="true"
             android:exported="true">
 

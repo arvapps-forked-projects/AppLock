@@ -1,14 +1,8 @@
-package dev.pranav.applock
+package dev.pranav.applock.features.settings.ui
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,58 +45,36 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.navigation.NavController
+import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.icons.Github
-import dev.pranav.applock.ui.theme.AppLockTheme
 
-class SettingsActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-
-        setContent {
-            AppLockTheme {
-                SettingsScreen(
-                    onBackPressed = { finish() }
-                )
-            }
-        }
-    }
-}
+// SettingsActivity can be removed if this screen is solely managed by Navigation
 
 @SuppressLint("UseKtx")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
-    onBackPressed: () -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
+    val appLockRepository = remember { AppLockRepository(context) }
     var showDialog by remember { mutableStateOf(false) }
 
-    val prefs = context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE)
     var useMaxBrightness by remember {
-        mutableStateOf(
-            prefs.getBoolean(
-                "use_max_brightness",
-                false
-            )
-        )
+        mutableStateOf(appLockRepository.shouldUseMaxBrightness())
     }
     var useBiometricAuth by remember {
-        mutableStateOf(
-            prefs.getBoolean(
-                "use_biometric_auth",
-                false
-            )
-        )
+        mutableStateOf(appLockRepository.isBiometricAuthEnabled())
     }
 
     val biometricManager = BiometricManager.from(context)
     val isBiometricAvailable = remember {
-        biometricManager.canAuthenticate(Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     if (showDialog) {
@@ -121,15 +93,9 @@ fun SettingsScreen(
                         )
                         showDialog = false
                     }
-                ) {
-                    Text("Donate")
-                }
+                ) { Text("Donate") }
             },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cancel")
-                }
-            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     }
@@ -137,14 +103,9 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Settings",
-                        style = MaterialTheme.typography.titleLargeEmphasized
-                    )
-                },
+                title = { Text("Settings", style = MaterialTheme.typography.titleLargeEmphasized) },
                 navigationIcon = {
-                    IconButton(onClick = onBackPressed) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
@@ -168,7 +129,6 @@ fun SettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
@@ -182,32 +142,24 @@ fun SettingsScreen(
                             checked = useMaxBrightness,
                             onCheckedChange = { isChecked ->
                                 useMaxBrightness = isChecked
-                                prefs.edit { putBoolean("use_max_brightness", isChecked) }
+                                appLockRepository.setUseMaxBrightness(isChecked)
                             }
                         )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = Fingerprint,
                             title = "Biometric Unlock",
-                            description = if (isBiometricAvailable)
-                                "Use your fingerprint to unlock apps"
-                            else
-                                "Biometric authentication not available on this device",
+                            description = if (isBiometricAvailable) "Use your fingerprint to unlock apps" else "Biometric authentication not available on this device",
                             checked = useBiometricAuth && isBiometricAvailable,
                             enabled = isBiometricAvailable,
                             onCheckedChange = { isChecked ->
                                 useBiometricAuth = isChecked
-                                prefs.edit { putBoolean("use_biometric_auth", isChecked) }
+                                appLockRepository.setBiometricAuthEnabled(isChecked)
                             }
                         )
                     }
                 }
             }
-
             item {
                 Text(
                     text = "Security",
@@ -215,7 +167,6 @@ fun SettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
@@ -226,29 +177,20 @@ fun SettingsScreen(
                             icon = Icons.Default.Lock,
                             title = "Change PIN",
                             onClick = {
-                                context.startActivity(
-                                    Intent(
-                                        context,
-                                        SetPasswordActivity::class.java
-                                    )
-                                )
+                                // Navigate to SetPassword screen, potentially passing an argument if it's not first time setup
+                                navController.navigate(Screen.SetPassword.route) // Add extras/args if needed
                             }
                         )
                     }
                 }
             }
-
             item {
                 Text(
                     text = "About & Support",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(
-                        top = 0.dp,
-                        bottom = 12.dp
-                    )
+                    modifier = Modifier.padding(top = 0.dp, bottom = 12.dp)
                 )
-
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
@@ -258,40 +200,28 @@ fun SettingsScreen(
                         ActionSettingItem(
                             icon = Icons.Filled.Favorite,
                             title = "Support Development",
-                            onClick = { showDialog = true }
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
-                        ActionSettingItem(
-                            icon = Github,
-                            title = "View Source Code",
-                            onClick = {
-                                val intent = Intent(
+                            onClick = { showDialog = true })
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        ActionSettingItem(icon = Github, title = "View Source Code", onClick = {
+                            context.startActivity(
+                                Intent(
                                     Intent.ACTION_VIEW,
                                     "https://github.com/PranavPurwar/AppLock".toUri()
                                 )
-                                context.startActivity(intent)
-                            }
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-
+                            )
+                        })
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         ActionSettingItem(
                             icon = Icons.Filled.Person,
                             title = "Developer Profile",
                             onClick = {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    "https://github.com/PranavPurwar".toUri()
+                                context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        "https://github.com/PranavPurwar".toUri()
+                                    )
                                 )
-                                context.startActivity(intent)
-                            }
-                        )
+                            })
                     }
                 }
             }
@@ -311,11 +241,7 @@ fun SettingItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) {
-                if (enabled) {
-                    onCheckedChange(!checked)
-                }
-            }
+            .clickable(enabled = enabled) { if (enabled) onCheckedChange(!checked) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)

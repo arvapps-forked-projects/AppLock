@@ -8,9 +8,9 @@ import androidx.compose.ui.unit.dp
 
 val BatterySaver: ImageVector
     get() {
-        if (_BatterySaver != null) return _BatterySaver!!
+        if (_batterySaver != null) return _batterySaver!!
 
-        _BatterySaver = ImageVector.Builder(
+        _batterySaver = ImageVector.Builder(
             name = "Battery_saver",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
@@ -59,8 +59,8 @@ val BatterySaver: ImageVector
             }
         }.build()
 
-        return _BatterySaver!!
+        return _batterySaver!!
     }
 
-private var _BatterySaver: ImageVector? = null
+private var _batterySaver: ImageVector? = null
 
