@@ -3,6 +3,7 @@ package dev.pranav.applock.features.setpassword.ui
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
@@ -74,17 +75,13 @@ import dev.pranav.applock.ui.icons.Backspace
 @Composable
 fun SetPasswordScreen(
     navController: NavController,
-    // isFirstTimeSetup might be passed as a NavArgument if this is a composable destination
-    // For now, we assume it's handled or passed via ViewModel or similar state holder
+    isFirstTimeSetup: Boolean // Added isFirstTimeSetup as a parameter
 ) {
     var passwordState by remember { mutableStateOf("") }
     var confirmPasswordState by remember { mutableStateOf("") }
     var isConfirmationMode by remember { mutableStateOf(false) }
-    // Logic for isVerifyOldPasswordMode and isFirstTimeSetup needs to be adapted
-    // based on how this screen is reached via navigation (e.g., NavArguments)
-    val activity = LocalContext.current as? ComponentActivity
-    val isFirstTimeSetup = activity?.intent?.getBooleanExtra("FIRST_TIME_SETUP", false)
-        ?: true // Default to true if not an activity or no extra
+
+    // Use the isFirstTimeSetup parameter directly
     var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) }
 
     var showMismatchError by remember { mutableStateOf(false) }
@@ -96,9 +93,10 @@ fun SetPasswordScreen(
     val appLockService = remember {
         (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
     }
+    // activity is still needed for onBackPressedDispatcher and finish()
+    val activity = LocalActivity.current as? ComponentActivity
 
-    // Handle back press within the composable if it's part of NavHost
-    // If this screen replaces an Activity, the Activity's onBackPressedDispatcher would be used.
+    // Handle back press within the composable
     activity?.onBackPressedDispatcher?.addCallback(activity) {
         if (isFirstTimeSetup) {
             Toast.makeText(context, "Please set a PIN to continue", Toast.LENGTH_SHORT).show()
@@ -378,6 +376,7 @@ fun SetPasswordScreen(
                                                 popUpTo(Screen.SetPassword.route) {
                                                     inclusive = true
                                                 }
+                                                // The isFirstTimeSetup parameter will be used here correctly
                                                 if (isFirstTimeSetup) {
                                                     // If it was first time setup, also pop AppIntro
                                                     popUpTo(Screen.AppIntro.route) {
@@ -434,6 +433,7 @@ fun SetPasswordScreen(
                         } else { // isConfirmationMode
                             isConfirmationMode = false // Go back to entering the first PIN
                             // If not first time setup and user clicked "Start Over" from confirm, go to verify old PIN
+                            // The isFirstTimeSetup parameter will be used here correctly
                             if (!isFirstTimeSetup) {
                                 isVerifyOldPasswordMode = true
                             }

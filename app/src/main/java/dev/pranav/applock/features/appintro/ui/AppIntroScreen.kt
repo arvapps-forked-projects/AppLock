@@ -234,16 +234,14 @@ fun AppIntroScreen(navController: NavController) {
 
     AppIntro(
         pages = introPages,
-        onSkip = { /* Decide if skip should navigate to main or set password */
+        onSkip = {
             AppIntroManager.markIntroAsCompleted(context)
-            // For now, skipping also leads to password setup or main screen if password already set.
-            // This logic will be handled by MainActivity's initial routing.
-            navController.navigate(Screen.SetPassword.route) { // Or Screen.Main.route if password exists
+            navController.navigate(Screen.SetPassword.route) {
                 popUpTo(Screen.AppIntro.route) { inclusive = true }
             }
         },
         onFinish = onFinishCallback,
-        showSkipButton = false, // As per original AppIntroActivity, skip was not directly leading to MainActivity
+        showSkipButton = false,
         useAnimatedPager = true,
         nextButtonText = "Next",
         skipButtonText = "Skip",

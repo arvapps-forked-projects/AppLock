@@ -177,8 +177,7 @@ fun SettingsScreen(
                             icon = Icons.Default.Lock,
                             title = "Change PIN",
                             onClick = {
-                                // Navigate to SetPassword screen, potentially passing an argument if it's not first time setup
-                                navController.navigate(Screen.SetPassword.route) // Add extras/args if needed
+                                navController.navigate(Screen.ChangePassword.route)
                             }
                         )
                     }
