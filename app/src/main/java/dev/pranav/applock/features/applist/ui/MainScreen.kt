@@ -178,7 +178,6 @@ fun AppList(
     ) {
         items(
             apps.size,
-            key = { index -> apps[index].packageName }
         ) { index ->
             val appInfo = apps[index]
             AppItem(
