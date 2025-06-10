@@ -218,8 +218,8 @@ fun AppItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(12.dp)
-            .clickable { onClick(!isChecked) },
+            .clickable { onClick(!isChecked) }
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {

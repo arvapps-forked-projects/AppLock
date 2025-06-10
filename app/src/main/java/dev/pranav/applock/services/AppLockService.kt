@@ -1,5 +1,6 @@
 package dev.pranav.applock.services
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.IBinder
@@ -19,16 +21,12 @@ import dev.pranav.applock.R
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 
-// Define Service State Sealed Class
 sealed class LockServiceState {
     object Inactive : LockServiceState()
     data class OverlayDisplayed(val packageName: String) : LockServiceState()
     data class AppTemporarilyUnlocked(val packageName: String, val unlockTime: Long) :
         LockServiceState()
 
-    // If BiometricInProgress needs to hold the package name for which it was initiated:
-    // data class BiometricAuthInProgress(val packageName: String) : LockServiceState()
-    // For now, a simpler BiometricAuthInProgress, assuming context is managed or not needed by this state itself
     object BiometricAuthInProgress : LockServiceState()
 }
 
@@ -40,9 +38,8 @@ class AppLockService : Service() {
     private var lastForegroundPackage: String? = null
 
     private lateinit var appLockRepository: AppLockRepository
-    private val lockedAppsCache = mutableSetOf<String>() // Renamed for clarity
+    private val lockedAppsCache = mutableSetOf<String>()
 
-    // New state management
     private var currentServiceState: LockServiceState = LockServiceState.Inactive
 
     companion object {
@@ -55,7 +52,6 @@ class AppLockService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "AppLockService onCreate")
         usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         handler = Handler(Looper.getMainLooper())
         appLockRepository = AppLockRepository(applicationContext)
@@ -64,7 +60,7 @@ class AppLockService : Service() {
         startForeground(NOTIFICATION_ID, createNotification())
         startMonitoringApps()
         (applicationContext as AppLockApplication).appLockServiceInstance = this
-        currentServiceState = LockServiceState.Inactive // Initial state
+        currentServiceState = LockServiceState.Inactive
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -79,7 +75,6 @@ class AppLockService : Service() {
         (applicationContext as AppLockApplication).appLockServiceInstance = null
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.cancel(NOTIFICATION_ID)
-        Log.d(TAG, "AppLockService onDestroy. State: $currentServiceState")
     }
 
     private fun createNotificationChannel() {
@@ -126,12 +121,13 @@ class AppLockService : Service() {
         val currentTime = System.currentTimeMillis()
         val detectedForegroundPackage = getCurrentForegroundAppInfo(currentTime)
 
-        // If lock screen is active (OverlayDisplayed state) and the foreground app matches,
-        // ensure the overlay is still in front.
+        if (isDeviceLocked()) {
+            return
+        }
+
         if (currentServiceState is LockServiceState.OverlayDisplayed) {
             val state = currentServiceState as LockServiceState.OverlayDisplayed
             if (detectedForegroundPackage == state.packageName) {
-                Log.d(TAG, "Overlay is active for $detectedForegroundPackage, refreshing.")
                 handler.post { refreshPasswordOverlay(state.packageName) }
                 return
             }
@@ -144,6 +140,12 @@ class AppLockService : Service() {
         }
 
         if (detectedForegroundPackage != null && detectedForegroundPackage != packageName) {
+            // Verify that the app is actually locked before proceeding
+            if (!lockedAppsCache.contains(detectedForegroundPackage)) {
+                lastForegroundPackage = detectedForegroundPackage
+                return
+            }
+
             if (shouldShowLockScreenForApp(detectedForegroundPackage)) {
                 showLockScreenFor(detectedForegroundPackage)
             } else {
@@ -168,19 +170,18 @@ class AppLockService : Service() {
                 }
             }
         }
-        // Fallback if UsageEvents is empty, though less ideal
         return currentForegroundApp ?: getCurrentForegroundAppLegacy()
     }
 
     private fun shouldShowLockScreenForApp(packageName: String): Boolean {
-        if (!lockedAppsCache.contains(packageName)) return false // Not a locked app
-        if (packageName == this.packageName) return false // Don't lock self
+        if (!lockedAppsCache.contains(packageName)) return false
+        if (packageName == this.packageName) return false
 
         return when (currentServiceState) {
             is LockServiceState.Inactive -> true
             is LockServiceState.AppTemporarilyUnlocked -> {
                 val state = currentServiceState as LockServiceState.AppTemporarilyUnlocked
-                state.packageName != packageName // If different app, or temp unlock expired (handled elsewhere)
+                state.packageName != packageName
             }
 
             is LockServiceState.OverlayDisplayed, LockServiceState.BiometricAuthInProgress -> false
@@ -188,107 +189,63 @@ class AppLockService : Service() {
     }
 
     private fun showLockScreenFor(packageName: String) {
-        Log.d(TAG, "Showing lock screen for: $packageName. Current state: $currentServiceState")
         currentServiceState = LockServiceState.OverlayDisplayed(packageName)
-        // Reset biometric flags if any, as we are showing a new lock screen
-        // isBiometricAuthentication = false // This flag from companion needs to be removed/rethought
         handler.post { showPasswordOverlay(packageName) }
     }
 
     private fun handleHomeScreenDetected(detectedForegroundPackage: String?, currentTime: Long) {
         Log.d(TAG, "Home screen detected. Current state: $currentServiceState")
+
         if (currentServiceState is LockServiceState.AppTemporarilyUnlocked) {
             val state = currentServiceState as LockServiceState.AppTemporarilyUnlocked
-            Log.d(TAG, "User went to home from ${state.packageName}, scheduling unlock reset")
-            handler.postDelayed({
-                // Check if still on home screen and if the temp unlock hasn't been superseded by another state
-                if (isLauncherApp(getCurrentForegroundAppInfo(System.currentTimeMillis())) &&
-                    currentServiceState is LockServiceState.AppTemporarilyUnlocked &&
-                    (currentServiceState as LockServiceState.AppTemporarilyUnlocked).packageName == state.packageName
-                ) {
-                    Log.d(
-                        TAG,
-                        "Clearing temporarily unlocked app (${state.packageName}) after home screen timeout"
-                    )
-                    currentServiceState = LockServiceState.Inactive
-                }
-            }, HOME_SCREEN_LOCK_DELAY_MS)
+
+            // Clear the temporary unlock state immediately when home screen is detected
+            currentServiceState = LockServiceState.Inactive
+            Log.d(TAG, "Clearing temporarily unlocked app (${state.packageName}) immediately")
         } else if (currentServiceState is LockServiceState.OverlayDisplayed) {
-            Log.d(TAG, "User exited locked app without unlocking. Resetting state.")
             currentServiceState = LockServiceState.Inactive
         }
-        // lastForegroundPackage = detectedForegroundPackage // Set by caller
     }
 
     private fun processForegroundApp(foregroundPackage: String, currentTime: Long) {
-        Log.d(
-            TAG,
-            "Processing foreground app: $foregroundPackage. Current state: $currentServiceState"
-        )
         when (val state = currentServiceState) {
             is LockServiceState.AppTemporarilyUnlocked -> {
                 if (foregroundPackage != state.packageName) {
-                    // New app has come to foreground, reset temporary unlock
-                    Log.d(
-                        TAG,
-                        "New app ($foregroundPackage) detected. Clearing temp unlock for ${state.packageName}."
-                    )
                     currentServiceState = LockServiceState.Inactive
-                    // Re-check if this new app needs locking (recursive, be careful or simplify)
                     if (shouldShowLockScreenForApp(foregroundPackage)) {
                         showLockScreenFor(foregroundPackage)
                     }
-                } else {
-                    // Still the same temporarily unlocked app, do nothing, extend or refresh timeout if needed
                 }
             }
 
             is LockServiceState.Inactive -> {
-                // This case should ideally be caught by shouldShowLockScreenForApp if the app is locked.
-                // If it's an unlocked app, state remains Inactive.
+                // Clear any temporary unlocks when a different app becomes active
                 if (lockedAppsCache.contains(foregroundPackage)) {
-                    Log.w(
-                        TAG,
-                        "Inactive state but locked app $foregroundPackage in foreground. Should have been caught by shouldShowLockScreenForApp."
-                    )
-                    showLockScreenFor(foregroundPackage) // Attempt to lock
+                    showLockScreenFor(foregroundPackage)
                 }
             }
 
             is LockServiceState.OverlayDisplayed -> {
-                // If overlay is for a different app, something is wrong. Reset.
                 if (state.packageName != foregroundPackage && lockedAppsCache.contains(
                         foregroundPackage
                     )
                 ) {
-                    Log.w(
-                        TAG,
-                        "Overlay was for ${state.packageName} but $foregroundPackage is in front. Resetting."
-                    )
                     showLockScreenFor(foregroundPackage)
                 } else if (!lockedAppsCache.contains(foregroundPackage)) {
-                    Log.d(
-                        TAG,
-                        "Foreground app $foregroundPackage is not locked, and overlay was for ${state.packageName}. Resetting state."
-                    )
                     currentServiceState = LockServiceState.Inactive
                 }
             }
 
             is LockServiceState.BiometricAuthInProgress -> {
-                // If biometric auth is in progress, typically no other app should take precedence
-                // unless it's part of the auth flow (e.g. system dialog).
-                // If a different app appears, might need to cancel biometric auth or reassess.
-                Log.d(TAG, "Biometric auth in progress. Foreground app: $foregroundPackage")
+                // Keep current state during biometric authentication
             }
         }
-        // lastForegroundPackage = foregroundPackage // Set by caller
     }
 
     private fun refreshPasswordOverlay(packageName: String) {
-        // Only refresh if the overlay should be active for this package
-        if (currentServiceState is LockServiceState.OverlayDisplayed && (currentServiceState as LockServiceState.OverlayDisplayed).packageName == packageName) {
-            Log.d(TAG, "Refreshing password overlay for $packageName")
+        if (currentServiceState is LockServiceState.OverlayDisplayed &&
+            (currentServiceState as LockServiceState.OverlayDisplayed).packageName == packageName
+        ) {
             val currentIntent = Intent(this, PasswordOverlayActivity::class.java).apply {
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -314,35 +271,27 @@ class AppLockService : Service() {
         startActivity(intent)
     }
 
-    // Called when PIN is correct
     fun unlockApp(unlockedPackageName: String) {
-        Log.d(TAG, "App unlocked via PIN: $unlockedPackageName. Updating state.")
-        currentServiceState =
-            LockServiceState.AppTemporarilyUnlocked(unlockedPackageName, System.currentTimeMillis())
-        // Companion object flags like isOverlayActive, currentLockedPackage, isBiometricAuthentication
-        // should be phased out or their interaction with the new state machine clarified.
-        // For now, PasswordOverlayActivity might still rely on them.
+        currentServiceState = LockServiceState.AppTemporarilyUnlocked(
+            unlockedPackageName,
+            System.currentTimeMillis()
+        )
     }
 
-    // Called when Biometric is successful
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {
-        Log.d(TAG, "Biometric auth successful for: $packageName. Updating state.")
-        currentServiceState =
-            LockServiceState.AppTemporarilyUnlocked(packageName, System.currentTimeMillis())
-        // Companion object flags update might be needed here if PasswordOverlayActivity reads them.
+        currentServiceState = LockServiceState.AppTemporarilyUnlocked(
+            packageName,
+            System.currentTimeMillis()
+        )
     }
 
-    // Call this when starting biometric prompt
     fun reportBiometricAuthStarted() {
-        Log.d(TAG, "Biometric authentication process started.")
         currentServiceState = LockServiceState.BiometricAuthInProgress
     }
 
-    // Call this if biometric prompt is cancelled or fails before showing our lock screen
     fun reportBiometricAuthFinished() {
         if (currentServiceState is LockServiceState.BiometricAuthInProgress) {
-            Log.d(TAG, "Biometric authentication process finished (cancelled/failed).")
-            currentServiceState = LockServiceState.Inactive // Or revert to previous state if known
+            currentServiceState = LockServiceState.Inactive
         }
     }
 
@@ -363,19 +312,16 @@ class AppLockService : Service() {
         val savedLockedApps = appLockRepository.getLockedApps()
         lockedAppsCache.clear()
         lockedAppsCache.addAll(savedLockedApps)
-        Log.d(TAG, "Loaded locked apps from repository: $lockedAppsCache")
     }
 
     fun addLockedApp(packageName: String) {
         appLockRepository.addLockedApp(packageName)
         lockedAppsCache.add(packageName)
-        Log.d(TAG, "Added locked app: $packageName. Current cache: $lockedAppsCache")
     }
 
     fun removeLockedApp(packageName: String) {
         appLockRepository.removeLockedApp(packageName)
         lockedAppsCache.remove(packageName)
-        Log.d(TAG, "Removed locked app: $packageName. Current cache: $lockedAppsCache")
     }
 
     private fun isLauncherApp(packageName: String?): Boolean {
@@ -385,14 +331,12 @@ class AppLockService : Service() {
         return resolveInfo?.activityInfo?.packageName == packageName
     }
 
-    // Renamed from getCurrentForegroundApp to avoid confusion with the one using UsageEvents
     private fun getCurrentForegroundAppLegacy(): String? {
         var currentApp: String? = null
-        // usageStatsManager is already an instance variable
         val time = System.currentTimeMillis()
         val appList = usageStatsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_DAILY,
-            time - 1000 * 100, // Increased window slightly for reliability
+            time - 1000 * 100,
             time
         )
         if (appList != null && appList.isNotEmpty()) {
@@ -407,13 +351,16 @@ class AppLockService : Service() {
         return currentApp
     }
 
-    // Public method for PasswordOverlayActivity to check current overlay target
-    // This is a temporary measure while refactoring companion object variables.
     fun getPackageNameForOverlay(): String? {
         return if (currentServiceState is LockServiceState.OverlayDisplayed) {
             (currentServiceState as LockServiceState.OverlayDisplayed).packageName
         } else {
             null
         }
+    }
+
+    private fun isDeviceLocked(): Boolean {
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        return keyguardManager.isKeyguardLocked
     }
 }

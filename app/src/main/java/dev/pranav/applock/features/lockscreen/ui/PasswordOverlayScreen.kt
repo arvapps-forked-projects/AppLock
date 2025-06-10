@@ -140,7 +140,11 @@ class PasswordOverlayActivity : FragmentActivity() {
                                 "Generic onAuthSuccess from Activity - likely unused in this context."
                             )
                         },
-                        lockedPackageNameToDisplay = lockedPackageNameFromIntent,
+                        lockedAppName = packageManager.getApplicationLabel(
+                            packageManager.getApplicationInfo(
+                                lockedPackageNameFromIntent!!, 0
+                            )
+                        ).toString(),
                         onPinAttempt = onPinAttemptCallback
                     )
                 }
@@ -150,10 +154,9 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     @Suppress("DEPRECATION")
     private fun setupWindowFlags() {
+        // Remove FLAG_SHOW_WHEN_LOCKED and FLAG_DISMISS_KEYGUARD to prevent showing over system lock
         window.addFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_SECURE
@@ -165,10 +168,9 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     @Suppress("DEPRECATION")
     private fun setupReapplicableWindowFlags() {
+        // Remove FLAG_SHOW_WHEN_LOCKED and FLAG_DISMISS_KEYGUARD to prevent showing over system lock
         window.addFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_SECURE
@@ -337,6 +339,7 @@ class PasswordOverlayActivity : FragmentActivity() {
         super.onDestroy()
         if (activeInstance === this) activeInstance = null
         finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
+
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }
 
@@ -392,7 +395,7 @@ fun PasswordOverlayScreen(
     fromMainActivity: Boolean = false,
     onBiometricAuth: () -> Unit = {},
     onAuthSuccess: () -> Unit,
-    lockedPackageNameToDisplay: String? = null,
+    lockedAppName: String? = null,
     onPinAttempt: ((pin: String) -> Boolean)? = null
 ) {
     Surface(
@@ -429,9 +432,9 @@ fun PasswordOverlayScreen(
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            if (!fromMainActivity && !lockedPackageNameToDisplay.isNullOrEmpty()) {
+            if (!fromMainActivity && !lockedAppName.isNullOrEmpty()) {
                 Text(
-                    text = "Unlock: $lockedPackageNameToDisplay",
+                    text = "Unlock: $lockedAppName",
                     style = MaterialTheme.typography.titleMediumEmphasized,
                     textAlign = TextAlign.Center,
                 )
