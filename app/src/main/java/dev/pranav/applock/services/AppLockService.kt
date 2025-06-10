@@ -278,6 +278,14 @@ class AppLockService : Service() {
         )
     }
 
+    fun activePackageName(): String? {
+        return if (currentServiceState is LockServiceState.OverlayDisplayed) {
+            (currentServiceState as LockServiceState.OverlayDisplayed).packageName
+        } else {
+            lastForegroundPackage
+        }
+    }
+
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {
         currentServiceState = LockServiceState.AppTemporarilyUnlocked(
             packageName,

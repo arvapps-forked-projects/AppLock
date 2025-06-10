@@ -152,6 +152,20 @@ class PasswordOverlayActivity : FragmentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        val lockService = (applicationContext as? AppLockApplication)?.appLockServiceInstance
+        if (lockService == null) {
+            Log.e(TAG, "AppLockService is not initialized. Finishing activity.")
+            finishAndRemoveTaskSafely()
+            return
+        }
+        if (lockService.activePackageName() != lockedPackageNameFromIntent) {
+            finishAndRemoveTaskSafely()
+        }
+    }
+
     @Suppress("DEPRECATION")
     private fun setupWindowFlags() {
         // Remove FLAG_SHOW_WHEN_LOCKED and FLAG_DISMISS_KEYGUARD to prevent showing over system lock
