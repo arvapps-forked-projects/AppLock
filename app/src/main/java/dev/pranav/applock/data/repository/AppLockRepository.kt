@@ -2,6 +2,7 @@ package dev.pranav.applock.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.core.content.edit
 
 class AppLockRepository(context: Context) {
@@ -41,6 +42,10 @@ class AppLockRepository(context: Context) {
     // Password validation
     fun validatePassword(inputPassword: String): Boolean {
         val storedPassword = getPassword()
+        Log.d(
+            "AppLockRepository",
+            "Validating password: $inputPassword against stored: $storedPassword"
+        )
         return storedPassword != null && inputPassword == storedPassword
     }
 

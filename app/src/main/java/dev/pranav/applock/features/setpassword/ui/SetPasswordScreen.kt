@@ -333,7 +333,7 @@ fun SetPasswordScreen(
                             when {
                                 isVerifyOldPasswordMode -> {
                                     if (passwordState.length == maxLength) {
-                                        if (appLockRepository?.validatePassword(passwordState) == true) {
+                                        if (appLockRepository!!.validatePassword(passwordState)) {
                                             isVerifyOldPasswordMode = false
                                             passwordState = "" // Clear for setting new PIN
                                             showInvalidOldPasswordError = false

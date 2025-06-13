@@ -426,8 +426,10 @@ fun PasswordOverlayScreen(
                 onBiometricAuth = onBiometricAuth,
                 onAuthSuccess = onAuthSuccess,
                 onPinAttempt = { pin ->
-                    if (onPinAttempt == null) false
-                    else {
+                    if (onPinAttempt == null) {
+                        showError = true
+                        false
+                    } else {
                         val result = onPinAttempt(pin)
                         showError = !result
                         result

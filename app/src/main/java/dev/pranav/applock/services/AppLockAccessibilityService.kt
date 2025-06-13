@@ -21,6 +21,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     private var lastForegroundPackage = ""
     private var temporarilyUnlockedApp: String = ""
     private var currentBiometricState = BiometricState.IDLE
+    private val lastEvents = mutableListOf<Pair<AccessibilityEvent, Long>>()
 
     enum class BiometricState {
         IDLE, AUTH_STARTED, AUTH_SUCCESSFUL
@@ -59,13 +60,19 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-            && event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-            && event.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            && event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         ) {
             return
         }
 
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            lastEvents.add(Pair(event, System.currentTimeMillis()))
+        }
+
+        if (lastEvents.size > 3) {
+            lastEvents.removeAt(0)
+        }
         val packageName = event.packageName?.toString() ?: return
 
         if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
@@ -79,6 +86,24 @@ class AppLockAccessibilityService : AccessibilityService() {
         ) {
             return
         }
+
+        // Apply the rapid events filter to all apps to prevent accidental locks when opening recents
+        // This is a "hack" to prevent locking apps when user opens recents because a bug in Android causes
+        // the app to be considered foreground for a brief moment
+        if (lastEvents.size >= 2) {
+            val lastEvent = lastEvents.last()
+            val secondLastEvent = lastEvents[lastEvents.size - 2]
+            if (lastEvent.first.packageName != secondLastEvent.first.packageName && secondLastEvent.first.packageName == temporarilyUnlockedApp &&
+                lastEvent.second - secondLastEvent.second < 3000
+            ) {
+                Log.d(TAG, "Ignoring rapid events for package: $packageName")
+                return
+            }
+        }
+
+        Log.d(
+            TAG,
+            lastEvents.joinToString("\n") { "${it.first.packageName} type ${it.first.eventType} at ${it.second}" })
 
         if (packageName == temporarilyUnlockedApp) {
             return

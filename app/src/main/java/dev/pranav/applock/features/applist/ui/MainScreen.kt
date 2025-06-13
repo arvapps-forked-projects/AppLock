@@ -2,8 +2,6 @@ package dev.pranav.applock.features.applist.ui
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -202,6 +200,7 @@ fun AppList(
     context: Context,
     onAppClick: (ApplicationInfo, Boolean) -> Unit
 ) {
+    val viewModel = viewModel<MainViewModel>()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -212,6 +211,7 @@ fun AppList(
             AppItem(
                 appInfo = appInfo,
                 context = context,
+                viewModel = viewModel,
                 onClick = { isChecked ->
                     onAppClick(appInfo, isChecked)
                 }
@@ -231,26 +231,23 @@ fun AppList(
 fun AppItem(
     appInfo: ApplicationInfo,
     context: Context,
+    viewModel: MainViewModel,
     onClick: (Boolean) -> Unit
 ) {
     val packageManager = context.packageManager
     val appName = remember(appInfo) { appInfo.loadLabel(packageManager).toString() }
     val icon = remember(appInfo) { appInfo.loadIcon(packageManager)?.toBitmap()?.asImageBitmap() }
 
-    val mainViewModel = (LocalActivity.current as? ComponentActivity)?.let {
-        viewModel<MainViewModel>(viewModelStoreOwner = it)
+    val isChecked = remember(appInfo) {
+        mutableStateOf(viewModel.isAppLocked(appInfo.packageName))
     }
-
-    val isChecked = remember {
-        mutableStateOf(
-            mainViewModel?.isAppLocked(appInfo.packageName) ?: false
-        )
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(!isChecked.value) }
+            .clickable {
+                isChecked.value = !isChecked.value
+                onClick(isChecked.value)
+            }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -271,10 +268,10 @@ fun AppItem(
 
         Switch(
             checked = isChecked.value,
-            onCheckedChange = { newCheckedState ->
-                isChecked.value = newCheckedState
-                onClick(newCheckedState)
-            }
+            onCheckedChange = { isCheckedValue ->
+                isChecked.value = isCheckedValue
+                onClick(isCheckedValue)
+            },
         )
     }
 }
