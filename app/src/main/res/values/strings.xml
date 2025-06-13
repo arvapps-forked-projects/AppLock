@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">App Lock</string>
+
+    <string name="device_admin_description">Prevents unauthorized people from uninstalling the app.</string>
+    <string name="accessibility_service_description">Allows App Lock to detect when protected apps are opened and show password verification.</string>
 </resources>

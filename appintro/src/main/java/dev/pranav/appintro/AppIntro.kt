@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
  * @param nextButtonText Text for the next button (defaults to "Next")
  * @param skipButtonText Text for the skip button (defaults to "Skip")
  * @param finishButtonText Text for the finish button (defaults to "Get Started")
+ * @param backButtonText Text for the back button (defaults to "Back")
  */
 @OptIn(
     ExperimentalAnimationApi::class,
@@ -70,7 +71,8 @@ fun AppIntro(
     useAnimatedPager: Boolean = true,
     nextButtonText: String = "Next",
     skipButtonText: String = "Skip",
-    finishButtonText: String = "Get Started"
+    finishButtonText: String = "Get Started",
+    backButtonText: String = "Back"
 ) {
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
@@ -164,6 +166,29 @@ fun AppIntro(
                         ) {
                             Text(
                                 text = skipButtonText,
+                                style = MaterialTheme.typography.bodyLargeEmphasized,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+
+                    // Back button with animation - only visible when not on first page
+                    AnimatedVisibility(
+                        visible = pagerState.currentPage > 0,
+                        enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                        exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+                    ) {
+                        TextButton(
+                            onClick = {
+                                navigateToPreviousPage(pagerState, coroutineScope)
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = currentPageTextColor
+                            )
+                        ) {
+                            Text(
+                                text = backButtonText,
                                 style = MaterialTheme.typography.bodyLargeEmphasized,
                                 fontWeight = FontWeight.Medium
                             )

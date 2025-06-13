@@ -2,7 +2,8 @@ package dev.pranav.applock.features.applist.ui
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,13 +54,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import dev.pranav.applock.AppLockApplication
 import dev.pranav.applock.R
 import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
+import dev.pranav.applock.core.utils.openAccessibilitySettings
+import dev.pranav.applock.ui.components.AccessibilityServiceGuideDialog
 
 @OptIn(
     ExperimentalMaterial3ExpressiveApi::class,
-    ExperimentalAnimationApi::class,
     ExperimentalMaterial3Api::class
 )
 @Composable
@@ -71,6 +74,32 @@ fun MainScreen(
     val searchQuery by mainViewModel.searchQuery.collectAsState()
     val isLoading by mainViewModel.isLoading.collectAsState()
     val filteredApps by mainViewModel.filteredApps.collectAsState()
+
+
+    // Check if accessibility service is enabled
+    var showAccessibilityDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val isAccessibilityEnabled =
+            context.isAccessibilityServiceEnabled()
+
+        if (!isAccessibilityEnabled) {
+            showAccessibilityDialog = true
+        }
+    }
+
+    // Show accessibility service guide dialog if needed
+    if (showAccessibilityDialog) {
+        AccessibilityServiceGuideDialog(
+            onOpenSettings = {
+                openAccessibilitySettings(context)
+                showAccessibilityDialog = false
+            },
+            onDismiss = {
+                showAccessibilityDialog = false
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -208,17 +237,20 @@ fun AppItem(
     val appName = remember(appInfo) { appInfo.loadLabel(packageManager).toString() }
     val icon = remember(appInfo) { appInfo.loadIcon(packageManager)?.toBitmap()?.asImageBitmap() }
 
-    val appLockService = (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
-
-    var isChecked by remember(
-        appInfo.packageName,
-    ) {
-        mutableStateOf(appLockService?.isAppLocked(appInfo.packageName) ?: false)
+    val mainViewModel = (LocalActivity.current as? ComponentActivity)?.let {
+        viewModel<MainViewModel>(viewModelStoreOwner = it)
     }
+
+    val isChecked = remember {
+        mutableStateOf(
+            mainViewModel?.isAppLocked(appInfo.packageName) ?: false
+        )
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(!isChecked) }
+            .clickable { onClick(!isChecked.value) }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -238,9 +270,9 @@ fun AppItem(
         )
 
         Switch(
-            checked = isChecked,
+            checked = isChecked.value,
             onCheckedChange = { newCheckedState ->
-                isChecked = newCheckedState
+                isChecked.value = newCheckedState
                 onClick(newCheckedState)
             }
         )

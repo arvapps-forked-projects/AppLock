@@ -2,7 +2,7 @@ package dev.pranav.applock.features.setpassword.ui
 
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.addCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -57,15 +57,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController // Keep this as it's used for navigation
+import androidx.navigation.NavController
 import dev.pranav.applock.AppLockApplication
 import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.features.lockscreen.ui.KeypadRow
-import dev.pranav.applock.features.lockscreen.ui.shapes
 import dev.pranav.applock.ui.icons.Backspace
-
-// SetPasswordActivity can be removed if this screen is solely managed by Navigation
-// For now, let's assume it might still be launched directly or its logic is adapted here.
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -75,13 +72,12 @@ import dev.pranav.applock.ui.icons.Backspace
 @Composable
 fun SetPasswordScreen(
     navController: NavController,
-    isFirstTimeSetup: Boolean // Added isFirstTimeSetup as a parameter
+    isFirstTimeSetup: Boolean
 ) {
     var passwordState by remember { mutableStateOf("") }
     var confirmPasswordState by remember { mutableStateOf("") }
     var isConfirmationMode by remember { mutableStateOf(false) }
 
-    // Use the isFirstTimeSetup parameter directly
     var isVerifyOldPasswordMode by remember { mutableStateOf(!isFirstTimeSetup) }
 
     var showMismatchError by remember { mutableStateOf(false) }
@@ -90,22 +86,19 @@ fun SetPasswordScreen(
     val maxLength = 6
 
     val context = LocalContext.current
-    val appLockService = remember {
-        (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
+    val appLockRepository = remember {
+        (context.applicationContext as? AppLockApplication)?.appLockRepository
     }
-    // activity is still needed for onBackPressedDispatcher and finish()
     val activity = LocalActivity.current as? ComponentActivity
 
-    // Handle back press within the composable
-    activity?.onBackPressedDispatcher?.addCallback(activity) {
+    BackHandler {
         if (isFirstTimeSetup) {
             Toast.makeText(context, "Please set a PIN to continue", Toast.LENGTH_SHORT).show()
         } else {
-            // If in NavHost, use navController.popBackStack() or finish activity if it\'s standalone
             if (navController.previousBackStackEntry != null) {
                 navController.popBackStack()
             } else {
-                activity.finish()
+                activity?.finish()
             }
         }
     }
@@ -340,7 +333,7 @@ fun SetPasswordScreen(
                             when {
                                 isVerifyOldPasswordMode -> {
                                     if (passwordState.length == maxLength) {
-                                        if (appLockService?.validatePassword(passwordState) == true) {
+                                        if (appLockRepository?.validatePassword(passwordState) == true) {
                                             isVerifyOldPasswordMode = false
                                             passwordState = "" // Clear for setting new PIN
                                             showInvalidOldPasswordError = false
@@ -365,20 +358,19 @@ fun SetPasswordScreen(
                                 else -> { // Confirmation mode
                                     if (confirmPasswordState.length == maxLength) {
                                         if (passwordState == confirmPasswordState) {
-                                            appLockService?.setPassword(passwordState)
+                                            appLockRepository?.setPassword(passwordState)
                                             Toast.makeText(
                                                 context,
                                                 "Password set successfully",
                                                 Toast.LENGTH_SHORT
                                             ).show()
+
                                             // Navigate to Main screen after setting password
                                             navController.navigate(Screen.Main.route) {
                                                 popUpTo(Screen.SetPassword.route) {
                                                     inclusive = true
                                                 }
-                                                // The isFirstTimeSetup parameter will be used here correctly
                                                 if (isFirstTimeSetup) {
-                                                    // If it was first time setup, also pop AppIntro
                                                     popUpTo(Screen.AppIntro.route) {
                                                         inclusive = true
                                                     }
@@ -424,16 +416,13 @@ fun SetPasswordScreen(
                 TextButton(
                     onClick = {
                         if (isVerifyOldPasswordMode) {
-                            // If in NavHost, use navController.popBackStack() or finish activity
                             if (navController.previousBackStackEntry != null) {
                                 navController.popBackStack()
                             } else {
                                 activity?.finish()
                             }
-                        } else { // isConfirmationMode
-                            isConfirmationMode = false // Go back to entering the first PIN
-                            // If not first time setup and user clicked "Start Over" from confirm, go to verify old PIN
-                            // The isFirstTimeSetup parameter will be used here correctly
+                        } else {
+                            isConfirmationMode = false
                             if (!isFirstTimeSetup) {
                                 isVerifyOldPasswordMode = true
                             }

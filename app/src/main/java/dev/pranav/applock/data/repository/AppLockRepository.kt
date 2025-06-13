@@ -38,6 +38,12 @@ class AppLockRepository(context: Context) {
         appLockPrefs.edit { putString(KEY_PASSWORD, password) }
     }
 
+    // Password validation
+    fun validatePassword(inputPassword: String): Boolean {
+        val storedPassword = getPassword()
+        return storedPassword != null && inputPassword == storedPassword
+    }
+
     // Settings
     fun setBiometricAuthEnabled(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_BIOMETRIC_AUTH_ENABLED, enabled) }
@@ -55,6 +61,14 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_USE_MAX_BRIGHTNESS, false)
     }
 
+    fun setAntiUninstallEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_ANTI_UNINSTALL, enabled) }
+    }
+
+    fun isAntiUninstallEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_ANTI_UNINSTALL, false)
+    }
+
     companion object {
         private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
@@ -63,6 +77,6 @@ class AppLockRepository(context: Context) {
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
+        private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
     }
 }
-

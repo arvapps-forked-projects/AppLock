@@ -15,5 +15,5 @@ val shapes = mutableListOf(
     MaterialShapes.PixelTriangle,
     MaterialShapes.PixelCircle,
     MaterialShapes.Gem
-).apply { shuffle() } // Shuffle once on initialization
+).apply { shuffle() }
 

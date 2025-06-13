@@ -61,10 +61,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
-import dev.pranav.applock.services.AppLockService
+import dev.pranav.applock.services.AppLockAccessibilityService
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
@@ -76,7 +76,7 @@ class PasswordOverlayActivity : FragmentActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private lateinit var appLockRepository: AppLockRepository
-    private var appLockService: AppLockService? = null
+    private var appLockAccessibilityService: AppLockAccessibilityService? = null
     internal var lockedPackageNameFromIntent: String? = null
 
     private var isBiometricPromptShowingLocal = false
@@ -93,17 +93,17 @@ class PasswordOverlayActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         activeInstance?.let {
-            if (!it.isFinishing && it != this) it.finishAndRemoveTaskSafely()
+            if (!it.isFinishing && it != this) it.finishAndRemoveTask()
         }
         activeInstance = this
 
         appLockRepository = AppLockRepository(applicationContext)
-        appLockService = (applicationContext as? AppLockApplication)?.appLockServiceInstance
+        appLockAccessibilityService = AppLockAccessibilityService.getInstance()
 
         lockedPackageNameFromIntent = intent.getStringExtra("locked_package")
         if (lockedPackageNameFromIntent == null) {
             Log.e(TAG, "No locked_package name provided in intent. Finishing.")
-            finishAndRemoveTaskSafely()
+            finishAndRemoveTask()
             return
         }
 
@@ -115,11 +115,11 @@ class PasswordOverlayActivity : FragmentActivity() {
         shapes.shuffle()
 
         val onPinAttemptCallback = { pin: String ->
-            val isValid = appLockService?.validatePassword(pin) == true
+            val isValid = appLockAccessibilityService?.validatePassword(pin) == true
             if (isValid) {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     Log.d(TAG, "PIN correct for $pkgName via callback. Unlocking.")
-                    appLockService?.unlockApp(pkgName)
+                    appLockAccessibilityService?.unlockApp(pkgName)
                     launchAppAndFinish(pkgName)
                 }
             }
@@ -152,23 +152,8 @@ class PasswordOverlayActivity : FragmentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-
-        val lockService = (applicationContext as? AppLockApplication)?.appLockServiceInstance
-        if (lockService == null) {
-            Log.e(TAG, "AppLockService is not initialized. Finishing activity.")
-            finishAndRemoveTaskSafely()
-            return
-        }
-        if (lockService.activePackageName() != lockedPackageNameFromIntent) {
-            finishAndRemoveTaskSafely()
-        }
-    }
-
     @Suppress("DEPRECATION")
     private fun setupWindowFlags() {
-        // Remove FLAG_SHOW_WHEN_LOCKED and FLAG_DISMISS_KEYGUARD to prevent showing over system lock
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
@@ -182,7 +167,6 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     @Suppress("DEPRECATION")
     private fun setupReapplicableWindowFlags() {
-        // Remove FLAG_SHOW_WHEN_LOCKED and FLAG_DISMISS_KEYGUARD to prevent showing over system lock
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
@@ -193,7 +177,7 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     private fun setupBackPressHandler() {
         onBackPressedDispatcher.addCallback(this) {
-            finishAndRemoveTaskSafely()
+            finishAndRemoveTask()
             val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_HOME)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -211,23 +195,23 @@ class PasswordOverlayActivity : FragmentActivity() {
                 windowManager.updateViewLayout(window.decorView, window.attributes)
             }
         }
-        if (appLockRepository.isBiometricAuthEnabled() && !isBiometricPromptShowingLocal && appLockService != null) {
+        if (appLockRepository.isBiometricAuthEnabled() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
             triggerBiometricPromptIfNeeded()
         }
     }
 
     private fun triggerBiometricPromptIfNeeded() {
-        if (!isBiometricPromptShowingLocal && appLockRepository.isBiometricAuthEnabled() && appLockService != null) {
+        if (!isBiometricPromptShowingLocal && appLockRepository.isBiometricAuthEnabled() && appLockAccessibilityService != null) {
             val biometricManager = BiometricManager.from(this)
             if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
-                appLockService?.reportBiometricAuthStarted()
+                appLockAccessibilityService?.reportBiometricAuthStarted()
                 isBiometricPromptShowingLocal = true
                 try {
                     biometricPrompt.authenticate(promptInfo)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error calling biometricPrompt.authenticate: ${e.message}", e)
                     isBiometricPromptShowingLocal = false
-                    appLockService?.reportBiometricAuthFinished()
+                    appLockAccessibilityService?.reportBiometricAuthFinished()
                 }
             } else {
                 Log.w(TAG, "Biometric authentication not available on this device.")
@@ -256,7 +240,7 @@ class PasswordOverlayActivity : FragmentActivity() {
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 super.onAuthenticationError(errorCode, errString)
                 isBiometricPromptShowingLocal = false
-                appLockService?.reportBiometricAuthFinished()
+                appLockAccessibilityService?.reportBiometricAuthFinished()
                 Log.w(TAG, "Authentication error: $errString ($errorCode)")
             }
 
@@ -264,12 +248,10 @@ class PasswordOverlayActivity : FragmentActivity() {
                 super.onAuthenticationSucceeded(result)
                 isBiometricPromptShowingLocal = false
                 lockedPackageNameFromIntent?.let { pkgName ->
-                    appLockService?.temporarilyUnlockAppWithBiometrics(pkgName)
+                    appLockAccessibilityService?.temporarilyUnlockAppWithBiometrics(pkgName)
                     launchAppAndFinish(pkgName)
-                } ?: run {
-                    Log.e(TAG, "lockedPackageNameFromIntent is null on biometric success")
-                    finishAndRemoveTaskSafely()
                 }
+                finishAndRemoveTask()
             }
 
             override fun onAuthenticationFailed() {
@@ -303,14 +285,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error launching app $packageName: ${e.message}")
         }
-        finishAndRemoveTaskSafely()
-    }
-
-    internal fun finishAndRemoveTaskSafely() {
-        if (!isFinishing && !isDestroyed) {
-            Log.d(TAG, "finishAndRemoveTaskSafely called for $lockedPackageNameFromIntent")
-            finishAndRemoveTask()
-        }
     }
 
     override fun onResume() {
@@ -328,11 +302,7 @@ class PasswordOverlayActivity : FragmentActivity() {
         finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
         finishActivityRunnable = Runnable {
             if (movedToBackground && !isFinishing && !isDestroyed) {
-                Log.d(
-                    TAG,
-                    "Finishing activity due to onPause timeout for $lockedPackageNameFromIntent"
-                )
-                finishAndRemoveTaskSafely()
+                finishAndRemoveTask()
             }
         }
         activityHandler.postDelayed(finishActivityRunnable!!, 500)
@@ -387,20 +357,6 @@ class PasswordOverlayActivity : FragmentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-val shapes = mutableListOf(
-    MaterialShapes.Triangle,
-    MaterialShapes.Pentagon,
-    MaterialShapes.Circle,
-    MaterialShapes.Arrow,
-    MaterialShapes.Pill,
-    MaterialShapes.Cookie4Sided,
-    MaterialShapes.Heart,
-    MaterialShapes.PixelTriangle,
-    MaterialShapes.PixelCircle,
-    MaterialShapes.Gem
-)
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun PasswordOverlayScreen(
@@ -419,23 +375,8 @@ fun PasswordOverlayScreen(
         val passwordState = remember { mutableStateOf("") }
         var showError by remember { mutableStateOf(false) }
         val maxLength = 6
-        val context = LocalContext.current
-        val appLockService =
-            (context.applicationContext as? AppLockApplication)?.appLockServiceInstance
-
-        val onPasswordChangeLambda = remember { { showError = false } }
-        val onPinIncorrectLambda = remember { { showError = true } }
-
-        val onPinAttemptForSection = remember(onPinAttempt) {
-            { pin: String ->
-                if (onPinAttempt == null) false
-                else {
-                    val result = onPinAttempt.invoke(pin)
-                    showError = !result
-                    result
-                }
-            }
-        }
+        val appLockAccessibilityService =
+            AppLockAccessibilityService.getInstance()
 
         Column(
             modifier = Modifier
@@ -446,19 +387,17 @@ fun PasswordOverlayScreen(
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            if (!fromMainActivity && !lockedAppName.isNullOrEmpty()) {
-                Text(
-                    text = "Unlock: $lockedAppName",
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                    textAlign = TextAlign.Center,
-                )
-            } else {
-                Text(
-                    text = "Enter password to continue",
-                    style = MaterialTheme.typography.headlineMediumEmphasized,
-                    textAlign = TextAlign.Center
-                )
-            }
+            Text(
+                text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
+                    "Unlock: $lockedAppName"
+                else
+                    "Enter password to continue",
+                style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
+                    MaterialTheme.typography.titleMediumEmphasized
+                else
+                    MaterialTheme.typography.headlineMediumEmphasized,
+                textAlign = TextAlign.Center
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -481,14 +420,21 @@ fun PasswordOverlayScreen(
             KeypadSection(
                 passwordState = passwordState,
                 maxLength = maxLength,
-                appLockService = appLockService,
+                appLockAccessibilityService = appLockAccessibilityService,
                 showBiometricButton = showBiometricButton,
                 fromMainActivity = fromMainActivity,
                 onBiometricAuth = onBiometricAuth,
                 onAuthSuccess = onAuthSuccess,
-                onPinAttempt = onPinAttemptForSection,
-                onPasswordChange = onPasswordChangeLambda,
-                onPinIncorrect = onPinIncorrectLambda
+                onPinAttempt = { pin ->
+                    if (onPinAttempt == null) false
+                    else {
+                        val result = onPinAttempt(pin)
+                        showError = !result
+                        result
+                    }
+                },
+                onPasswordChange = { showError = false },
+                onPinIncorrect = { showError = true }
             )
         }
     }
@@ -557,7 +503,7 @@ fun PasswordIndicators(
 fun KeypadSection(
     passwordState: MutableState<String>,
     maxLength: Int,
-    appLockService: AppLockService?,
+    appLockAccessibilityService: AppLockAccessibilityService?,
     showBiometricButton: Boolean,
     fromMainActivity: Boolean = false,
     onBiometricAuth: () -> Unit,
@@ -582,7 +528,7 @@ fun KeypadSection(
     val onSpecialKeyClick = remember(
         passwordState,
         maxLength,
-        appLockService,
+        appLockAccessibilityService,
         fromMainActivity,
         onAuthSuccess,
         onPinAttempt,
@@ -595,7 +541,7 @@ fun KeypadSection(
                 key = key,
                 passwordState = passwordState,
                 maxLength = maxLength,
-                appLockService = appLockService,
+                appLockAccessibilityService = appLockAccessibilityService,
                 fromMainActivity = fromMainActivity,
                 onAuthSuccess = onAuthSuccess,
                 onPinAttempt = onPinAttempt,
@@ -662,7 +608,7 @@ private fun handleKeypadSpecialButtonLogic(
     key: String,
     passwordState: MutableState<String>,
     maxLength: Int,
-    appLockService: AppLockService?,
+    appLockAccessibilityService: AppLockAccessibilityService?,
     fromMainActivity: Boolean,
     onAuthSuccess: () -> Unit,
     onPinAttempt: ((pin: String) -> Boolean)?,
@@ -683,7 +629,7 @@ private fun handleKeypadSpecialButtonLogic(
         "proceed" -> {
             if (passwordState.value.length == maxLength) {
                 if (fromMainActivity) {
-                    appLockService?.let { service ->
+                    appLockAccessibilityService?.let { service ->
                         if (service.validatePassword(passwordState.value)) {
                             onAuthSuccess()
                         } else {

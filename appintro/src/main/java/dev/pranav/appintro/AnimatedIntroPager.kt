@@ -24,6 +24,7 @@ fun AnimatedIntroPager(
         state = pagerState,
         modifier = modifier.fillMaxSize(),
         pageSpacing = 0.dp,
+        userScrollEnabled = false, // Disable user scrolling for controlled transitions
         pageContent = { page ->
             val pageOffset =
                 ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue

@@ -1,7 +1,10 @@
 package dev.pranav.applock.features.settings.ui
 
-import android.annotation.SuppressLint
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,15 +50,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
+import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.features.admin.AdminDisableActivity
 import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
+import dev.pranav.applock.ui.icons.FingerprintOff
 import dev.pranav.applock.ui.icons.Github
 
-// SettingsActivity can be removed if this screen is solely managed by Navigation
 
-@SuppressLint("UseKtx")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsScreen(
@@ -147,7 +151,7 @@ fun SettingsScreen(
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
-                            icon = Fingerprint,
+                            icon = if (useBiometricAuth) Fingerprint else FingerprintOff,
                             title = "Biometric Unlock",
                             description = if (isBiometricAvailable) "Use your fingerprint to unlock apps" else "Biometric authentication not available on this device",
                             checked = useBiometricAuth && isBiometricAvailable,
@@ -178,6 +182,52 @@ fun SettingsScreen(
                             title = "Change PIN",
                             onClick = {
                                 navController.navigate(Screen.ChangePassword.route)
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                        ActionSettingItem(
+                            icon = Icons.Default.Person,
+                            title = "Anti Uninstall",
+                            description = "Prevents uninstallation of App Lock",
+                            onClick = {
+                                val dpm =
+                                    context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                                val component = ComponentName(context, DeviceAdmin::class.java)
+                                if (dpm.isAdminActive(component)) {
+                                    if (appLockRepository.isAntiUninstallEnabled()) {
+                                        val intent =
+                                            Intent(context, AdminDisableActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        context.startActivity(intent)
+                                    } else {
+                                        appLockRepository.setAntiUninstallEnabled(true)
+                                        Toast.makeText(
+                                            context,
+                                            "Anti Uninstall enabled.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Please enable Device Admin to use Anti Uninstall",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+
+                                    val intent =
+                                        Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                            putExtra(
+                                                DevicePolicyManager.EXTRA_DEVICE_ADMIN,
+                                                component
+                                            )
+                                            putExtra(
+                                                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                                                "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
+                                            )
+                                        }
+                                    context.startActivity(intent)
+                                }
                             }
                         )
                     }
@@ -271,7 +321,7 @@ fun SettingItem(
         }
         Switch(
             checked = checked,
-            onCheckedChange = null, // Click handling is on the Row
+            onCheckedChange = null,
             enabled = enabled,
             modifier = Modifier.padding(start = 8.dp)
         )
@@ -282,6 +332,7 @@ fun SettingItem(
 fun ActionSettingItem(
     icon: ImageVector,
     title: String,
+    description: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.primary
@@ -300,10 +351,21 @@ fun ActionSettingItem(
             modifier = Modifier.size(28.dp),
             tint = iconTint
         )
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (description != null) {
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }

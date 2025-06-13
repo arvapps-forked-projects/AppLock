@@ -3,9 +3,8 @@ package dev.pranav.applock.features.applist.ui
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
-import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.applist.domain.AppSearchManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -22,6 +21,7 @@ import kotlinx.coroutines.withContext
 @OptIn(FlowPreview::class)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val appSearchManager = AppSearchManager(application)
+    private val appLockRepository = AppLockRepository(application)
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -31,7 +31,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // Debounced query for actual filtering
+    private val _lockedApps = MutableStateFlow<Set<String>>(emptySet())
+
     private val _debouncedQuery = MutableStateFlow("")
 
     val filteredApps: StateFlow<List<ApplicationInfo>> =
@@ -52,10 +53,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadAllApplications()
+        loadLockedApps()
 
         viewModelScope.launch {
             _searchQuery
-                .debounce(300L)
+                .debounce(100L)
                 .collect { query ->
                     _debouncedQuery.value = query
                 }
@@ -79,17 +81,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun loadLockedApps() {
+        _lockedApps.value = appLockRepository.getLockedApps()
+    }
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
     }
 
     fun toggleAppLock(appInfo: ApplicationInfo, shouldLock: Boolean) {
         val packageName = appInfo.packageName
-        val appLockService = (application as? AppLockApplication)?.appLockServiceInstance
+
+        val currentLockedApps = _lockedApps.value.toMutableSet()
         if (shouldLock) {
-            appLockService?.addLockedApp(packageName)
+            currentLockedApps.add(packageName)
+            appLockRepository.addLockedApp(packageName)
         } else {
-            appLockService?.removeLockedApp(packageName)
+            currentLockedApps.remove(packageName)
+            appLockRepository.removeLockedApp(packageName)
         }
+        _lockedApps.value = currentLockedApps
+    }
+
+    fun isAppLocked(packageName: String): Boolean {
+        return _lockedApps.value.contains(packageName)
     }
 }

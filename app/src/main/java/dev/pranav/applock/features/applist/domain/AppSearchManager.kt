@@ -59,44 +59,5 @@ class AppSearchManager(private val context: Context) {
             sortedApps
         }
     }
-
-    fun searchApps(query: String): List<ApplicationInfo> {
-        if (query.isEmpty()) {
-            return allApps
-        }
-
-        val lowercaseQuery = query.lowercase()
-
-        if (lowercaseQuery.length <= 3 && prefixIndexCache.containsKey(lowercaseQuery)) {
-            return prefixIndexCache[lowercaseQuery] ?: emptyList()
-        }
-
-        val initialSearchSet = if (lowercaseQuery.length > 3 &&
-            prefixIndexCache.containsKey(lowercaseQuery.take(3))
-        ) {
-            prefixIndexCache[lowercaseQuery.take(3)] ?: allApps
-        } else {
-            allApps
-        }
-
-        val startsWithMatches = initialSearchSet.filter { app ->
-            appNameCache[app]?.startsWith(lowercaseQuery) == true
-        }
-
-        val containsMatches = if (startsWithMatches.size < 10 && lowercaseQuery.length > 1) {
-            initialSearchSet.filter { app ->
-                val name = appNameCache[app] ?: return@filter false
-                !name.startsWith(lowercaseQuery) && name.contains(lowercaseQuery)
-            }
-        } else {
-            emptyList()
-        }
-
-        return startsWithMatches + containsMatches
-    }
-
-    fun getAppName(app: ApplicationInfo): String {
-        return appNameCache[app] ?: app.loadLabel(context.packageManager).toString()
-    }
 }
 
