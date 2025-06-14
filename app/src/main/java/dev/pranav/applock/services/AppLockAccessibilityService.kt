@@ -60,8 +60,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-            && event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         ) {
             return
         }
@@ -94,7 +93,7 @@ class AppLockAccessibilityService : AccessibilityService() {
             val lastEvent = lastEvents.last()
             val secondLastEvent = lastEvents[lastEvents.size - 2]
             if (lastEvent.first.packageName != secondLastEvent.first.packageName && secondLastEvent.first.packageName == temporarilyUnlockedApp &&
-                lastEvent.second - secondLastEvent.second < 3000
+                lastEvent.second - secondLastEvent.second < 5000
             ) {
                 Log.d(TAG, "Ignoring rapid events for package: $packageName")
                 return
