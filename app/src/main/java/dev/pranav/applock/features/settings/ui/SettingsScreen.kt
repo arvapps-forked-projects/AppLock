@@ -123,7 +123,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -172,7 +172,8 @@ fun SettingsScreen(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth(),
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
                     shape = RoundedCornerShape(16.dp),
                 ) {
@@ -180,6 +181,7 @@ fun SettingsScreen(
                         ActionSettingItem(
                             icon = Icons.Default.Lock,
                             title = "Change PIN",
+                            description = "Change your App Lock PIN",
                             onClick = {
                                 navController.navigate(Screen.ChangePassword.route)
                             }
@@ -291,7 +293,7 @@ fun SettingItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { if (enabled) onCheckedChange(!checked) }
-            .padding(16.dp),
+            .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -341,7 +343,7 @@ fun ActionSettingItem(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {

@@ -326,36 +326,8 @@ class PasswordOverlayActivity : FragmentActivity() {
 
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        val newLockedPackage = intent.getStringExtra("locked_package")
-        Log.d(TAG, "onNewIntent. Current: $lockedPackageNameFromIntent, New: $newLockedPackage")
-
-        if (newLockedPackage != null && newLockedPackage != lockedPackageNameFromIntent) {
-            Log.d(TAG, "Overlay target changed to: $newLockedPackage")
-            lockedPackageNameFromIntent = newLockedPackage
-
-            val appName =
-                lockedPackageNameFromIntent?.let { getAppNameFromPackageManager(it) } ?: "this app"
-            promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Unlock $appName")
-                .setSubtitle("Confirm biometric to continue")
-                .setNegativeButtonText("Use PIN")
-                .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                .setConfirmationRequired(false)
-                .build()
-
-            isBiometricPromptShowingLocal = false
-        } else if (newLockedPackage != null) {
-            Log.d(TAG, "Overlay refreshed for: $newLockedPackage. Re-applying preferences.")
-        }
-
-        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
-            applyUserPreferences()
-        }
-    }
 }
+
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalAnimationApi::class)
 @Composable

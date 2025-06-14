@@ -6,9 +6,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -149,19 +148,18 @@ fun SetPasswordScreen(
                     ) {
                         Text(
                             text = "Secure Your Apps",
-                            style = MaterialTheme.typography.titleMediumEmphasized,
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             textAlign = TextAlign.Center
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
             Row(
@@ -208,7 +206,6 @@ fun SetPasswordScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
 
             if (showMismatchError) {
                 Text(
@@ -254,16 +251,18 @@ fun SetPasswordScreen(
                     }
                     val scale by animateFloatAsState(
                         targetValue = if (filled) 1.2f else if (isNext) 1.1f else 1.0f,
-                        animationSpec = spring(
-                            Spring.DampingRatioMediumBouncy,
-                            Spring.StiffnessLow
+                        animationSpec = tween(
+                            durationMillis = 100,
+                            easing = FastOutSlowInEasing
                         ),
                         label = "indicatorScale"
                     )
                     AnimatedContent(
-                        targetState = indicatorState, transitionSpec = {
-                            fadeIn(tween(300)) togetherWith fadeOut(tween(150))
-                        }, label = "indicatorAnimation"
+                        targetState = indicatorState,
+                        transitionSpec = {
+                            fadeIn(tween(100)) togetherWith fadeOut(tween(50))
+                        },
+                        label = "indicatorAnimation"
                     ) { state ->
                         val shape = when (state) {
                             "filled" -> shapes[index % shapes.size].toShape()
@@ -276,7 +275,10 @@ fun SetPasswordScreen(
                         }
                         Box(
                             modifier = Modifier
-                                .graphicsLayer { scaleX = scale; scaleY = scale }
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
                                 .size(24.dp)
                                 .background(color = color, shape = shape)
                         )
@@ -296,6 +298,35 @@ fun SetPasswordScreen(
             )
 
             Spacer(modifier = Modifier.weight(1f))
+
+
+            if (isVerifyOldPasswordMode || isConfirmationMode) {
+                TextButton(
+                    onClick = {
+                        if (isVerifyOldPasswordMode) {
+                            if (navController.previousBackStackEntry != null) {
+                                navController.popBackStack()
+                            } else {
+                                activity?.finish()
+                            }
+                        } else {
+                            isConfirmationMode = false
+                            if (!isFirstTimeSetup) {
+                                isVerifyOldPasswordMode = true
+                            }
+                        }
+                        // Reset states
+                        passwordState = ""
+                        confirmPasswordState = ""
+                        showMismatchError = false
+                        showLengthError = false
+                        showInvalidOldPasswordError = false
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(if (isVerifyOldPasswordMode) "Cancel" else "Start Over")
+                }
+            }
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -410,34 +441,6 @@ fun SetPasswordScreen(
                     ),
                     onKeyClick = onKeyClick
                 )
-            }
-
-            if (isVerifyOldPasswordMode || isConfirmationMode) {
-                TextButton(
-                    onClick = {
-                        if (isVerifyOldPasswordMode) {
-                            if (navController.previousBackStackEntry != null) {
-                                navController.popBackStack()
-                            } else {
-                                activity?.finish()
-                            }
-                        } else {
-                            isConfirmationMode = false
-                            if (!isFirstTimeSetup) {
-                                isVerifyOldPasswordMode = true
-                            }
-                        }
-                        // Reset states
-                        passwordState = ""
-                        confirmPasswordState = ""
-                        showMismatchError = false
-                        showLengthError = false
-                        showInvalidOldPasswordError = false
-                    },
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    Text(if (isVerifyOldPasswordMode) "Cancel" else "Start Over")
-                }
             }
         }
     }

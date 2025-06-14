@@ -11,6 +11,20 @@ class DeviceAdmin : DeviceAdminReceiver() {
         private const val KEY_PASSWORD_VERIFIED = "password_verified"
     }
 
+    override fun onEnabled(context: Context, intent: android.content.Intent) {
+        super.onEnabled(context, intent)
+        context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE).edit {
+            putBoolean("anti_uninstall", true)
+        }
+    }
+
+    override fun onDisabled(context: Context, intent: android.content.Intent) {
+        super.onDisabled(context, intent)
+        context.getSharedPreferences("app_lock_settings", Context.MODE_PRIVATE).edit {
+            putBoolean("anti_uninstall", false)
+        }
+    }
+
     fun setPasswordVerified(context: Context, verified: Boolean) {
         getSharedPreferences(context).edit { putBoolean(KEY_PASSWORD_VERIFIED, verified) }
     }

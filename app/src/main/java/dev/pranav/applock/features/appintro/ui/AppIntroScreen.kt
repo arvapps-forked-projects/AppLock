@@ -91,7 +91,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Welcome to AppLock",
             description = "Protect your apps and privacy with AppLock. We'll guide you through a quick setup.",
             icon = Icons.Filled.Lock,
-            backgroundColor = Color(0xFF3F51B5),
+            backgroundColor = Color(0xFF0F52BA),
             contentColor = Color.White,
             onNext = { true }),
 
@@ -99,7 +99,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Secure Your Apps",
             description = "Keep your private apps protected with advanced locking mechanisms",
             icon = Icons.Default.Lock,
-            backgroundColor = Color(0xFF1A73E8),
+            backgroundColor = Color(0xFF3C9401),
             contentColor = Color.White,
             onNext = { true }),
 
@@ -107,7 +107,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Display Over Apps",
             description = "AppLock needs permission to display over other apps to show the lock screen. Tap 'Next' and enable the permission.",
             icon = Display,
-            backgroundColor = Color(0xFFF57C00),
+            backgroundColor = Color(0xFFDC143C),
             contentColor = Color.White,
             onNext = {
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
@@ -125,7 +125,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Disable Battery Optimization",
             description = "To ensure AppLock runs reliably in the background, please disable battery optimizations for the app. Tap 'Next' to open settings.",
             icon = BatterySaver,
-            backgroundColor = Color(0xFFFF9800),
+            backgroundColor = Color(0xFF08A471),
             contentColor = Color.White,
             onNext = {
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -144,7 +144,7 @@ fun AppIntroScreen(navController: NavController) {
             description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "AppLock needs permission to show notifications to keep you informed. Tap 'Next' to grant permission."
             else "Notification permission is automatically granted on your Android version.",
             icon = Icons.Default.Notifications,
-            backgroundColor = Color(0xFFFFB300),
+            backgroundColor = Color(0xFFE78A02),
             contentColor = Color.White,
             onNext = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -168,7 +168,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Accessibility Service",
             description = "Accessibility service is required for AppLock to function properly. Tap 'Next' to enable it.",
             icon = Accessibility,
-            backgroundColor = Color(0xFF6a9796),
+            backgroundColor = Color(0xFFF1550E),
             contentColor = Color.White,
             onNext = {
                 accessibilityServiceEnabled = context.isAccessibilityServiceEnabled()
@@ -186,7 +186,7 @@ fun AppIntroScreen(navController: NavController) {
             title = "Complete Privacy",
             description = "Your data never leaves your device. AppLock protects your privacy at all times.",
             icon = Icons.Default.Lock,
-            backgroundColor = Color(0xFFC76B97),
+            backgroundColor = Color(0xFF0047AB),
             contentColor = Color.White,
             onNext = {
                 // Re-check all permissions before finishing
