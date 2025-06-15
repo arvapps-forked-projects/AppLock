@@ -28,23 +28,20 @@
 <p align="center"><em>AppLock in action: Securing your sensitive apps.</em></p>
 <br>
 
-## ✨ Unparalleled App Protection
+**AppLock: Your Digital Guardian.** Experience the next level of app security with cutting-edge protection for your sensitive applications, wrapped in a beautiful, adaptive
+Material 3 Expressive interface. Keep your private data truly private.
 
-**AppLock: Your Digital Guardian.** Experience the next level of app security with AppLock. We
-provide cutting-edge protection for your sensitive applications, wrapped in a gorgeous, adaptive
-Material You interface. Not only does it look great, but it's built on a robust Clean Architecture,
-ensuring reliability and a seamless user experience. Keep your private data truly private,
-effortlessly.
+And **remember**, wanting privacy does not mean you have something to hide
 
 <br>
 
 ## 🛠️ Key Features
 
 - **🎨 Material You Design** - Beautiful adaptive UI that complements your system theme
-- **👆 Biometric Security** - Unlock apps instantly with fingerprint or face recognition
+- **👆 Biometric Security** - Unlock apps instantly with fingerprint
+- **Anti Uninstall Protection** - Prevents others from deleting the app without password
 - **🔒 One-Tap Protection** - Secure any app with a simple toggle
-- **🔍 Smart Search** - Find apps quickly with intelligent filtering
-- **🔐 Complete Privacy** - All security data stays on your device
+- **🔐 Complete Privacy** - All data stays on your device only
 - **⚡ Real-time Protection** - Background monitoring to secure apps as they launch
 
 <br>
@@ -53,7 +50,7 @@ effortlessly.
 
 - **Jetpack Compose UI** - Modern declarative interface with Material 3
 - **Biometric Integration** - Seamless authentication using the latest APIs
-- **Background Processing** - Efficient foreground service with UsageStatsManager
+- **Background Processing** - Robust functioning with acessibility Service
 - **Persistence Layer** - Reliable data storage with preference encryption
 - **Custom Animations** - Smooth transitions and micro-interactions
 - **Permission Handling** - Intuitive flows for necessary system access
@@ -80,9 +77,9 @@ If you find this project helpful, consider supporting it by donating via PayPal:
 
 AppLock serves as an excellent reference implementation for:
 
-- Material 3 design principles in Jetpack Compose
-- System service integration (UsageStatsManager, BiometricPrompt)
-- Foreground service implementation with notifications
+- Material 3 Expressive design principles in Jetpack Compose
+- System service integration (Accessibility Service, BiometricPrompt, Device Admin)
+- Accessibility service implementation
 - Real-time app monitoring techniques
 - Practical UI implementation with Jetpack Compose
 - Clean Architecture principles in an Android app.
