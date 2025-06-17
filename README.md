@@ -10,8 +10,13 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   </a>
+  
   <a href="#">
     <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" alt="Platform">
+  </a>
+  
+  <a href="https://shields.rbtlog.dev/simple/dev.pranav.applock">
+    <img src="https://shields.rbtlog.dev/simple/dev.pranav.applock" alt="RB shield">
   </a>
 </div>
 
@@ -63,6 +68,12 @@ And **remember**, wanting privacy does not mean you have something to hide
 If you find this project helpful, consider supporting it by donating via PayPal:
 
 [<img src="https://img.shields.io/badge/Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" height="40" alt="Donate via PayPal">](https://paypal.me/pranavpurwar)
+
+## Download
+
+The app is available for download via IzzyOnDroid aswell as [Github Releases](https://github.com/PranavPurwar/AppLock/releases).
+
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="IzzyOnDroid">](https://apt.izzysoft.de/packages/dev.pranav.applock)
 
 ## 📱 Perfect For
 
