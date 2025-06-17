@@ -120,7 +120,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     Log.d(TAG, "PIN correct for $pkgName via callback. Unlocking.")
                     appLockAccessibilityService?.unlockApp(pkgName)
-                    launchAppAndFinish(pkgName)
+                    finishAndRemoveTask()
                 }
             }
             isValid
@@ -249,7 +249,6 @@ class PasswordOverlayActivity : FragmentActivity() {
                 isBiometricPromptShowingLocal = false
                 lockedPackageNameFromIntent?.let { pkgName ->
                     appLockAccessibilityService?.temporarilyUnlockAppWithBiometrics(pkgName)
-                    launchAppAndFinish(pkgName)
                 }
                 finishAndRemoveTask()
             }
@@ -272,18 +271,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting app name for $packageName: ${e.message}")
             null
-        }
-    }
-
-    internal fun launchAppAndFinish(packageName: String) {
-        Log.d(TAG, "Attempting to launch $packageName and finish overlay.")
-        try {
-            packageManager.getLaunchIntentForPackage(packageName)?.let {
-                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                startActivity(it)
-            } ?: Log.w(TAG, "No launch intent for $packageName")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error launching app $packageName: ${e.message}")
         }
     }
 
