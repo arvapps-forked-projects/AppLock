@@ -1,19 +1,19 @@
-AppLock: Privacy Protection Reimagined
+# AppLock: Privacy Protection Reimagined
 
-AppLock provides powerful app protection with an intuitive Material You interface, seamlessly integrating with your device's aesthetic while ensuring robust security for your private applications.
+**AppLock: Your Digital Guardian.** Experience the next level of app security with AppLock. We provide cutting-edge protection for your sensitive applications, wrapped in a gorgeous, adaptive Material You interface. Not only does it look great, but it's built on a robust Clean Architecture, ensuring reliability and a seamless user experience. Keep your private data truly private, effortlessly.
 
-KEY FEATURES:
-• Material You Design - Beautiful adaptive UI that complements your system theme
-• Biometric Security - Unlock apps instantly with fingerprint
-• One-Tap Protection - Secure any app with a simple toggle
-• Smart Search - Find apps quickly with intelligent filtering
-• Complete Privacy - All security data stays on your device
-• Real-time Protection - Background monitoring to secure apps as they launch
+## 🛠️ Key Features
 
-PERFECT FOR:
-• Privacy-conscious users who share devices with others
-• Parents who want to control kids' access to specific apps
-• Professionals who need to protect sensitive work applications
-• Anyone who values both security and beautiful design
+*   **🎨 Material You Design** - Beautiful adaptive UI that complements your system theme
+*   **👆 Biometric Security** - Unlock apps instantly with fingerprint or PIN
+*   **🔒 One-Tap Protection** - Secure any app with a simple toggle
+*   **🔐 Complete Privacy** - All data stays on your device
+*   **⚡ Real-time Protection** - Background monitoring to secure apps as they launch
+
+## 📱 Perfect For
+
+*   Privacy-conscious users who share devices with others
+*   Parents who want to control kids' access to specific apps
+*   Professionals who need to protect sensitive work applications
 
 AppLock uses modern Jetpack Compose UI with Material 3 design, providing smooth animations and an intuitive experience while keeping your personal apps secure with the latest biometric authentication technology.
