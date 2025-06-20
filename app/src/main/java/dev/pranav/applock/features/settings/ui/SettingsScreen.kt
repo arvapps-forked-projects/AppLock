@@ -78,7 +78,7 @@ fun SettingsScreen(
 
     val biometricManager = BiometricManager.from(context)
     val isBiometricAvailable = remember {
-        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     if (showDialog) {
