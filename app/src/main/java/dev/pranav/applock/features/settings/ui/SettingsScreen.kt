@@ -31,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +60,8 @@ import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.icons.FingerprintOff
 import dev.pranav.applock.ui.icons.Github
+import dev.pranav.applock.ui.icons.Timer
+import kotlin.math.abs
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -68,12 +72,16 @@ fun SettingsScreen(
     val context = LocalContext.current
     val appLockRepository = remember { AppLockRepository(context) }
     var showDialog by remember { mutableStateOf(false) }
+    var showUnlockTimeDialog by remember { mutableStateOf(false) }
 
     var useMaxBrightness by remember {
         mutableStateOf(appLockRepository.shouldUseMaxBrightness())
     }
     var useBiometricAuth by remember {
         mutableStateOf(appLockRepository.isBiometricAuthEnabled())
+    }
+    var unlockTimeDuration by remember {
+        mutableIntStateOf(appLockRepository.getUnlockTimeDuration())
     }
 
     val biometricManager = BiometricManager.from(context)
@@ -101,6 +109,18 @@ fun SettingsScreen(
             },
             dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
             containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    }
+
+    if (showUnlockTimeDialog) {
+        UnlockTimeDurationDialog(
+            currentDuration = unlockTimeDuration,
+            onDismiss = { showUnlockTimeDialog = false },
+            onConfirm = { newDuration ->
+                unlockTimeDuration = newDuration
+                appLockRepository.setUnlockTimeDuration(newDuration)
+                showUnlockTimeDialog = false
+            }
         )
     }
 
@@ -185,6 +205,14 @@ fun SettingsScreen(
                             onClick = {
                                 navController.navigate(Screen.ChangePassword.route)
                             }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                        ActionSettingItem(
+                            icon = Timer,
+                            title = "Unlock Duration",
+                            description = if (unlockTimeDuration > 0) "Apps remain unlocked for $unlockTimeDuration minutes" else "Apps lock immediately after exit",
+                            onClick = { showUnlockTimeDialog = true }
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
@@ -370,4 +398,63 @@ fun ActionSettingItem(
             }
         }
     }
+}
+
+@Composable
+fun UnlockTimeDurationDialog(
+    currentDuration: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    val durations = listOf(0, 1, 5, 15, 30, 60)
+    var selectedDuration by remember { mutableIntStateOf(currentDuration) }
+
+    // If the current duration is not in our list, default to the closest value
+    if (!durations.contains(selectedDuration)) {
+        selectedDuration = durations.minByOrNull { abs(it - currentDuration) } ?: 0
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("App Unlock Duration") },
+        text = {
+            Column {
+                Text("Choose how long apps should remain unlocked after entering the PIN:")
+
+                durations.forEach { duration ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedDuration = duration }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedDuration == duration,
+                            onClick = { selectedDuration = duration }
+                        )
+                        Text(
+                            text = when (duration) {
+                                0 -> "Lock immediately"
+                                1 -> "1 minute"
+                                60 -> "1 hour"
+                                else -> "$duration minutes"
+                            },
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedDuration) }) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

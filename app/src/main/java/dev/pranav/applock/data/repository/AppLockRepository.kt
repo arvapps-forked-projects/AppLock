@@ -49,6 +49,15 @@ class AppLockRepository(context: Context) {
         return storedPassword != null && inputPassword == storedPassword
     }
 
+    // Unlock time duration
+    fun setUnlockTimeDuration(minutes: Int) {
+        settingsPrefs.edit { putInt(KEY_UNLOCK_TIME_DURATION, minutes) }
+    }
+
+    fun getUnlockTimeDuration(): Int {
+        return settingsPrefs.getInt(KEY_UNLOCK_TIME_DURATION, 0) // Default to 0 (immediate lock)
+    }
+
     // Settings
     fun setBiometricAuthEnabled(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_BIOMETRIC_AUTH_ENABLED, enabled) }
@@ -83,5 +92,6 @@ class AppLockRepository(context: Context) {
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
+        private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
     }
 }

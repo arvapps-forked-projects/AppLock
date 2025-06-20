@@ -14,14 +14,26 @@ import android.widget.Toast
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
+import java.util.concurrent.ConcurrentHashMap
 
 @SuppressLint("AccessibilityPolicy")
 class AppLockAccessibilityService : AccessibilityService() {
     private lateinit var appLockRepository: AppLockRepository
+
+    // The last app that was on screen
     private var lastForegroundPackage = ""
+
+    // currently unlocked apps package name
     private var temporarilyUnlockedApp: String = ""
+
+    // Whether biometric authentication has happened or not
     private var currentBiometricState = BiometricState.IDLE
+
+    // Keeps a record of last 3 events stored to prevents false lock screen due to recents bug
     private val lastEvents = mutableListOf<Pair<AccessibilityEvent, Long>>()
+
+    // Map to store unlock timestamps for apps
+    private val appUnlockTimes = ConcurrentHashMap<String, Long>()
 
     enum class BiometricState {
         IDLE, AUTH_STARTED, AUTH_SUCCESSFUL
@@ -47,10 +59,11 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+
         val info = serviceInfo
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                 AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+        info.feedbackType = AccessibilityServiceInfo.FEEDBACK_VISUAL
         info.notificationTimeout = 100
         info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
                 AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
@@ -60,7 +73,8 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) {
             return
         }
@@ -79,7 +93,7 @@ class AppLockAccessibilityService : AccessibilityService() {
             checkForDeviceAdminDeactivation()
         }
 
-        // Skip if it's the same package, our own app, or system UI
+        // Dont continue if its system or our app
         if (packageName == "com.android.systemui" ||
             packageName.startsWith(APP_PACKAGE_PREFIX)
         ) {
@@ -88,7 +102,7 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         // Apply the rapid events filter to all apps to prevent accidental locks when opening recents
         // This is a "hack" to prevent locking apps when user opens recents because a bug in Android causes
-        // the app to be considered foreground for a brief moment
+        // the last foreground app to come to foreground momentarily, atleast according to accessibility events
         if (lastEvents.size >= 2) {
             val lastEvent = lastEvents.last()
             val secondLastEvent = lastEvents[lastEvents.size - 2]
@@ -109,7 +123,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
         temporarilyUnlockedApp = ""
         lastForegroundPackage = packageName
-        checkAndLockApp(packageName)
+        checkAndLockApp(packageName, event.eventTime)
     }
 
     private fun checkForDeviceAdminDeactivation() {
@@ -163,7 +177,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         return null
     }
 
-    private fun checkAndLockApp(packageName: String) {
+    private fun checkAndLockApp(packageName: String, currentTime: Long) {
         if (isDeviceLocked()) {
             return
         }
@@ -174,6 +188,27 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         val lockedApps = appLockRepository.getLockedApps()
         if (lockedApps.contains(packageName)) {
+
+            // Check if app is within unlock time period
+            val unlockDuration = appLockRepository.getUnlockTimeDuration()
+            val unlockTimestamp = appUnlockTimes[packageName] ?: 0
+
+            // If unlock time is set and app was unlocked within the duration period
+            if (unlockDuration > 0 && unlockTimestamp > 0) {
+                val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
+                if (elapsedMinutes < unlockDuration) {
+                    Log.d(
+                        TAG,
+                        "App $packageName is within unlock time period ($elapsedMinutes/${unlockDuration}min)"
+                    )
+                    temporarilyUnlockedApp = packageName
+                    return
+                } else {
+                    // Unlock time expired, remove from tracking
+                    appUnlockTimes.remove(packageName)
+                }
+            }
+
             Log.d(TAG, "Locked app detected: $packageName")
 
             // Launch lock screen
@@ -198,6 +233,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     fun unlockApp(packageName: String) {
         Log.d(TAG, "Unlocking app: $packageName")
         temporarilyUnlockedApp = packageName
+        appUnlockTimes[packageName] = System.currentTimeMillis() // Track unlock time
     }
 
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {
