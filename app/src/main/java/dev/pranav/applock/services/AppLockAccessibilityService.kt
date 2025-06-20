@@ -79,6 +79,12 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
+        if (isDeviceLocked()) {
+            Log.d(TAG, "Device is locked, ignoring event")
+            appUnlockTimes.clear() // Clear unlock times when device is locked
+            return
+        }
+
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             lastEvents.add(Pair(event, System.currentTimeMillis()))
         }
@@ -178,10 +184,6 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun checkAndLockApp(packageName: String, currentTime: Long) {
-        if (isDeviceLocked()) {
-            return
-        }
-
         if (currentBiometricState == BiometricState.AUTH_STARTED) {
             return
         }
