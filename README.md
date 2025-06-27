@@ -73,6 +73,8 @@ If you find this project helpful, consider supporting it by donating via PayPal:
 
 The app is available for download via IzzyOnDroid aswell as [Github Releases](https://github.com/PranavPurwar/AppLock/releases).
 
+NOTE: The latest version with the minimum bugs would probably always be https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/release/app-release.apk
+
 [<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="IzzyOnDroid">](https://apt.izzysoft.de/packages/dev.pranav.applock)
 
 ## 📱 Perfect For
