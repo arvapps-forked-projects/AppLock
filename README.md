@@ -21,11 +21,14 @@
 </p>
 
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="18%" alt="App List"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="18%" alt="Settings"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="18%" alt="Password Screen"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="18%" alt="Set Password"/>
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="18%" alt="Unlock time"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="30%" alt="App List"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="30%" alt="Settings"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="30%" alt="Password Screen"/>
+</p>
+
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="30%" alt="Set Password"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="30%" alt="Unlock time"/>
 </p>
 
 ---
