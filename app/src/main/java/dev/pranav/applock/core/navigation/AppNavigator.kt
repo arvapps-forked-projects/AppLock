@@ -21,193 +21,55 @@ import dev.pranav.applock.features.settings.ui.SettingsScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController, startDestination: String) {
+    val duration = 700
+    val slideAnimationSpec: FiniteAnimationSpec<IntOffset> = tween(durationMillis = duration)
+    val fadeAndScaleAnimationSpec: FiniteAnimationSpec<Float> = tween(durationMillis = duration)
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it / 2 },
+                animationSpec = slideAnimationSpec
+            ) +
+                    fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
+                    scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it / 2 },
+                animationSpec = slideAnimationSpec
+            ) +
+                    fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
+                    scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it / 2 },
+                animationSpec = slideAnimationSpec
+            ) +
+                    fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
+                    scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it / 2 },
+                animationSpec = slideAnimationSpec
+            ) +
+                    fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
+                    scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+        }
     ) {
-        val duration = 700
-        val slideAnimationSpec: FiniteAnimationSpec<IntOffset> = tween(durationMillis = duration)
-        val fadeAndScaleAnimationSpec: FiniteAnimationSpec<Float> = tween(durationMillis = duration)
+        composable(Screen.AppIntro.route) { AppIntroScreen(navController) }
 
-        composable(
-            Screen.AppIntro.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) { AppIntroScreen(navController) }
+        composable(Screen.SetPassword.route) { SetPasswordScreen(navController, true) }
 
-        composable(
-            Screen.SetPassword.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) { SetPasswordScreen(navController, true) }
+        composable(Screen.ChangePassword.route) { SetPasswordScreen(navController, false) }
 
-        composable(
-            Screen.ChangePassword.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) { SetPasswordScreen(navController, false) }
+        composable(Screen.Main.route) { MainScreen(navController) }
 
-        composable(
-            Screen.Main.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) { MainScreen(navController) }
-
-        composable(
-            Screen.PasswordOverlay.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) {
+        composable(Screen.PasswordOverlay.route) {
             PasswordOverlayScreen(
                 showBiometricButton = false,
                 fromMainActivity = true,
@@ -218,40 +80,6 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
                 }
             )
         }
-        composable(
-            Screen.Settings.route,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 2 },
-                    animationSpec = slideAnimationSpec
-                ) +
-                        fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                        scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-            }
-        ) { SettingsScreen(navController) }
+        composable(Screen.Settings.route) { SettingsScreen(navController) }
     }
 }

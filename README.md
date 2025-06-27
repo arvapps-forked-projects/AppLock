@@ -1,113 +1,130 @@
-<!--suppress HtmlDeprecatedAttribute -->
 <div align="center">
-  <img src="fastlane/metadata/android/en-US/images/featureGraphic.png" alt="AppLock" width="400" />
+  <img src="fastlane/metadata/android/en-US/images/featureGraphic.png" alt="AppLock Android Privacy Security" width="600" />
 </div>
 
-<h1 align="center"><b>AppLock</b></h1>
-<p align="center"><b>Privacy Protection Reimagined</b></p>
+<h1 align="center">AppLock</h1>
+<p align="center"><b>Open Source Android App Locker & Privacy Guard</b></p>
 
-<div align="center">
+<p align="center">
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
   </a>
-  
-  <a href="#">
-    <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" alt="Platform">
+  <a href="https://github.com/PranavPurwar/AppLock/releases">
+    <img src="https://img.shields.io/github/v/release/PranavPurwar/AppLock?label=Release" alt="Latest Release">
   </a>
-  
-  <a href="https://shields.rbtlog.dev/simple/dev.pranav.applock">
-    <img src="https://shields.rbtlog.dev/simple/dev.pranav.applock" alt="RB shield">
+  <a href="https://apt.izzysoft.de/packages/dev.pranav.applock">
+    <img src="https://img.shields.io/badge/IzzyOnDroid-Available-brightgreen" alt="IzzyOnDroid">
   </a>
-</div>
+  <a href="https://paypal.me/pranavpurwar">
+    <img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate via PayPal">
+  </a>
+</p>
 
-<br>
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="18%" alt="App List"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="18%" alt="Settings"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="18%" alt="Password Screen"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="18%" alt="Set Password"/>
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="18%" alt="Unlock time"/>
+</p>
 
-<div align="center">
-  <img src="screenshots/0.webp" width="24%" alt="Screenshot 1"/>
-  <img src="screenshots/1.webp" width="24%" alt="Screenshot 2"/>
-  <img src="screenshots/2.webp" width="24%" alt="Screenshot 3"/>
-  <img src="screenshots/3.webp" width="24%" alt="Screenshot 4"/>
-</div>
+---
 
-<br>
-<p align="center"><em>AppLock in action: Securing your sensitive apps.</em></p>
-<br>
+## Overview
 
-**AppLock: Your Digital Guardian.** Experience the next level of app security with cutting-edge protection for your sensitive applications, wrapped in a beautiful, adaptive
-Material 3 Expressive interface. Keep your private data truly private.
+AppLock is a modern, open-source Android app locker designed to protect your privacy and sensitive
+data. Lock any app, prevent unauthorized access, and enjoy a seamless Material You experience. No
+root required.
 
-And **remember**, wanting privacy does not mean you have something to hide
+<b></b>
 
-<br>
+## Features
 
-## 🛠️ Key Features
+- Material You design, adapts to your theme
+- Biometric and PIN authentication
+- Anti-uninstall protection
+- Unlock timeout for convenience
+- No root required
+- One-tap app locking
+- All data stays on your device
+- Real-time background protection
+- Lightweight and fast
 
-- **🎨 Material You Design** - Beautiful adaptive UI that complements your system theme
-- **👆 Biometric Security** - Unlock apps instantly with fingerprint
-- **Anti Uninstall Protection** - Prevents others from deleting the app without password
-- **🔒 One-Tap Protection** - Secure any app with a simple toggle
-- **🔐 Complete Privacy** - All data stays on your device only
-- **⚡ Real-time Protection** - Background monitoring to secure apps as they launch
-
-<br>
-
-## 💡 Technical Highlights
-
-- **Jetpack Compose UI** - Modern declarative interface with Material 3
-- **Biometric Integration** - Seamless authentication using the latest APIs
-- **Background Processing** - Robust functioning with acessibility Service
-- **Persistence Layer** - Reliable data storage with preference encryption
-- **Custom Animations** - Smooth transitions and micro-interactions
-- **Permission Handling** - Intuitive flows for necessary system access
-- **🏛️ Clean Architecture** - Robust and maintainable codebase structure.
-
-<br>
-
-## Donate
-
-If you find this project helpful, consider supporting it by donating via PayPal:
-
-[<img src="https://img.shields.io/badge/Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" height="40" alt="Donate via PayPal">](https://paypal.me/pranavpurwar)
+<b></b>
 
 ## Download
 
-The app is available for download via IzzyOnDroid aswell as [Github Releases](https://github.com/PranavPurwar/AppLock/releases).
+The app is available for download via IzzyOnDroid aswell
+as [Github Releases](https://github.com/PranavPurwar/AppLock/releases/latest).
 
-NOTE: The latest version with the minimum bugs would probably always be https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/release/app-release.apk
+<a href="https://apt.izzysoft.de/packages/dev.pranav.applock">
+    <img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="IzzyOnDroid" height="100"/>
+  </a>
 
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="80" alt="IzzyOnDroid">](https://apt.izzysoft.de/packages/dev.pranav.applock)
+Beta Builds can be
+found [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/release/app-release.apk)
 
-## 📱 Perfect For
+<b></b>
 
-- Privacy-conscious users who share devices with others
-- Parents who want to control kids' access to specific apps
-- Professionals who need to protect sensitive work applications
-- Anyone who values both security and beautiful design
+## Use Cases
 
-<br>
+- Shared devices
+- Parental controls
+- Protecting work apps
+- General privacy
 
-## 🔨 For Developers
+<b></b>
 
-AppLock serves as an excellent reference implementation for:
+## Developer Guide
 
-- Material 3 Expressive design principles in Jetpack Compose
-- System service integration (Accessibility Service, BiometricPrompt, Device Admin)
-- Accessibility service implementation
-- Real-time app monitoring techniques
-- Practical UI implementation with Jetpack Compose
-- Clean Architecture principles in an Android app.
+AppLock demonstrates:
+
+- Jetpack Compose + Material 3
+- BiometricPrompt integration
+- Accessibility Service for app monitoring
+- Encrypted on-device storage
+- Clean Architecture
 
 ```bash
-# Clone and build
 git clone https://github.com/PranavPurwar/AppLock.git
+cd AppLock
 ./gradlew assembleDebug
 ```
 
-<br>
+<b></b>
 
-## 📄 License
+## Contributing
 
-```
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/YourFeature`)
+3. Make your changes
+4. Commit your changes (`git commit -m 'Add some feature'`)
+5. Push to the branch (`git push origin feature/YourFeature`)
+6. Open a pull request
+
+<b></b>
+
+### Code Style
+
+- Follow Kotlin coding conventions
+- Use meaningful commit messages
+- Ensure code is well-documented
+
+<b></b>
+
+## Support
+
+If you find AppLock useful, consider supporting development:
+
+[![Donate via PayPal](https://img.shields.io/badge/Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/pranavpurwar)
+
+---
+
+## License
+
+```text
 MIT License
 
 Copyright (c) 2023-2025 Pranav Purwar

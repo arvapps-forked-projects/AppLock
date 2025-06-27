@@ -1,19 +1,27 @@
-# AppLock: Privacy Protection Reimagined
+Secure your sensitive apps with powerful biometric protection using AppLock!
 
-**AppLock: Your Digital Guardian.** Experience the next level of app security with AppLock. We provide cutting-edge protection for your sensitive applications, wrapped in a gorgeous, adaptive Material You interface. Not only does it look great, but it's built on a robust Clean Architecture, ensuring reliability and a seamless user experience. Keep your private data truly private, effortlessly.
+AppLock is a modern, open-source privacy tool designed to keep your sensitive apps safe. With a beautiful Material 3 Expressive interface and robust biometric security, AppLock ensures your data stays private — always on your device, never in the cloud.
 
-## 🛠️ Key Features
+Features:
 
-*   **🎨 Material You Design** - Beautiful adaptive UI that complements your system theme
-*   **👆 Biometric Security** - Unlock apps instantly with fingerprint or PIN
-*   **🔒 One-Tap Protection** - Secure any app with a simple toggle
-*   **🔐 Complete Privacy** - All data stays on your device
-*   **⚡ Real-time Protection** - Background monitoring to secure apps as they launch
+* **Material You Design**: Seamlessly adapts to your system theme
+* **Biometric Unlock**: Use fingerprint or PIN for fast, secure access
+* **Anti-uninstall**: Prevents unauthorized removal
+* **Unlock Timer**: Optional timer to keep apps unlocked for fixed time period after unlocking
+* **No Root required**: Works on all devices without root access
+* **One-tap protection**: Lock any app instantly
+* **Real-time monitoring**: Protects apps as they launch
+* **100% offline**: No ads, no trackers, no data collection
 
-## 📱 Perfect For
+Perfect for:
 
-*   Privacy-conscious users who share devices with others
-*   Parents who want to control kids' access to specific apps
-*   Professionals who need to protect sensitive work applications
+* Privacy-conscious users wanting to secure sensitive apps
+* Securing banking, messaging, and social apps
+* Parents restricting access for children
+* Professionals protecting work apps
 
-AppLock uses modern Jetpack Compose UI with Material 3 design, providing smooth animations and an intuitive experience while keeping your personal apps secure with the latest biometric authentication technology.
+App Lock is designed to be lightweight and efficient, with minimal battery impact. It runs entirely offline, ensuring your data remains private and secure.
+
+Built with Jetpack Compose and Material 3 for a smooth, intuitive experience. AppLock is free, open-source, and respects your privacy — always.
+
+Source code and issue tracker: https://github.com/PranavPurwar/AppLock
