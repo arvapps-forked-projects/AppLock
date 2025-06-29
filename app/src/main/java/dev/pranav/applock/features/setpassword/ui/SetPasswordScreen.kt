@@ -4,8 +4,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import dev.pranav.applock.AppLockApplication
 import dev.pranav.applock.core.navigation.Screen
@@ -66,7 +68,6 @@ import dev.pranav.applock.ui.icons.Backspace
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalMaterial3ExpressiveApi::class,
-    ExperimentalAnimationApi::class
 )
 @Composable
 fun SetPasswordScreen(
@@ -85,10 +86,10 @@ fun SetPasswordScreen(
     val maxLength = 6
 
     val context = LocalContext.current
+    val activity = LocalActivity.current as? ComponentActivity
     val appLockRepository = remember {
         (context.applicationContext as? AppLockApplication)?.appLockRepository
     }
-    val activity = LocalActivity.current as? ComponentActivity
 
     BackHandler {
         if (isFirstTimeSetup) {
@@ -100,6 +101,40 @@ fun SetPasswordScreen(
                 activity?.finish()
             }
         }
+    }
+
+    val fragmentActivity = LocalActivity.current as? androidx.fragment.app.FragmentActivity
+
+    fun launchDeviceCredentialAuth() {
+        if (fragmentActivity == null) return
+        val executor = ContextCompat.getMainExecutor(context)
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Authenticate to reset PIN")
+            .setSubtitle("Use your device PIN, pattern, or password")
+            .setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+            .build()
+        val biometricPrompt = BiometricPrompt(
+            fragmentActivity, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    isVerifyOldPasswordMode = false
+                    passwordState = ""
+                    confirmPasswordState = ""
+                    showInvalidOldPasswordError = false
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                }
+            })
+        biometricPrompt.authenticate(promptInfo)
     }
 
     Scaffold(
@@ -205,7 +240,11 @@ fun SetPasswordScreen(
                     }
                 }
             }
-
+            if (isVerifyOldPasswordMode) {
+                TextButton(onClick = { launchDeviceCredentialAuth() }) {
+                    Text("Reset using device password")
+                }
+            }
 
             if (showMismatchError) {
                 Text(

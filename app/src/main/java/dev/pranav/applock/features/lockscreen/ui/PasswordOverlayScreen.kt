@@ -194,7 +194,7 @@ class PasswordOverlayActivity : FragmentActivity() {
         }
     }
 
-    private fun triggerBiometricPromptIfNeeded() {
+    fun triggerBiometricPromptIfNeeded() {
         if (!isBiometricPromptShowingLocal && appLockRepository.isBiometricAuthEnabled() && appLockAccessibilityService != null) {
             if (supportsBiometric()) {
                 appLockAccessibilityService?.reportBiometricAuthStarted()
@@ -219,7 +219,7 @@ class PasswordOverlayActivity : FragmentActivity() {
             packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT) && keyguardManager?.isKeyguardSecure == true
         } else {
             val biometricManager = BiometricManager.from(this)
-            biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+            biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
         }
     }
 
@@ -234,7 +234,7 @@ class PasswordOverlayActivity : FragmentActivity() {
             .setTitle("Unlock $appName")
             .setSubtitle("Confirm biometric to continue")
             .setNegativeButtonText("Use PIN")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
             .setConfirmationRequired(false)
             .build()
     }
