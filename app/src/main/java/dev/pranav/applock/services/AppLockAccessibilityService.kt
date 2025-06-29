@@ -6,10 +6,15 @@ import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
@@ -34,6 +39,16 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     // Map to store unlock timestamps for apps
     private val appUnlockTimes = ConcurrentHashMap<String, Long>()
+
+    // Package name of the system app that provides the recent apps functionality
+    private var recentsPackage = ""
+
+    private var knownRecentsClasses = setOf(
+        "com.android.systemui.recents.RecentsActivity",
+        "com.android.quickstep.RecentsActivity",
+        "com.android.systemui.recents.RecentsView",
+        "com.android.systemui.recents.RecentsPanelView"
+    )
 
     enum class BiometricState {
         IDLE, AUTH_STARTED, AUTH_SUCCESSFUL
@@ -61,21 +76,19 @@ class AppLockAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
 
         val info = serviceInfo
-        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+        info.eventTypes =
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_VISUAL
         info.notificationTimeout = 100
-        info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+        info.flags =
+            AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         info.packageNames = null // Monitor all packages
         serviceInfo = info
         Log.d(TAG, "Accessibility service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-        ) {
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             return
         }
 
@@ -84,25 +97,37 @@ class AppLockAccessibilityService : AccessibilityService() {
             appUnlockTimes.clear() // Clear unlock times when device is locked
             return
         }
+        val keyboardPackage = getCurrentKeyboardPackageName(this)
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            lastEvents.add(Pair(event, System.currentTimeMillis()))
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.className !in knownRecentsClasses && event.packageName != keyboardPackage) {
+            val lastEvent = lastEvents.lastOrNull()
+            if (event.packageName == lastEvent?.first?.packageName) {
+                lastEvents.removeAt(lastEvents.size - 1) // Remove last event if same package
+            }
+            lastEvents.add(Pair(event, event.eventTime))
         }
 
         if (lastEvents.size > 3) {
             lastEvents.removeAt(0)
         }
         val packageName = event.packageName?.toString() ?: return
+        Log.d(
+            TAG, "package: $packageName, type: ${event.eventType}, class: ${event.className}"
+        )
 
         if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
             Log.d(TAG, "In settings, in activity: ${event.className}")
             checkForDeviceAdminDeactivation()
         }
 
-        // Dont continue if its system or our app
-        if (packageName == "com.android.systemui" ||
-            packageName.startsWith(APP_PACKAGE_PREFIX)
-        ) {
+        // Dont continue if its system or our app or keyboard package
+        if (packageName == "com.android.systemui" || packageName.startsWith(APP_PACKAGE_PREFIX) || packageName == keyboardPackage) {
+            return
+        }
+
+        if (event.className in knownRecentsClasses) {
+            recentsPackage = packageName
+            Log.d(TAG, "Recents activity detected: $packageName")
             return
         }
 
@@ -110,19 +135,30 @@ class AppLockAccessibilityService : AccessibilityService() {
         // This is a "hack" to prevent locking apps when user opens recents because a bug in Android causes
         // the last foreground app to come to foreground momentarily, atleast according to accessibility events
         if (lastEvents.size >= 2) {
+            val firstEvent = lastEvents.first()
             val lastEvent = lastEvents.last()
             val secondLastEvent = lastEvents[lastEvents.size - 2]
-            if (lastEvent.first.packageName != secondLastEvent.first.packageName && secondLastEvent.first.packageName == temporarilyUnlockedApp &&
-                lastEvent.second - secondLastEvent.second < 5000
-            ) {
+
+            Log.d(
+                TAG,
+                "Last events: ${lastEvents.map { it.first.packageName.toString() + " at " + it.second.toString() }}"
+            )
+
+            if (lastEvent.first.packageName == firstEvent.first.packageName && lastEvent.second - firstEvent.second < 5000) {
                 Log.d(TAG, "Ignoring rapid events for package: $packageName")
                 return
             }
-        }
 
-        Log.d(
-            TAG,
-            lastEvents.joinToString("\n") { "${it.first.packageName} type ${it.first.eventType} at ${it.second}" })
+            Log.d(
+                TAG,
+                "Launcher package: ${getCurrentLauncherPackageName(this)}, second last: ${secondLastEvent.first.packageName}, last: ${lastEvent.first.packageName}, temporarily unlocked app: $temporarilyUnlockedApp"
+            )
+
+            if (secondLastEvent.first.packageName == getCurrentLauncherPackageName(this) && lastEvent.first.packageName == temporarilyUnlockedApp && lastEvent.second - secondLastEvent.second < 5000) {
+                Log.d(TAG, "Ignoring rapid events for launcher and keyboard package: $packageName")
+                return
+            }
+        }
 
         if (packageName == temporarilyUnlockedApp) {
             return
@@ -138,15 +174,16 @@ class AppLockAccessibilityService : AccessibilityService() {
         try {
             val isDeviceAdminPage = findNodeWithTextContaining(rootNode, "Device admin") != null
 
-            val isOurAppVisible = findNodeWithTextContaining(rootNode, "App Lock") != null ||
-                    findNodeWithTextContaining(rootNode, "AppLock") != null
+            val isOurAppVisible = findNodeWithTextContaining(
+                rootNode,
+                "App Lock"
+            ) != null || findNodeWithTextContaining(rootNode, "AppLock") != null
 
             if (!isDeviceAdminPage || !isOurAppVisible) {
                 return
             }
 
-            val dpm =
-                getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val component = ComponentName(this, DeviceAdmin::class.java)
             if (dpm.isAdminActive(component)) {
                 // go to home screen with accessibility service
@@ -165,8 +202,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun findNodeWithTextContaining(
-        node: AccessibilityNodeInfo,
-        text: String
+        node: AccessibilityNodeInfo, text: String
     ): AccessibilityNodeInfo? {
         if (node.text?.toString()?.contains(text, ignoreCase = true) == true) {
             return node
@@ -189,42 +225,73 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         val lockedApps = appLockRepository.getLockedApps()
-        if (lockedApps.contains(packageName)) {
-
-            // Check if app is within unlock time period
-            val unlockDuration = appLockRepository.getUnlockTimeDuration()
-            val unlockTimestamp = appUnlockTimes[packageName] ?: 0
-
-            // If unlock time is set and app was unlocked within the duration period
-            if (unlockDuration > 0 && unlockTimestamp > 0) {
-                val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
-                if (elapsedMinutes < unlockDuration) {
-                    Log.d(
-                        TAG,
-                        "App $packageName is within unlock time period ($elapsedMinutes/${unlockDuration}min)"
-                    )
-                    temporarilyUnlockedApp = packageName
-                    return
-                } else {
-                    // Unlock time expired, remove from tracking
-                    appUnlockTimes.remove(packageName)
-                }
-            }
-
-            Log.d(TAG, "Locked app detected: $packageName")
-
-            // Launch lock screen
-            val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("locked_package", packageName)
-            }
-            startActivity(intent)
+        if (!lockedApps.contains(packageName)) {
+            return
         }
+
+        // Check if app is within unlock time period
+        val unlockDuration = appLockRepository.getUnlockTimeDuration()
+        val unlockTimestamp = appUnlockTimes[packageName] ?: 0
+
+        // If unlock time is set and app was unlocked within the duration period
+        if (unlockDuration > 0 && unlockTimestamp > 0) {
+            val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
+            if (elapsedMinutes < unlockDuration) {
+                Log.d(
+                    TAG,
+                    "App $packageName is within unlock time period ($elapsedMinutes/${unlockDuration}min)"
+                )
+                temporarilyUnlockedApp = packageName
+                return
+            } else {
+                // Unlock time expired, remove from tracking
+                appUnlockTimes.remove(packageName)
+            }
+        }
+
+        Log.d(TAG, "Locked app detected: $packageName")
+
+        // Launch lock screen
+        val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("locked_package", packageName)
+        }
+        startActivity(intent)
     }
 
     private fun isDeviceLocked(): Boolean {
         val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
         return keyguardManager.isKeyguardLocked
+    }
+
+    private fun getCurrentKeyboardPackageName(context: Context): String? {
+        val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            inputMethodManager.currentInputMethodInfo?.packageName
+        } else {
+            val currentInputMethodId: String? = Settings.Secure.getString(
+                context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD
+            )
+
+            if (currentInputMethodId != null && !currentInputMethodId.isEmpty()) {
+                // The currentInputMethodId is typically in the format "package_name/service_name"
+                val slashIndex = currentInputMethodId.indexOf('/')
+                if (slashIndex != -1) {
+                    return currentInputMethodId.substring(0, slashIndex)
+                }
+                // If there's no slash, it might just be the package name (less common but possible)
+                return currentInputMethodId
+            }
+            null
+        }
+    }
+
+    private fun getCurrentLauncherPackageName(context: Context): String? {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo =
+            context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo?.activityInfo?.packageName
     }
 
     fun validatePassword(password: String): Boolean {

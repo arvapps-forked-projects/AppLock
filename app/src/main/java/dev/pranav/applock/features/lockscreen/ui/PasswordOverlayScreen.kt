@@ -120,7 +120,6 @@ class PasswordOverlayActivity : FragmentActivity() {
             val isValid = appLockAccessibilityService?.validatePassword(pin) == true
             if (isValid) {
                 lockedPackageNameFromIntent?.let { pkgName ->
-                    Log.d(TAG, "PIN correct for $pkgName via callback. Unlocking.")
                     appLockAccessibilityService?.unlockApp(pkgName)
                     finishAndRemoveTask()
                 }
@@ -136,12 +135,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                         showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
                         fromMainActivity = false,
                         onBiometricAuth = { triggerBiometricPromptIfNeeded() },
-                        onAuthSuccess = {
-                            Log.d(
-                                TAG,
-                                "Generic onAuthSuccess from Activity - likely unused in this context."
-                            )
-                        },
+                        onAuthSuccess = {},
                         lockedAppName = packageManager.getApplicationLabel(
                             packageManager.getApplicationInfo(
                                 lockedPackageNameFromIntent!!, 0
