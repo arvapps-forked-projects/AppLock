@@ -9,8 +9,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
-import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -97,9 +95,9 @@ class AppLockAccessibilityService : AccessibilityService() {
             appUnlockTimes.clear() // Clear unlock times when device is locked
             return
         }
-        val keyboardPackage = getCurrentKeyboardPackageName(this)
+        val keyboardPackages = getKeyboardPackageNames()
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.className !in knownRecentsClasses && event.packageName != keyboardPackage) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.className !in knownRecentsClasses && event.packageName !in keyboardPackages) {
             val lastEvent = lastEvents.lastOrNull()
             if (event.packageName == lastEvent?.first?.packageName) {
                 lastEvents.removeAt(lastEvents.size - 1) // Remove last event if same package
@@ -121,7 +119,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // Dont continue if its system or our app or keyboard package
-        if (packageName == "com.android.systemui" || packageName.startsWith(APP_PACKAGE_PREFIX) || packageName == keyboardPackage) {
+        if (packageName == "com.android.systemui" || packageName.startsWith(APP_PACKAGE_PREFIX) || packageName in keyboardPackages) {
             return
         }
 
@@ -264,26 +262,9 @@ class AppLockAccessibilityService : AccessibilityService() {
         return keyguardManager.isKeyguardLocked
     }
 
-    private fun getCurrentKeyboardPackageName(context: Context): String? {
+    private fun getKeyboardPackageNames(): List<String> {
         val inputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            inputMethodManager.currentInputMethodInfo?.packageName
-        } else {
-            val currentInputMethodId: String? = Settings.Secure.getString(
-                context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD
-            )
-
-            if (currentInputMethodId != null && !currentInputMethodId.isEmpty()) {
-                // The currentInputMethodId is typically in the format "package_name/service_name"
-                val slashIndex = currentInputMethodId.indexOf('/')
-                if (slashIndex != -1) {
-                    return currentInputMethodId.substring(0, slashIndex)
-                }
-                // If there's no slash, it might just be the package name (less common but possible)
-                return currentInputMethodId
-            }
-            null
-        }
+        return inputMethodManager.inputMethodList.map { it.packageName }
     }
 
     private fun getCurrentLauncherPackageName(context: Context): String? {
