@@ -48,6 +48,13 @@ class AppLockAccessibilityService : AccessibilityService() {
         "com.android.systemui.recents.RecentsPanelView"
     )
 
+    private var knownAdminConfigClasses = setOf(
+        "com.android.settings.deviceadmin.DeviceAdminAdd",
+        "com.android.settings.applications.specialaccess.deviceadmin.DeviceAdminAdd",
+        "com.android.settings.deviceadmin.DeviceAdminSettings",
+        "com.android.settings.deviceadmin.DeviceAdminAdd"
+    )
+
     enum class BiometricState {
         IDLE, AUTH_STARTED, AUTH_SUCCESSFUL
     }
@@ -115,7 +122,7 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
             Log.d(TAG, "In settings, in activity: ${event.className}")
-            checkForDeviceAdminDeactivation()
+            checkForDeviceAdminDeactivation(event)
         }
 
         // Dont continue if its system or our app or keyboard package
@@ -166,11 +173,17 @@ class AppLockAccessibilityService : AccessibilityService() {
         checkAndLockApp(packageName, event.eventTime)
     }
 
-    private fun checkForDeviceAdminDeactivation() {
+    private fun checkForDeviceAdminDeactivation(event: AccessibilityEvent) {
         val rootNode = rootInActiveWindow ?: return
 
         try {
-            val isDeviceAdminPage = findNodeWithTextContaining(rootNode, "Device admin") != null
+            // works atleast on Stock Android/Motorola devices
+            val isDeviceAdminPage =
+                (event.className in knownAdminConfigClasses) || (findNodeWithTextContaining(
+                    rootNode,
+                    "Device admin"
+                ) != null)
+
 
             val isOurAppVisible = findNodeWithTextContaining(
                 rootNode,
@@ -187,6 +200,8 @@ class AppLockAccessibilityService : AccessibilityService() {
                 // go to home screen with accessibility service
                 Log.d(TAG, "Device admin is active, navigating to home screen")
                 performGlobalAction(GLOBAL_ACTION_HOME)
+
+                Log.d(TAG, rootInActiveWindow.className.toString())
 
                 Toast.makeText(
                     this,
