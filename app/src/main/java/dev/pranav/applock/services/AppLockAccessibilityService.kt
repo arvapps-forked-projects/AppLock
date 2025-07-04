@@ -55,6 +55,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         "com.android.settings.deviceadmin.DeviceAdminAdd"
     )
 
+    private val excludedPackages = setOf(
+        "com.android.intentresolver",
+    )
+
     enum class BiometricState {
         IDLE, AUTH_STARTED, AUTH_SUCCESSFUL
     }
@@ -74,37 +78,42 @@ class AppLockAccessibilityService : AccessibilityService() {
         appLockRepository = AppLockRepository(applicationContext)
         isServiceRunning = true
         instance = this
-        Log.d(TAG, "Accessibility service created")
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-
         val info = serviceInfo
         info.eventTypes =
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or AccessibilityEvent.TYPE_WINDOWS_CHANGED or AccessibilityEvent.TYPE_VIEW_CLICKED or
+                    AccessibilityEvent.TYPE_VIEW_FOCUSED or AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED or
+                    AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_VISUAL
-        info.notificationTimeout = 100
         info.flags =
-            AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-        info.packageNames = null // Monitor all packages
+            AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                    AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
+        info.packageNames = null
         serviceInfo = info
         Log.d(TAG, "Accessibility service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            return
-        }
+        if (!::appLockRepository.isInitialized) return
 
         if (isDeviceLocked()) {
             Log.d(TAG, "Device is locked, ignoring event")
             appUnlockTimes.clear() // Clear unlock times when device is locked
             return
         }
+
+        if (event.packageName == recentsPackage || event.packageName in excludedPackages) return
+
         val keyboardPackages = getKeyboardPackageNames()
 
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && event.className !in knownRecentsClasses && event.packageName !in keyboardPackages) {
+        if (event.className !in knownRecentsClasses && event.packageName !in keyboardPackages) {
             val lastEvent = lastEvents.lastOrNull()
             if (event.packageName == lastEvent?.first?.packageName) {
                 lastEvents.removeAt(lastEvents.size - 1) // Remove last event if same package
@@ -116,9 +125,6 @@ class AppLockAccessibilityService : AccessibilityService() {
             lastEvents.removeAt(0)
         }
         val packageName = event.packageName?.toString() ?: return
-        Log.d(
-            TAG, "package: $packageName, type: ${event.eventType}, class: ${event.className}"
-        )
 
         if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
             Log.d(TAG, "In settings, in activity: ${event.className}")
@@ -136,6 +142,8 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         }
 
+        val lockedApps = appLockRepository.getLockedApps()
+
         // Apply the rapid events filter to all apps to prevent accidental locks when opening recents
         // This is a "hack" to prevent locking apps when user opens recents because a bug in Android causes
         // the last foreground app to come to foreground momentarily, atleast according to accessibility events
@@ -149,18 +157,17 @@ class AppLockAccessibilityService : AccessibilityService() {
                 "Last events: ${lastEvents.map { it.first.packageName.toString() + " at " + it.second.toString() }}"
             )
 
-            if (lastEvent.first.packageName == firstEvent.first.packageName && lastEvent.second - firstEvent.second < 5000) {
-                Log.d(TAG, "Ignoring rapid events for package: $packageName")
+            if (secondLastEvent.first.packageName in lockedApps && lastEvent.first.packageName == "com.android.vending" && lastEvent.second - secondLastEvent.second < 5000) {
                 return
             }
 
-            Log.d(
-                TAG,
-                "Launcher package: ${getCurrentLauncherPackageName(this)}, second last: ${secondLastEvent.first.packageName}, last: ${lastEvent.first.packageName}, temporarily unlocked app: $temporarilyUnlockedApp"
-            )
-
             if (secondLastEvent.first.packageName == getCurrentLauncherPackageName(this) && lastEvent.first.packageName == temporarilyUnlockedApp && lastEvent.second - secondLastEvent.second < 5000) {
                 Log.d(TAG, "Ignoring rapid events for launcher and keyboard package: $packageName")
+                return
+            }
+
+            if (firstEvent.first.packageName in lockedApps && firstEvent.first.packageName == lastEvent.first.packageName && lastEvent.second - firstEvent.second < 5000) {
+                Log.d(TAG, "Ignoring rapid events for same package: $packageName")
                 return
             }
         }
@@ -168,6 +175,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (packageName == temporarilyUnlockedApp) {
             return
         }
+        Log.d(
+            TAG,
+            "Clearing unlocked app: $temporarilyUnlockedApp because new event for package: $packageName"
+        )
         temporarilyUnlockedApp = ""
         lastForegroundPackage = packageName
         checkAndLockApp(packageName, event.eventTime)
@@ -234,6 +245,7 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     private fun checkAndLockApp(packageName: String, currentTime: Long) {
         if (currentBiometricState == BiometricState.AUTH_STARTED) {
+            Log.d(TAG, "Biometric authentication in progress, skipping app lock for $packageName")
             return
         }
 
@@ -325,5 +337,17 @@ class AppLockAccessibilityService : AccessibilityService() {
             instance = null
         }
         Log.d(TAG, "Accessibility service destroyed")
+    }
+
+    override fun onRebind(intent: Intent?) {
+        super.onRebind(intent)
+        Log.d(TAG, "Service rebound")
+        isServiceRunning = true
+        instance = this
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "Service unbound")
+        return true
     }
 }

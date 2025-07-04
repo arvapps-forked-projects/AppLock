@@ -40,7 +40,7 @@ class MainActivity : FragmentActivity() {
                     AppNavHost(navController = navController, startDestination = startDestination)
 
                     if (startDestination == Screen.PasswordOverlay.route) {
-                        checkAccessibilityServiceStatus()
+                        
                     }
                 }
             }

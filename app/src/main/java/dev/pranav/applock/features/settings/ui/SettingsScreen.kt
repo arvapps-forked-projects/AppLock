@@ -80,6 +80,9 @@ fun SettingsScreen(
     var useBiometricAuth by remember {
         mutableStateOf(appLockRepository.isBiometricAuthEnabled())
     }
+    var popBiometricAuth by remember {
+        mutableStateOf(appLockRepository.shouldPromptForBiometricAuth())
+    }
     var unlockTimeDuration by remember {
         mutableIntStateOf(appLockRepository.getUnlockTimeDuration())
     }
@@ -179,6 +182,18 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 useBiometricAuth = isChecked
                                 appLockRepository.setBiometricAuthEnabled(isChecked)
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.Person,
+                            title = "Prompt for Biometric",
+                            description = "Prompt for biometric authentication before entering PIN",
+                            checked = popBiometricAuth,
+                            enabled = useBiometricAuth,
+                            onCheckedChange = { isChecked ->
+                                popBiometricAuth = isChecked
+                                appLockRepository.setPromptForBiometricAuth(isChecked)
                             }
                         )
                     }

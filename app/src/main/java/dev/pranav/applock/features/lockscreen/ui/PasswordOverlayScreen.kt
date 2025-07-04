@@ -84,7 +84,6 @@ class PasswordOverlayActivity : FragmentActivity() {
     private var isBiometricPromptShowingLocal = false
     private var movedToBackground = false
     private val activityHandler = Handler(Looper.getMainLooper())
-    private var finishActivityRunnable: Runnable? = null
 
     companion object {
         private const val TAG = "PasswordOverlay"
@@ -189,7 +188,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                 windowManager.updateViewLayout(window.decorView, window.attributes)
             }
         }
-        if (appLockRepository.isBiometricAuthEnabled() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
+        if (appLockRepository.shouldPromptForBiometricAuth() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
             triggerBiometricPromptIfNeeded()
         }
     }
@@ -256,13 +255,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                 }
                 finishAndRemoveTask()
             }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-                Log.w(TAG, "Authentication failed (fingerprint not recognized)")
-            }
         }
-
 
     private fun getAppNameFromPackageManager(packageName: String): String? {
         return try {
@@ -281,39 +274,24 @@ class PasswordOverlayActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         movedToBackground = false
-        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
         setupReapplicableWindowFlags()
         applyUserPreferences()
     }
 
-    @Suppress("DEPRECATION")
     override fun onPause() {
         super.onPause()
         movedToBackground = true
-        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
-        finishActivityRunnable = Runnable {
-            if (movedToBackground && !isFinishing && !isDestroyed) {
-                finishAndRemoveTask()
-            }
-        }
-        activityHandler.postDelayed(finishActivityRunnable!!, 500)
-    }
-
-    override fun onStop() {
-        super.onStop()
-        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
-        if (movedToBackground && !isFinishing && !isDestroyed) {
-            Log.d(
-                TAG,
-                "Finishing activity onStop because it was moved to background: $lockedPackageNameFromIntent"
-            )
+        if (!isFinishing && !isDestroyed) {
+            Log.d(TAG, "Activity moved to background: $lockedPackageNameFromIntent")
+            appLockAccessibilityService?.reportBiometricAuthFinished()
+            finishAndRemoveTask()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (activeInstance === this) activeInstance = null
-        finishActivityRunnable?.let { activityHandler.removeCallbacks(it) }
+        appLockAccessibilityService?.reportBiometricAuthFinished()
 
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }

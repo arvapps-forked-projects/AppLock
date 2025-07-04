@@ -62,6 +62,17 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_BIOMETRIC_AUTH_ENABLED, false)
     }
 
+    fun setPromptForBiometricAuth(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_PROMPT_FOR_BIOMETRIC_AUTH, enabled) }
+    }
+
+    fun shouldPromptForBiometricAuth(): Boolean {
+        return isBiometricAuthEnabled() && settingsPrefs.getBoolean(
+            KEY_PROMPT_FOR_BIOMETRIC_AUTH,
+            true
+        ) // Default to true
+    }
+
     fun setUseMaxBrightness(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_USE_MAX_BRIGHTNESS, enabled) }
     }
@@ -85,6 +96,7 @@ class AppLockRepository(context: Context) {
         private const val KEY_LOCKED_APPS = "locked_apps"
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
+        private const val KEY_PROMPT_FOR_BIOMETRIC_AUTH = "prompt_for_biometric_auth"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
