@@ -1,17 +1,14 @@
 package dev.pranav.applock.features.appintro.ui
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -24,7 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.navigation.NavController
 import dev.pranav.appintro.AppIntro
 import dev.pranav.appintro.IntroPage
@@ -45,26 +42,27 @@ fun AppIntroScreen(navController: NavController) {
     var overlayPermissionGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var notificationPermissionGranted by remember {
         mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
+            NotificationManagerCompat.from(context).areNotificationsEnabled()
         )
     }
     var accessibilityServiceEnabled by remember {
         mutableStateOf(context.isAccessibilityServiceEnabled())
     }
 
-    val requestPermissionLauncher: ActivityResultLauncher<String>? =
+    val requestPermissionLauncher =
         if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestPermission(),
-                onResult = { isGranted: Boolean ->
-                    notificationPermissionGranted = isGranted
-                })
+            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                if (isGranted) {
+                    notificationPermissionGranted = true
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Notification permission is required for AppLock to function properly.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+            }
         } else {
             null
         }
@@ -72,9 +70,8 @@ fun AppIntroScreen(navController: NavController) {
     LaunchedEffect(key1 = context) {
         overlayPermissionGranted = Settings.canDrawOverlays(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notificationPermissionGranted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+            notificationPermissionGranted =
+                NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
         accessibilityServiceEnabled = context.isAccessibilityServiceEnabled()
     }
@@ -141,20 +138,19 @@ fun AppIntroScreen(navController: NavController) {
 
         IntroPage(
             title = "Notification Permission",
-            description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "AppLock needs permission to show notifications to keep you informed. Tap 'Next' to grant permission."
+            description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) "AppLock needs permission to show notifications to keep you informed and keep running in background properly. Tap 'Next' to grant permission."
             else "Notification permission is automatically granted on your Android version.",
             icon = Icons.Default.Notifications,
             backgroundColor = Color(0xFFE78A02),
             contentColor = Color.White,
             onNext = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val isGrantedCurrently = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
+                    val isGrantedCurrently =
+                        NotificationManagerCompat.from(context).areNotificationsEnabled()
                     notificationPermissionGranted = isGrantedCurrently
 
                     if (!isGrantedCurrently) {
-                        requestPermissionLauncher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        requestPermissionLauncher?.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         return@IntroPage false
                     } else {
                         return@IntroPage true
@@ -192,14 +188,13 @@ fun AppIntroScreen(navController: NavController) {
                 // Re-check all permissions before finishing
                 overlayPermissionGranted = Settings.canDrawOverlays(context)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notificationPermissionGranted = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.POST_NOTIFICATIONS
-                    ) == PackageManager.PERMISSION_GRANTED
+                    notificationPermissionGranted =
+                        NotificationManagerCompat.from(context).areNotificationsEnabled()
                 }
                 accessibilityServiceEnabled = context.isAccessibilityServiceEnabled()
 
                 val allPermissionsGranted =
-                    overlayPermissionGranted && (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || notificationPermissionGranted) && accessibilityServiceEnabled
+                    overlayPermissionGranted && notificationPermissionGranted && accessibilityServiceEnabled
 
                 if (!allPermissionsGranted) {
                     Toast.makeText(

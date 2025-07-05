@@ -116,7 +116,9 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (event.className !in knownRecentsClasses && event.packageName !in keyboardPackages) {
             val lastEvent = lastEvents.lastOrNull()
             if (event.packageName == lastEvent?.first?.packageName) {
-                lastEvents.removeAt(lastEvents.size - 1) // Remove last event if same package
+                if (lastEvents.size > 1) {
+                    lastEvents.removeAt(lastEvents.lastIndex) // Remove last event if same package
+                }
             }
             lastEvents.add(Pair(event, event.eventTime))
         }
