@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.compose.rememberNavController
 import dev.pranav.applock.core.navigation.AppNavHost
 import dev.pranav.applock.core.navigation.Screen
@@ -39,8 +41,14 @@ class MainActivity : FragmentActivity() {
 
                     AppNavHost(navController = navController, startDestination = startDestination)
 
-                    if (startDestination == Screen.PasswordOverlay.route) {
-                        
+                    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                        if (navController.currentDestination?.route == Screen.AppIntro.route || navController.currentDestination?.route == Screen.SetPassword.route) {
+                            // If we are on the App Intro screen, we don't need to check for accessibility service
+                            return@LifecycleEventEffect
+                        }
+                        if (navController.currentDestination?.route != Screen.PasswordOverlay.route) {
+                            navController.navigate(Screen.PasswordOverlay.route)
+                        }
                     }
                 }
             }

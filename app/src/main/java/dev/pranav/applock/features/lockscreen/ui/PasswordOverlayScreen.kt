@@ -6,11 +6,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.WindowManager
 import androidx.activity.addCallback
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
@@ -83,7 +82,6 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     private var isBiometricPromptShowingLocal = false
     private var movedToBackground = false
-    private val activityHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "PasswordOverlay"
@@ -380,6 +378,10 @@ fun PasswordOverlayScreen(
                 onPinIncorrect = { showError = true }
             )
         }
+    }
+
+    if (fromMainActivity) {
+        BackHandler {}
     }
 }
 

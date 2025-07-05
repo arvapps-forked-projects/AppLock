@@ -126,13 +126,6 @@ fun SetPasswordScreen(
                     showInvalidOldPasswordError = false
                 }
 
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                }
             })
         biometricPrompt.authenticate(promptInfo)
     }
@@ -174,7 +167,7 @@ fun SetPasswordScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
                     )
                 ) {
                     Column(
@@ -184,13 +177,13 @@ fun SetPasswordScreen(
                         Text(
                             text = "Secure Your Apps",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             textAlign = TextAlign.Center
                         )
                     }
