@@ -89,6 +89,14 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_ANTI_UNINSTALL, false)
     }
 
+    fun setExperimentalImplEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_ACCESSIBILITY_PLUS_USAGE_STATS, enabled) }
+    }
+
+    fun isExperimentalImplEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_ACCESSIBILITY_PLUS_USAGE_STATS, false)
+    }
+
     companion object {
         private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
@@ -100,5 +108,6 @@ class AppLockRepository(context: Context) {
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
+        private const val KEY_ACCESSIBILITY_PLUS_USAGE_STATS = "accessibility_usage_stats"
     }
 }

@@ -1,12 +1,16 @@
 package dev.pranav.applock.core.utils
 
+import android.annotation.SuppressLint
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
 
@@ -34,6 +38,7 @@ fun vibrate(context: Context, duration: Long = 500) {
  *
  * @param context The application context used to start the activity.
  */
+@SuppressLint("BatteryLife")
 fun launchProprietaryOemSettings(context: Context) {
     val pm = context.packageManager
     val requestIgnoreIntent =
@@ -66,5 +71,21 @@ fun launchProprietaryOemSettings(context: Context) {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+}
+
+fun Context.hasUsagePermission(): Boolean {
+    try {
+        val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+        val appOpsManager = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOpsManager.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            applicationInfo.uid,
+            applicationInfo.packageName
+        )
+        return (mode == AppOpsManager.MODE_ALLOWED)
+    } catch (e: PackageManager.NameNotFoundException) {
+        Log.e("AppLockUtils", "Error checking usage permission: ${e.message}")
+        return false
     }
 }

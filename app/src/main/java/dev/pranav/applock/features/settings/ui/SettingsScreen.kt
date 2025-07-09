@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -85,6 +86,9 @@ fun SettingsScreen(
     }
     var unlockTimeDuration by remember {
         mutableIntStateOf(appLockRepository.getUnlockTimeDuration())
+    }
+    var experimentalImpl by remember {
+        mutableStateOf(appLockRepository.isExperimentalImplEnabled())
     }
 
     val biometricManager = BiometricManager.from(context)
@@ -273,6 +277,17 @@ fun SettingsScreen(
                                         }
                                     context.startActivity(intent)
                                 }
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "Experimental: Accessibility + Usage Stats",
+                            description = "Enables an experimental implementation of app locking with some issues fixed. Do not enable if you don't find unexpected lock screens.",
+                            checked = experimentalImpl,
+                            onCheckedChange = { isChecked ->
+                                experimentalImpl = isChecked
+                                appLockRepository.setExperimentalImplEnabled(isChecked)
                             }
                         )
                     }

@@ -5,6 +5,8 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -14,6 +16,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.core.content.getSystemService
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
@@ -41,6 +44,12 @@ class AppLockAccessibilityService : AccessibilityService() {
     // Package name of the system app that provides the recent apps functionality
     private var recentsPackage = ""
 
+    private lateinit var usageStatsManager: UsageStatsManager
+
+    private val excludedPackages = setOf(
+        "com.android.intentresolver",
+    )
+
     private var knownRecentsClasses = setOf(
         "com.android.systemui.recents.RecentsActivity",
         "com.android.quickstep.RecentsActivity",
@@ -53,10 +62,6 @@ class AppLockAccessibilityService : AccessibilityService() {
         "com.android.settings.applications.specialaccess.deviceadmin.DeviceAdminAdd",
         "com.android.settings.deviceadmin.DeviceAdminSettings",
         "com.android.settings.deviceadmin.DeviceAdminAdd"
-    )
-
-    private val excludedPackages = setOf(
-        "com.android.intentresolver",
     )
 
     enum class BiometricState {
@@ -78,6 +83,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         appLockRepository = AppLockRepository(applicationContext)
         isServiceRunning = true
         instance = this
+
+        if (appLockRepository.isExperimentalImplEnabled()) {
+            usageStatsManager = getSystemService<UsageStatsManager>()!!
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -103,9 +112,26 @@ class AppLockAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (!::appLockRepository.isInitialized) return
 
+        if (appLockRepository.isExperimentalImplEnabled() && !::usageStatsManager.isInitialized) {
+            usageStatsManager = getSystemService<UsageStatsManager>()!!
+        }
+
         if (isDeviceLocked()) {
             Log.d(TAG, "Device is locked, ignoring event")
-            appUnlockTimes.clear() // Clear unlock times when device is locked
+            appUnlockTimes.clear()
+            return
+        }
+
+        // new impl here
+        if (appLockRepository.isExperimentalImplEnabled()) {
+            val detectedForegroundPackage = getCurrentForegroundAppInfo(event.eventTime)!!
+
+            if (detectedForegroundPackage == getCurrentLauncherPackageName(this) || detectedForegroundPackage in excludedPackages || detectedForegroundPackage in recentsPackage || detectedForegroundPackage in getKeyboardPackageNames()) {
+                return
+            }
+
+            lastForegroundPackage = detectedForegroundPackage
+            checkAndLockApp(detectedForegroundPackage, event.eventTime)
             return
         }
 
@@ -260,7 +286,6 @@ class AppLockAccessibilityService : AccessibilityService() {
         val unlockDuration = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = appUnlockTimes[packageName] ?: 0
 
-        // If unlock time is set and app was unlocked within the duration period
         if (unlockDuration > 0 && unlockTimestamp > 0) {
             val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
             if (elapsedMinutes < unlockDuration) {
@@ -271,19 +296,22 @@ class AppLockAccessibilityService : AccessibilityService() {
                 temporarilyUnlockedApp = packageName
                 return
             } else {
-                // Unlock time expired, remove from tracking
                 appUnlockTimes.remove(packageName)
             }
         }
 
         Log.d(TAG, "Locked app detected: $packageName")
 
-        // Launch lock screen
         val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("locked_package", packageName)
         }
-        startActivity(intent)
+
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start password overlay: ${e.message}", e)
+        }
     }
 
     private fun isDeviceLocked(): Boolean {
@@ -309,10 +337,48 @@ class AppLockAccessibilityService : AccessibilityService() {
         return appLockRepository.validatePassword(password)
     }
 
+    private fun getCurrentForegroundAppInfo(currentTime: Long): String? {
+        var currentForegroundApp: String? = null
+        val usageEvents = usageStatsManager.queryEvents(currentTime - 2000, currentTime)
+        val event = UsageEvents.Event()
+        var latestTimestamp: Long = 0
+
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                if (event.timeStamp > latestTimestamp) {
+                    latestTimestamp = event.timeStamp
+                    currentForegroundApp = event.packageName
+                }
+            }
+        }
+        return currentForegroundApp ?: getCurrentForegroundAppLegacy()
+    }
+
+    private fun getCurrentForegroundAppLegacy(): String? {
+        var currentApp: String? = null
+        val time = System.currentTimeMillis()
+        val appList = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            time - 1000 * 100,
+            time
+        )
+        if (appList != null && appList.isNotEmpty()) {
+            val sortedMap = sortedMapOf<Long, String>()
+            for (usageStats in appList) {
+                sortedMap[usageStats.lastTimeUsed] = usageStats.packageName
+            }
+            if (sortedMap.isNotEmpty()) {
+                currentApp = sortedMap[sortedMap.lastKey()]
+            }
+        }
+        return currentApp
+    }
+
     fun unlockApp(packageName: String) {
         Log.d(TAG, "Unlocking app: $packageName")
         temporarilyUnlockedApp = packageName
-        appUnlockTimes[packageName] = System.currentTimeMillis() // Track unlock time
+        appUnlockTimes[packageName] = System.currentTimeMillis()
     }
 
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {

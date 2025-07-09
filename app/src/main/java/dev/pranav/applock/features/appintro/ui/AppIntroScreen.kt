@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,10 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 import androidx.navigation.NavController
 import dev.pranav.appintro.AppIntro
 import dev.pranav.appintro.IntroPage
 import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.core.utils.hasUsagePermission
 import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.core.utils.launchProprietaryOemSettings
 import dev.pranav.applock.features.appintro.domain.AppIntroManager
@@ -45,6 +48,7 @@ fun AppIntroScreen(navController: NavController) {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         )
     }
+    var usageStatsPermissionGranted by remember { mutableStateOf(context.hasUsagePermission()) }
     var accessibilityServiceEnabled by remember {
         mutableStateOf(context.isAccessibilityServiceEnabled())
     }
@@ -111,6 +115,12 @@ fun AppIntroScreen(navController: NavController) {
                 if (!overlayPermissionGranted) {
                     val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    intent.data = "package:${context.packageName}".toUri()
+                    Toast.makeText(
+                        context,
+                        "Please allow AppLock to display over other apps.",
+                        Toast.LENGTH_LONG
+                    ).show()
                     context.startActivity(intent)
                     false
                 } else {
@@ -155,6 +165,23 @@ fun AppIntroScreen(navController: NavController) {
                     } else {
                         return@IntroPage true
                     }
+                } else {
+                    true
+                }
+            }),
+        IntroPage(
+            title = "Usage Stats Permission",
+            description = "This permission is required to detect when locked apps are launched. Tap 'Next' to enable it.",
+            icon = Icons.Default.QueryStats,
+            backgroundColor = Color(0xFF8049CE),
+            contentColor = Color.White,
+            onNext = {
+                usageStatsPermissionGranted = context.hasUsagePermission()
+                if (!usageStatsPermissionGranted) {
+                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    false
                 } else {
                     true
                 }
