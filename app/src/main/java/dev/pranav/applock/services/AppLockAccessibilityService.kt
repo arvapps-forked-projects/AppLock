@@ -5,7 +5,6 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
-import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.ComponentName
 import android.content.Context
@@ -47,6 +46,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     private lateinit var usageStatsManager: UsageStatsManager
 
     private val excludedPackages = setOf(
+        "com.android.systemui",
         "com.android.intentresolver",
     )
 
@@ -124,11 +124,12 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         // new impl here
         if (appLockRepository.isExperimentalImplEnabled()) {
-            val detectedForegroundPackage = getCurrentForegroundAppInfo(event.eventTime)!!
-
-            if (detectedForegroundPackage == getCurrentLauncherPackageName(this) || detectedForegroundPackage in excludedPackages || detectedForegroundPackage in recentsPackage || detectedForegroundPackage in getKeyboardPackageNames()) {
-                return
+            if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
+                Log.d(TAG, "In settings, in activity: ${event.className}")
+                checkForDeviceAdminDeactivation(event)
             }
+
+            val detectedForegroundPackage = getCurrentForegroundAppInfo()!!
 
             lastForegroundPackage = detectedForegroundPackage
             checkAndLockApp(detectedForegroundPackage, event.eventTime)
@@ -160,7 +161,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // Dont continue if its system or our app or keyboard package
-        if (packageName == "com.android.systemui" || packageName.startsWith(APP_PACKAGE_PREFIX) || packageName in keyboardPackages) {
+        if (packageName.startsWith(APP_PACKAGE_PREFIX) || packageName in keyboardPackages) {
             return
         }
 
@@ -324,12 +325,13 @@ class AppLockAccessibilityService : AccessibilityService() {
         return inputMethodManager.inputMethodList.map { it.packageName }
     }
 
-    private fun getCurrentLauncherPackageName(context: Context): String? {
+    private fun getCurrentLauncherPackageName(context: Context): List<String> {
         val intent = Intent(Intent.ACTION_MAIN)
         intent.addCategory(Intent.CATEGORY_HOME)
+
         val resolveInfo =
-            context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        return resolveInfo?.activityInfo?.packageName
+            context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfo.map { it.activityInfo.packageName }
     }
 
     fun validatePassword(password: String): Boolean {
@@ -337,21 +339,33 @@ class AppLockAccessibilityService : AccessibilityService() {
         return appLockRepository.validatePassword(password)
     }
 
-    private fun getCurrentForegroundAppInfo(currentTime: Long): String? {
+    private fun getCurrentForegroundAppInfo(): String? {
         var currentForegroundApp: String? = null
-        val usageEvents = usageStatsManager.queryEvents(currentTime - 2000, currentTime)
-        val event = UsageEvents.Event()
+        val currentTime = System.currentTimeMillis()
+        val usageEvents = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_BEST,
+            currentTime - 500,
+            currentTime
+        )
         var latestTimestamp: Long = 0
 
-        while (usageEvents.hasNextEvent()) {
-            usageEvents.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                if (event.timeStamp > latestTimestamp) {
-                    latestTimestamp = event.timeStamp
-                    currentForegroundApp = event.packageName
-                }
+        // Get launcher packages once outside the loop
+        val launcherPackages = getCurrentLauncherPackageName(this)
+        val keyboardPackages = getKeyboardPackageNames()
+
+        for (event in usageEvents) {
+            val packageName = event.packageName
+
+            if (packageName in excludedPackages || packageName in knownRecentsClasses || packageName in launcherPackages || packageName in keyboardPackages) {
+                continue
+            }
+
+            if (event.lastTimeUsed > latestTimestamp) {
+                latestTimestamp = event.lastTimeUsed
+                currentForegroundApp = packageName
             }
         }
+
         return currentForegroundApp ?: getCurrentForegroundAppLegacy()
     }
 
@@ -360,13 +374,28 @@ class AppLockAccessibilityService : AccessibilityService() {
         val time = System.currentTimeMillis()
         val appList = usageStatsManager.queryUsageStats(
             UsageStatsManager.INTERVAL_DAILY,
-            time - 1000 * 100,
+            time - 500,
             time
         )
+
+        // Get the same exclusion lists as the main function
+        val launcherPackages = getCurrentLauncherPackageName(this)
+        val keyboardPackages = getKeyboardPackageNames()
+
         if (appList != null && appList.isNotEmpty()) {
             val sortedMap = sortedMapOf<Long, String>()
             for (usageStats in appList) {
-                sortedMap[usageStats.lastTimeUsed] = usageStats.packageName
+                val packageName = usageStats.packageName
+
+                if (packageName in excludedPackages ||
+                    packageName in knownRecentsClasses ||
+                    packageName in launcherPackages ||
+                    packageName in keyboardPackages
+                ) {
+                    continue
+                }
+
+                sortedMap[usageStats.lastTimeUsed] = packageName
             }
             if (sortedMap.isNotEmpty()) {
                 currentApp = sortedMap[sortedMap.lastKey()]
