@@ -171,7 +171,7 @@ fun AppIntroScreen(navController: NavController) {
             }),
         IntroPage(
             title = "Usage Stats Permission",
-            description = "This permission is required to detect when locked apps are launched. Tap 'Next' to enable it.",
+            description = "This permission is required to detect when locked apps are launched.\n\nIf you get the message \"Restricted Setting\", please manually go to Settings > Apps > App Lock > Upper Right menu, and press \"Allow restricted settings\". Otherwise the application cannot function.\n\nTap 'Next' to enable it.",
             icon = Icons.Default.QueryStats,
             backgroundColor = Color(0xFF8049CE),
             contentColor = Color.White,
@@ -189,7 +189,7 @@ fun AppIntroScreen(navController: NavController) {
 
         IntroPage(
             title = "Accessibility Service",
-            description = "Accessibility service is required for AppLock to function properly. Tap 'Next' to enable it.",
+            description = "Accessibility service is required for AppLock to function properly.\n\nIf you get the message \"Restricted Setting\", please manually go to Settings > Apps > App Lock > Upper Right menu, and press \"Allow restricted settings\". Otherwise the application cannot function.\n\nTap 'Next' to enable it.",
             icon = Accessibility,
             backgroundColor = Color(0xFFF1550E),
             contentColor = Color.White,
