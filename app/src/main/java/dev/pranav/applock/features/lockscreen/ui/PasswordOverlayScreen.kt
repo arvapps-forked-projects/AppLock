@@ -69,6 +69,8 @@ import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
@@ -139,7 +141,7 @@ class PasswordOverlayActivity : FragmentActivity() {
     }
 
     private fun loadAppNameAndSetupUI() {
-        Thread {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 appName = packageManager.getApplicationLabel(
                     packageManager.getApplicationInfo(lockedPackageNameFromIntent!!, 0)
@@ -150,11 +152,20 @@ class PasswordOverlayActivity : FragmentActivity() {
             }
 
             setupBiometricPromptInternal()
+            if (appLockRepository.shouldPromptForBiometricAuth() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
+                launch(Dispatchers.Main) {
+                    if (supportsBiometric()) {
+                        triggerBiometricPromptIfNeeded()
+                    } else {
+                        Log.w(TAG, "Biometric authentication not supported on this device.")
+                    }
+                }
+            }
 
             runOnUiThread {
                 setupUI()
             }
-        }.start()
+        }
     }
 
     private fun setupUI() {
@@ -261,9 +272,6 @@ class PasswordOverlayActivity : FragmentActivity() {
             if (window.decorView.isAttachedToWindow) {
                 windowManager.updateViewLayout(window.decorView, window.attributes)
             }
-        }
-        if (appLockRepository.shouldPromptForBiometricAuth() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
-            triggerBiometricPromptIfNeeded()
         }
     }
 

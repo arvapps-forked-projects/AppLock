@@ -31,12 +31,16 @@ class ExperimentalAppLockService : Service() {
             timer = Timer()
             timer?.schedule(object : TimerTask() {
                 override fun run() {
+                    if (isDeviceLocked()) {
+                        AppLockManager.appUnlockTimes.clear()
+                        AppLockManager.clearTemporarilyUnlockedApp()
+                    }
                     val foregroundApp = getCurrentForegroundAppInfo()
                     if (foregroundApp == null) {
                         AppLockManager.clearTemporarilyUnlockedApp()
                         return
                     }
-                    checkAndLockApp(foregroundApp, System.currentTimeMillis())
+                    checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
                 }
             }, 0, 250)
         }
@@ -59,11 +63,11 @@ class ExperimentalAppLockService : Service() {
         if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
             return
         } else {
+            if (AppLockManager.temporarilyUnlockedApp.isNotEmpty()) {
+                Log.d(TAG, "App $packageName is temporarily unlocked, skipping lock check.")
+                return
+            }
             AppLockManager.clearTemporarilyUnlockedApp()
-        }
-
-        if (PasswordOverlayActivity.isActive()) {
-            return
         }
 
         val lockedApps = appLockRepository.getLockedApps()
@@ -74,12 +78,14 @@ class ExperimentalAppLockService : Service() {
         val unlockDuration = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0
 
+        Log.d(
+            TAG,
+            "Checking app lock for $packageName at $currentTime, unlockTimestamp: $unlockTimestamp, unlockDuration: $unlockDuration"
+        )
+
         if (unlockDuration > 0 && unlockTimestamp > 0) {
             val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
             if (elapsedMinutes < unlockDuration) {
-                if (!AppLockManager.isAppTemporarilyUnlocked(packageName)) {
-                    AppLockManager.unlockApp(packageName)
-                }
                 return
             } else {
                 AppLockManager.appUnlockTimes.remove(packageName)
@@ -104,7 +110,7 @@ class ExperimentalAppLockService : Service() {
         }
     }
 
-    private fun getCurrentForegroundAppInfo(): String? {
+    private fun getCurrentForegroundAppInfo(): ForegroundAppInfo? {
         val time = System.currentTimeMillis()
         val usageStatsList =
             usageStatsManager.queryUsageStats(
@@ -114,22 +120,37 @@ class ExperimentalAppLockService : Service() {
             )
 
         if (usageStatsList != null && usageStatsList.isNotEmpty()) {
-            var recentPackageName: String? = null
+            var recentAppInfo: ForegroundAppInfo? = null
             val events = usageStatsManager.queryEvents(time - 1000 * 100, time)
             val event = UsageEvents.Event()
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
                 if (event.className == "dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity") {
-                    Log.d(TAG, "Ignoring PasswordOverlayActivity event")
                     continue
                 }
-                if (event.className in knownRecentsClasses) continue
+                if (event.className in knownRecentsClasses || event.className in knownAdminConfigClasses) {
+                    continue
+                }
                 if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                    recentPackageName = event.packageName
+                    recentAppInfo = ForegroundAppInfo(
+                        packageName = event.packageName,
+                        className = event.className,
+                        timestamp = event.timeStamp
+                    )
                 }
             }
-            return recentPackageName
+            return recentAppInfo
         }
         return null
+    }
+
+    data class ForegroundAppInfo(
+        val packageName: String,
+        val className: String,
+        val timestamp: Long
+    ) {
+        override fun toString(): String {
+            return "ForegroundAppInfo(packageName='$packageName', className='$className', timestamp=$timestamp)"
+        }
     }
 }

@@ -70,7 +70,7 @@ class AppLockRepository(context: Context) {
         return isBiometricAuthEnabled() && settingsPrefs.getBoolean(
             KEY_PROMPT_FOR_BIOMETRIC_AUTH,
             true
-        ) // Default to true
+        )
     }
 
     fun setUseMaxBrightness(enabled: Boolean) {

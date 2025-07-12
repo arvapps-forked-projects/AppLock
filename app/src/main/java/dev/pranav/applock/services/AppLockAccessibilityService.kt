@@ -3,7 +3,6 @@ package dev.pranav.applock.services
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
-import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.app.usage.UsageStatsManager
 import android.content.ComponentName
@@ -15,7 +14,6 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.core.content.getSystemService
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
@@ -34,13 +32,6 @@ class AppLockAccessibilityService : AccessibilityService() {
     private var recentsPackage = ""
 
     private lateinit var usageStatsManager: UsageStatsManager
-
-    private var knownAdminConfigClasses = setOf(
-        "com.android.settings.deviceadmin.DeviceAdminAdd",
-        "com.android.settings.applications.specialaccess.deviceadmin.DeviceAdminAdd",
-        "com.android.settings.deviceadmin.DeviceAdminSettings",
-        "com.android.settings.deviceadmin.DeviceAdminAdd"
-    )
 
     enum class BiometricState {
         IDLE, AUTH_STARTED
@@ -323,36 +314,5 @@ class AppLockAccessibilityService : AccessibilityService() {
         val resolveInfo =
             packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         return resolveInfo.map { it.activityInfo.packageName }
-    }
-
-    private fun isDeviceLocked(): Boolean {
-        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-        return keyguardManager.isKeyguardLocked
-    }
-
-    internal fun getCurrentForegroundAppInfo(): String? {
-        if (!::usageStatsManager.isInitialized) {
-            usageStatsManager = getSystemService<UsageStatsManager>()!!
-        }
-        val time = System.currentTimeMillis()
-        val usageStatsList =
-            usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                time - 1000 * 10,
-                time
-            )
-        if (usageStatsList != null && usageStatsList.isNotEmpty()) {
-            var recentEvent: android.app.usage.UsageEvents.Event? = null
-            val events = usageStatsManager.queryEvents(time - 1000 * 10, time)
-            val event = android.app.usage.UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
-                    recentEvent = event
-                }
-            }
-            return recentEvent?.packageName
-        }
-        return null
     }
 }
