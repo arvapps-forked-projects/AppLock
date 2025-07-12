@@ -50,7 +50,7 @@ class AppLockRepository(context: Context) {
     }
 
     fun getUnlockTimeDuration(): Int {
-        return settingsPrefs.getInt(KEY_UNLOCK_TIME_DURATION, 0) // Default to 0 (immediate lock)
+        return settingsPrefs.getInt(KEY_UNLOCK_TIME_DURATION, 0)
     }
 
     // Settings
@@ -97,6 +97,14 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_ACCESSIBILITY_PLUS_USAGE_STATS, false)
     }
 
+    fun setShizukuImplEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_SHIZUKU_IMPL, enabled) }
+    }
+
+    fun isShizukuImplEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_SHIZUKU_IMPL, false)
+    }
+
     companion object {
         private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
@@ -109,5 +117,6 @@ class AppLockRepository(context: Context) {
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
         private const val KEY_ACCESSIBILITY_PLUS_USAGE_STATS = "accessibility_usage_stats"
+        private const val KEY_SHIZUKU_IMPL = "shizuku_impl"
     }
 }

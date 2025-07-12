@@ -3,6 +3,7 @@ package dev.pranav.applock.features.appintro.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.PermissionChecker
+import androidx.core.content.PermissionChecker.checkSelfPermission
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import dev.pranav.appintro.AppIntro
@@ -35,6 +38,8 @@ import dev.pranav.applock.features.appintro.domain.AppIntroManager
 import dev.pranav.applock.ui.icons.Accessibility
 import dev.pranav.applock.ui.icons.BatterySaver
 import dev.pranav.applock.ui.icons.Display
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 
 @SuppressLint("BatteryLife")
 @Composable
@@ -69,6 +74,21 @@ fun AppIntroScreen(navController: NavController) {
             }
         } else {
             null
+        }
+
+    val shizukuPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                // Shizuku permission granted, you can proceed with Shizuku operations
+                Toast.makeText(context, "Shizuku permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                // Handle the case where permission is denied
+                Toast.makeText(
+                    context,
+                    "Shizuku permission is required for advanced features.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
 
     LaunchedEffect(key1 = context) {
@@ -169,6 +189,36 @@ fun AppIntroScreen(navController: NavController) {
                     true
                 }
             }),
+        IntroPage(
+            title = "Shizuku Service",
+            description = "Shizuku is recommended for advanced features like locking system apps and more.\n\nIf you have Shizuku installed, please enable it now. Otherwise, you can skip this step.",
+            icon = Icons.Default.QueryStats,
+            backgroundColor = Color(0xFFE56868),
+            contentColor = Color.White,
+            onNext = {
+                val isGranted = if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                    checkSelfPermission(
+                        context,
+                        ShizukuProvider.PERMISSION
+                    ) == PermissionChecker.PERMISSION_GRANTED
+                } else {
+                    Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+                }
+
+                if (!isGranted) {
+                    if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                        shizukuPermissionLauncher.launch(
+                            ShizukuProvider.PERMISSION
+                        )
+                    } else {
+                        Shizuku.requestPermission(423)
+                    }
+                    false
+                } else {
+                    true
+                }
+            }),
+
         IntroPage(
             title = "Usage Stats Permission",
             description = "This permission is required to detect when locked apps are launched.\n\nIf you get the message \"Restricted Setting\", please manually go to Settings > Apps > App Lock > Upper Right menu, and press \"Allow restricted settings\". Otherwise the application cannot function.\n\nTap 'Next' to enable it.",

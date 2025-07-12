@@ -65,6 +65,7 @@ import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.services.AppLockAccessibilityService
+import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.theme.AppLockTheme
@@ -86,20 +87,24 @@ class PasswordOverlayActivity : FragmentActivity() {
     companion object {
         private const val TAG = "PasswordOverlay"
         private var activeInstance: PasswordOverlayActivity? = null
+
+        fun isActive(): Boolean {
+            return activeInstance != null && !activeInstance!!.isFinishing && !activeInstance!!.isDestroyed
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         activeInstance?.let {
-            if (!it.isFinishing && it != this) it.finishAndRemoveTask()
+            if (!it.isFinishing && it != this) it.finishAffinity()
         }
         activeInstance = this
 
         lockedPackageNameFromIntent = intent.getStringExtra("locked_package")
         if (lockedPackageNameFromIntent == null) {
             Log.e(TAG, "No locked_package name provided in intent. Finishing.")
-            finishAndRemoveTask()
+            finishAffinity()
             return
         }
 
@@ -107,6 +112,10 @@ class PasswordOverlayActivity : FragmentActivity() {
 
         appLockRepository = AppLockRepository(applicationContext)
         appLockAccessibilityService = AppLockAccessibilityService.getInstance()
+
+        onBackPressedDispatcher.addCallback(this) {
+            // Prevent back navigation to maintain security
+        }
 
         setupWindow()
         loadAppNameAndSetupUI()
@@ -153,8 +162,8 @@ class PasswordOverlayActivity : FragmentActivity() {
             val isValid = appLockAccessibilityService?.validatePassword(pin) == true
             if (isValid) {
                 lockedPackageNameFromIntent?.let { pkgName ->
-                    appLockAccessibilityService?.unlockApp(pkgName)
-                    finishAndRemoveTask()
+                    AppLockManager.unlockApp(pkgName)
+                    finishAffinity()
                 }
             }
             isValid
@@ -207,7 +216,7 @@ class PasswordOverlayActivity : FragmentActivity() {
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 super.onAuthenticationError(errorCode, errString)
                 isBiometricPromptShowingLocal = false
-                appLockAccessibilityService?.reportBiometricAuthFinished()
+                AppLockManager.reportBiometricAuthFinished()
                 Log.w(TAG, "Authentication error: $errString ($errorCode)")
             }
 
@@ -215,9 +224,9 @@ class PasswordOverlayActivity : FragmentActivity() {
                 super.onAuthenticationSucceeded(result)
                 isBiometricPromptShowingLocal = false
                 lockedPackageNameFromIntent?.let { pkgName ->
-                    appLockAccessibilityService?.temporarilyUnlockAppWithBiometrics(pkgName)
+                    AppLockManager.temporarilyUnlockAppWithBiometrics(pkgName)
                 }
-                finishAndRemoveTask()
+                finishAffinity()
             }
         }
 
@@ -261,14 +270,14 @@ class PasswordOverlayActivity : FragmentActivity() {
     fun triggerBiometricPromptIfNeeded() {
         if (!isBiometricPromptShowingLocal && appLockRepository.isBiometricAuthEnabled() && appLockAccessibilityService != null) {
             if (supportsBiometric()) {
-                appLockAccessibilityService?.reportBiometricAuthStarted()
+                AppLockManager.reportBiometricAuthStarted()
                 isBiometricPromptShowingLocal = true
                 try {
                     biometricPrompt.authenticate(promptInfo)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error calling biometricPrompt.authenticate: ${e.message}", e)
                     isBiometricPromptShowingLocal = false
-                    appLockAccessibilityService?.reportBiometricAuthFinished()
+                    AppLockManager.reportBiometricAuthFinished()
                 }
             } else {
                 Log.w(TAG, "Biometric authentication not available on this device.")
@@ -281,15 +290,15 @@ class PasswordOverlayActivity : FragmentActivity() {
         movedToBackground = true
         if (!isFinishing && !isDestroyed) {
             Log.d(TAG, "Activity moved to background: $lockedPackageNameFromIntent")
-            appLockAccessibilityService?.reportBiometricAuthFinished()
-            finishAndRemoveTask()
+            AppLockManager.reportBiometricAuthFinished()
+            finish()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         if (activeInstance === this) activeInstance = null
-        appLockAccessibilityService?.reportBiometricAuthFinished()
+        AppLockManager.reportBiometricAuthFinished()
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }
 

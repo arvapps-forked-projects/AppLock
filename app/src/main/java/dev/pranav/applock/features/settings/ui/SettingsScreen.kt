@@ -57,6 +57,8 @@ import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.admin.AdminDisableActivity
+import dev.pranav.applock.services.ExperimentalAppLockService
+import dev.pranav.applock.services.ShizukuAppLockService
 import dev.pranav.applock.ui.icons.BrightnessHigh
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.icons.FingerprintOff
@@ -89,6 +91,9 @@ fun SettingsScreen(
     }
     var experimentalImpl by remember {
         mutableStateOf(appLockRepository.isExperimentalImplEnabled())
+    }
+    var shizukuImpl by remember {
+        mutableStateOf(appLockRepository.isShizukuImplEnabled())
     }
 
     val biometricManager = BiometricManager.from(context)
@@ -288,6 +293,36 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 experimentalImpl = isChecked
                                 appLockRepository.setExperimentalImplEnabled(isChecked)
+
+                                if (isChecked) {
+                                    context.startService(
+                                        Intent(context, ExperimentalAppLockService::class.java)
+                                    )
+                                } else {
+                                    context.stopService(
+                                        Intent(context, ExperimentalAppLockService::class.java)
+                                    )
+                                }
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "Experimental: Shizuku",
+                            description = "Locks app by detecting with Shizuku. This is an experimental feature and may not work as expected.",
+                            checked = shizukuImpl,
+                            onCheckedChange = { isChecked ->
+                                shizukuImpl = isChecked
+                                appLockRepository.setShizukuImplEnabled(isChecked)
+                                if (isChecked) {
+                                    context.startService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                } else {
+                                    context.stopService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                }
                             }
                         )
                     }

@@ -40,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        aidl = true
     }
 
     dependenciesInfo {
@@ -63,6 +64,11 @@ dependencies {
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+    compileOnly("dev.rikka.hidden:stub:4.4.0")
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
