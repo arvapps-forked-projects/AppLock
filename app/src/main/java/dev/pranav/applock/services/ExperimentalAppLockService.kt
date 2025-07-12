@@ -60,13 +60,12 @@ class ExperimentalAppLockService : Service() {
         if (AppLockManager.currentBiometricState == AppLockAccessibilityService.BiometricState.AUTH_STARTED) {
             return
         }
+        if (PasswordOverlayActivity.isActive()) {
+            return
+        }
         if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
             return
         } else {
-            if (AppLockManager.temporarilyUnlockedApp.isNotEmpty()) {
-                Log.d(TAG, "App $packageName is temporarily unlocked, skipping lock check.")
-                return
-            }
             AppLockManager.clearTemporarilyUnlockedApp()
         }
 

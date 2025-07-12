@@ -30,6 +30,9 @@ class ShizukuAppLockService : Service() {
 
         shizukuActivityManager = ShizukuActivityManager(this) { packageName, timeMillis ->
             Log.d(TAG, "Foreground app changed to: $packageName")
+            if (packageName != AppLockManager.temporarilyUnlockedApp) {
+                AppLockManager.temporarilyUnlockedApp = ""
+            }
             checkAndLockApp(packageName, timeMillis)
         }
     }
@@ -75,7 +78,9 @@ class ShizukuAppLockService : Service() {
             Log.d(TAG, "App $packageName is temporarily unlocked, skipping app lock")
             return
         } else {
-            AppLockManager.clearTemporarilyUnlockedApp()
+            if (AppLockManager.appUnlockTimes.isEmpty()) {
+                AppLockManager.clearTemporarilyUnlockedApp()
+            }
         }
         val lockedApps = appLockRepository.getLockedApps()
         if (!lockedApps.contains(packageName)) {
@@ -85,12 +90,13 @@ class ShizukuAppLockService : Service() {
         val unlockDuration = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0
 
+        Log.d(
+            TAG,
+            "Checking app lock for $packageName at $currentTime, last unlock timestamp: $unlockTimestamp, unlock duration: $unlockDuration"
+        )
         if (unlockDuration > 0 && unlockTimestamp > 0) {
             val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
             if (elapsedMinutes < unlockDuration) {
-                if (!AppLockManager.isAppTemporarilyUnlocked(packageName)) {
-                    AppLockManager.unlockApp(packageName)
-                }
                 return
             } else {
                 AppLockManager.appUnlockTimes.remove(packageName)

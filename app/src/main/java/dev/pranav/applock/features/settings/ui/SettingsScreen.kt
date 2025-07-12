@@ -4,7 +4,10 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +67,8 @@ import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.icons.FingerprintOff
 import dev.pranav.applock.ui.icons.Github
 import dev.pranav.applock.ui.icons.Timer
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 import kotlin.math.abs
 
 
@@ -76,6 +81,19 @@ fun SettingsScreen(
     val appLockRepository = remember { AppLockRepository(context) }
     var showDialog by remember { mutableStateOf(false) }
     var showUnlockTimeDialog by remember { mutableStateOf(false) }
+
+    val shizukuPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Toast.makeText(context, "Shizuku permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(
+                    context,
+                    "Shizuku permission is required for advanced features.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     var useMaxBrightness by remember {
         mutableStateOf(appLockRepository.shouldUseMaxBrightness())
@@ -313,8 +331,18 @@ fun SettingsScreen(
                             checked = shizukuImpl,
                             onCheckedChange = { isChecked ->
                                 shizukuImpl = isChecked
-                                appLockRepository.setShizukuImplEnabled(isChecked)
                                 if (isChecked) {
+                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                                            shizukuPermissionLauncher.launch(
+                                                ShizukuProvider.PERMISSION
+                                            )
+                                        } else {
+                                            Shizuku.requestPermission(423)
+                                        }
+                                        shizukuImpl = false
+                                        return@SettingItem
+                                    }
                                     context.startService(
                                         Intent(context, ShizukuAppLockService::class.java)
                                     )
@@ -323,6 +351,7 @@ fun SettingsScreen(
                                         Intent(context, ShizukuAppLockService::class.java)
                                     )
                                 }
+                                appLockRepository.setShizukuImplEnabled(isChecked)
                             }
                         )
                     }

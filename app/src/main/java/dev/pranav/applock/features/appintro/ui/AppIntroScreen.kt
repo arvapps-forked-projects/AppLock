@@ -79,10 +79,8 @@ fun AppIntroScreen(navController: NavController) {
     val shizukuPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                // Shizuku permission granted, you can proceed with Shizuku operations
                 Toast.makeText(context, "Shizuku permission granted", Toast.LENGTH_SHORT).show()
             } else {
-                // Handle the case where permission is denied
                 Toast.makeText(
                     context,
                     "Shizuku permission is required for advanced features.",
