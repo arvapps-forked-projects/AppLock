@@ -75,7 +75,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (!::appLockRepository.isInitialized) return
 
-        if (appLockRepository.getBackendImplementation() != BackendImplementation.ACCESSIBILITY && appLockRepository.getFallbackBackend() != BackendImplementation.ACCESSIBILITY) {
+        if (appLockRepository.getBackendImplementation() != BackendImplementation.ACCESSIBILITY) {
             if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
                 Log.d(TAG, "In settings, in activity: ${event.className}")
                 checkForDeviceAdminDeactivation(event)
@@ -233,10 +233,6 @@ class AppLockAccessibilityService : AccessibilityService() {
         AppLockManager.startFallbackServices(this, AppLockAccessibilityService::class.java)
     }
 
-    fun validatePassword(password: String): Boolean {
-        return appLockRepository.getPassword() == password
-    }
-
     fun checkAndLockApp(packageName: String, currentTime: Long) {
         if (shouldBeIgnored(packageName)) {
             return
@@ -322,27 +318,38 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun startServices() {
+        // Stop all services first to ensure only one runs at a time
+        stopAllServices()
+
+        // Start only the primary backend service
         when (appLockRepository.getBackendImplementation()) {
             BackendImplementation.SHIZUKU -> {
+                Log.d(TAG, "Starting Shizuku service as primary backend")
                 startService(Intent(this, ShizukuAppLockService::class.java))
             }
 
             BackendImplementation.USAGE_STATS -> {
+                Log.d(TAG, "Starting Experimental service as primary backend")
                 startService(Intent(this, ExperimentalAppLockService::class.java))
             }
 
-            else -> {}
+            else -> {
+                Log.d(
+                    TAG,
+                    "Accessibility service is the primary backend, no additional service needed"
+                )
+            }
         }
-        when (appLockRepository.getFallbackBackend()) {
-            BackendImplementation.SHIZUKU -> {
-                startService(Intent(this, ShizukuAppLockService::class.java))
-            }
+    }
 
-            BackendImplementation.USAGE_STATS -> {
-                startService(Intent(this, ExperimentalAppLockService::class.java))
-            }
+    private fun stopAllServices() {
+        Log.d(TAG, "Stopping all app lock services")
 
-            else -> {}
+        try {
+            stopService(Intent(this, ExperimentalAppLockService::class.java))
+            stopService(Intent(this, ShizukuAppLockService::class.java))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping services", e)
         }
     }
 }

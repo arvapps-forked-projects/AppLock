@@ -1,9 +1,12 @@
 package dev.pranav.applock.features.applist.ui
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.provider.Settings
+import android.content.pm.PackageManager
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -56,11 +59,17 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import dev.pranav.applock.R
+import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.core.utils.appLockRepository
+import dev.pranav.applock.core.utils.hasUsagePermission
+import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.core.utils.openAccessibilitySettings
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.ui.components.AccessibilityServiceGuideDialog
+import dev.pranav.applock.ui.components.AntiUninstallAccessibilityPermissionDialog
+import dev.pranav.applock.ui.components.ShizukuPermissionDialog
+import dev.pranav.applock.ui.components.UsageStatsPermission
 import rikka.shizuku.Shizuku
 
 @OptIn(
@@ -81,65 +90,60 @@ fun MainScreen(
 
     // Check if accessibility service is enabled
     var showAccessibilityDialog by remember { mutableStateOf(false) }
+    var showShizukuDialog by remember { mutableStateOf(false) }
+    var showUsageStatsDialog by remember { mutableStateOf(false) }
+    var showAntiUninstallAccessibilityDialog by remember { mutableStateOf(false) }
+    var showAntiUninstallDeviceAdminDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val appLockRepository = context.appLockRepository()
 
-        // Validate current backend and switch to fallback if needed
-        val validBackend = appLockRepository.validateAndSwitchBackend(context)
+        val selectedBackend = appLockRepository.getBackendImplementation()
 
-        // Start background monitoring service for continuous permission monitoring
-        try {
-            val monitoringIntent = Intent(
-                context,
-                Class.forName("dev.pranav.applock.core.monitoring.BackendMonitoringService")
-            )
-            context.startService(monitoringIntent)
-        } catch (e: Exception) {
-            // Monitoring service not available
+        val dpm =
+            context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val component = ComponentName(context, DeviceAdmin::class.java)
+
+        if (appLockRepository.isAntiUninstallEnabled()) {
+            Log.d("MainScreen", "Anti-uninstall is enabled")
+            if (!context.isAccessibilityServiceEnabled()) {
+                showAntiUninstallAccessibilityDialog = true
+            } else if (!dpm.isAdminActive(component)) {
+                showAntiUninstallDeviceAdminDialog = true
+            }
         }
 
-        // Check if we have any working backend
-        val hasWorkingBackend = appLockRepository.isBackendAvailable(validBackend, context)
-
-        if (!hasWorkingBackend) {
-            // No working backend, request permissions for the best available option
-            when (validBackend) {
-                BackendImplementation.ACCESSIBILITY -> {
+        when (selectedBackend) {
+            BackendImplementation.ACCESSIBILITY -> {
+                if (!context.isAccessibilityServiceEnabled()) {
                     showAccessibilityDialog = true
                 }
+            }
 
-                BackendImplementation.USAGE_STATS -> {
-                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
+            BackendImplementation.USAGE_STATS -> {
+                if (!context.hasUsagePermission()) {
+                    showUsageStatsDialog = true
                 }
+            }
 
-                BackendImplementation.SHIZUKU -> {
-                    try {
-                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
-                            Toast.makeText(
-                                context,
-                                "Please grant Shizuku permission manually",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        } else {
-                            Shizuku.requestPermission(423)
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            "Shizuku not available. Please install and configure Shizuku.",
-                            Toast.LENGTH_LONG
-                        ).show()
+            BackendImplementation.SHIZUKU -> {
+                try {
+                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                        showShizukuDialog = true
                     }
+                } catch (_: Exception) {
+                    Toast.makeText(
+                        context,
+                        "Shizuku not available. Please install and configure Shizuku.",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
     }
 
     // Show accessibility service guide dialog if needed
-    if (showAccessibilityDialog) {
+    if (showAccessibilityDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.isAccessibilityServiceEnabled()) {
         AccessibilityServiceGuideDialog(
             onOpenSettings = {
                 openAccessibilitySettings(context)
@@ -147,6 +151,79 @@ fun MainScreen(
             },
             onDismiss = {
                 showAccessibilityDialog = false
+            }
+        )
+    }
+
+    if (showShizukuDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+        ShizukuPermissionDialog(
+            onOpenSettings = {
+                try {
+                    if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                        Toast.makeText(
+                            context,
+                            "Please grant Shizuku permission manually",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        showShizukuDialog = false
+
+                        Shizuku.requestPermission(423)
+                    }
+                } catch (_: Exception) {
+                    Toast.makeText(
+                        context,
+                        "Shizuku not available. Please install and configure Shizuku.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            onDismiss = {
+                showShizukuDialog = false
+            }
+        )
+    }
+
+    if (showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.hasUsagePermission()) {
+        UsageStatsPermission(
+            onOpenSettings = {
+                context.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                showUsageStatsDialog = false
+            },
+            onDismiss = {
+                showUsageStatsDialog = false
+            }
+        )
+    }
+
+    if (showAntiUninstallAccessibilityDialog) {
+        AntiUninstallAccessibilityPermissionDialog(
+            onOpenSettings = {
+                openAccessibilitySettings(context)
+                showAntiUninstallAccessibilityDialog = false
+            },
+            onDismiss = {
+                showAntiUninstallAccessibilityDialog = false
+            }
+        )
+    }
+
+    if (showAntiUninstallDeviceAdminDialog) {
+        AntiUninstallAccessibilityPermissionDialog(
+            onOpenSettings = {
+                val component = ComponentName(context, DeviceAdmin::class.java)
+                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
+                    putExtra(
+                        DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                        "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
+                    )
+                }
+                context.startActivity(intent)
+                showAntiUninstallDeviceAdminDialog = false
+            },
+            onDismiss = {
+                showAntiUninstallDeviceAdminDialog = false
             }
         )
     }

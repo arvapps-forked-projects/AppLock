@@ -141,7 +141,6 @@ fun AdminDisableScreen(
             KeypadSection(
                 passwordState = passwordState,
                 maxLength = maxLength,
-                appLockAccessibilityService = null,
                 showBiometricButton = false,
                 fromMainActivity = false,
                 onBiometricAuth = {},

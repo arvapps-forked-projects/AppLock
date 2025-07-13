@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import dev.pranav.applock.core.ui.shapes
+import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.services.AppLockAccessibilityService
@@ -170,7 +171,7 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     private fun setupUI() {
         val onPinAttemptCallback = { pin: String ->
-            val isValid = appLockAccessibilityService?.validatePassword(pin) == true
+            val isValid = appLockRepository.validatePassword(pin)
             if (isValid) {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     AppLockManager.unlockApp(pkgName)
@@ -241,20 +242,6 @@ class PasswordOverlayActivity : FragmentActivity() {
             }
         }
 
-    private fun getAppNameFromPackageManager(packageName: String): String? {
-        return try {
-            val pm = applicationContext.packageManager
-            val appInfo = pm.getApplicationInfo(packageName, 0)
-            pm.getApplicationLabel(appInfo).toString()
-        } catch (e: PackageManager.NameNotFoundException) {
-            Log.e(TAG, "App not found for package name $packageName: ${e.message}")
-            null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting app name for $packageName: ${e.message}")
-            null
-        }
-    }
-
     override fun onResume() {
         super.onResume()
         movedToBackground = false
@@ -309,12 +296,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         AppLockManager.reportBiometricAuthFinished()
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }
-
-    private fun setupBackPressHandler() {
-        onBackPressedDispatcher.addCallback(this) {
-            // Prevent back navigation to maintain security
-        }
-    }
 }
 
 
@@ -336,8 +317,6 @@ fun PasswordOverlayScreen(
         val passwordState = remember { mutableStateOf("") }
         var showError by remember { mutableStateOf(false) }
         val maxLength = 6
-        val appLockAccessibilityService =
-            AppLockAccessibilityService.getInstance()
 
         Column(
             modifier = Modifier
@@ -381,7 +360,6 @@ fun PasswordOverlayScreen(
             KeypadSection(
                 passwordState = passwordState,
                 maxLength = maxLength,
-                appLockAccessibilityService = appLockAccessibilityService,
                 showBiometricButton = showBiometricButton,
                 fromMainActivity = fromMainActivity,
                 onBiometricAuth = onBiometricAuth,
@@ -470,7 +448,6 @@ fun PasswordIndicators(
 fun KeypadSection(
     passwordState: MutableState<String>,
     maxLength: Int,
-    appLockAccessibilityService: AppLockAccessibilityService?,
     showBiometricButton: Boolean,
     fromMainActivity: Boolean = false,
     onBiometricAuth: () -> Unit,
@@ -495,7 +472,6 @@ fun KeypadSection(
     val onSpecialKeyClick = remember(
         passwordState,
         maxLength,
-        appLockAccessibilityService,
         fromMainActivity,
         onAuthSuccess,
         onPinAttempt,
@@ -508,11 +484,10 @@ fun KeypadSection(
                 key = key,
                 passwordState = passwordState,
                 maxLength = maxLength,
-                appLockAccessibilityService = appLockAccessibilityService,
                 fromMainActivity = fromMainActivity,
                 onAuthSuccess = onAuthSuccess,
                 onPinAttempt = onPinAttempt,
-                contextForVibrate = context,
+                context = context,
                 onPasswordChange = onPasswordChange,
                 onPinIncorrect = onPinIncorrect
             )
@@ -575,14 +550,14 @@ private fun handleKeypadSpecialButtonLogic(
     key: String,
     passwordState: MutableState<String>,
     maxLength: Int,
-    appLockAccessibilityService: AppLockAccessibilityService?,
     fromMainActivity: Boolean,
     onAuthSuccess: () -> Unit,
     onPinAttempt: ((pin: String) -> Boolean)?,
-    contextForVibrate: Context,
+    context: Context,
     onPasswordChange: () -> Unit,
     onPinIncorrect: () -> Unit
 ) {
+    val appLockRepository = context.appLockRepository()
 
     when (key) {
         "0" -> addDigitToPassword(passwordState, key, maxLength, onPasswordChange)
@@ -596,16 +571,11 @@ private fun handleKeypadSpecialButtonLogic(
         "proceed" -> {
             if (passwordState.value.length == maxLength) {
                 if (fromMainActivity) {
-                    appLockAccessibilityService?.let { service ->
-                        if (service.validatePassword(passwordState.value)) {
-                            onAuthSuccess()
-                        } else {
-                            passwordState.value = ""
-                            vibrate(contextForVibrate, 100)
-                            onPinIncorrect()
-                        }
-                    } ?: run {
+                    if (appLockRepository.validatePassword(passwordState.value)) {
+                        onAuthSuccess()
+                    } else {
                         passwordState.value = ""
+                        vibrate(context, 100)
                         onPinIncorrect()
                     }
                 } else {
@@ -613,7 +583,7 @@ private fun handleKeypadSpecialButtonLogic(
                         val pinWasCorrectAndProcessed = attempt(passwordState.value)
                         if (!pinWasCorrectAndProcessed) {
                             passwordState.value = ""
-                            vibrate(contextForVibrate, 100)
+                            vibrate(context, 100)
                         }
                     } ?: run {
                         Log.e(

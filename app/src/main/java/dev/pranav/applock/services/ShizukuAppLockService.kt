@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -12,6 +13,7 @@ import dev.pranav.applock.R
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import dev.pranav.applock.shizuku.ShizukuActivityManager
+import rikka.shizuku.Shizuku
 
 class ShizukuAppLockService : Service() {
     private lateinit var appLockRepository: AppLockRepository
@@ -28,6 +30,12 @@ class ShizukuAppLockService : Service() {
         appLockRepository = AppLockRepository(applicationContext)
         Log.d(TAG, "ShizukuAppLockService created")
 
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Shizuku permission not granted, stopping service")
+            stopSelf()
+            return
+        }
+
         shizukuActivityManager = ShizukuActivityManager(this) { packageName, timeMillis ->
             Log.d(TAG, "Foreground app changed to: $packageName")
             if (packageName != AppLockManager.temporarilyUnlockedApp) {
@@ -40,6 +48,10 @@ class ShizukuAppLockService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "ShizukuAppLockService started")
         AppLockManager.resetRestartAttempts("ShizukuAppLockService")
+
+        // Stop other services to ensure only one runs at a time
+        stopOtherServices()
+
         createNotificationChannel()
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
@@ -53,6 +65,16 @@ class ShizukuAppLockService : Service() {
         }
 
         return START_STICKY
+    }
+
+    private fun stopOtherServices() {
+        Log.d(TAG, "Stopping other app lock services")
+
+        try {
+            stopService(Intent(this, ExperimentalAppLockService::class.java))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping other services", e)
+        }
     }
 
     override fun onDestroy() {

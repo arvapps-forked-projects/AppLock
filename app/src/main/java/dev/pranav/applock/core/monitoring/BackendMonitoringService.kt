@@ -74,11 +74,24 @@ class BackendMonitoringService : Service() {
         oldBackend: BackendImplementation,
         newBackend: BackendImplementation
     ) {
-        // Stop old backend service if it's not needed anymore
-        stopBackendService(oldBackend)
+        Log.d("BackendMonitor", "Switching from $oldBackend to $newBackend")
+
+        // Stop all services first to ensure only one runs at a time
+        stopAllServices()
 
         // Start new backend service
         startBackendService(newBackend)
+    }
+
+    private fun stopAllServices() {
+        Log.d("BackendMonitor", "Stopping all app lock services")
+
+        // Stop all possible services
+        stopService(Intent(this, ExperimentalAppLockService::class.java))
+        stopService(Intent(this, ShizukuAppLockService::class.java))
+
+        // Note: Accessibility service cannot be stopped programmatically
+        Log.d("BackendMonitor", "All stoppable services have been stopped")
     }
 
     private fun stopBackendService(backend: BackendImplementation) {

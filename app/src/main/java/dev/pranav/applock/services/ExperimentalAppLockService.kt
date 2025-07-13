@@ -8,7 +8,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.content.getSystemService
 import dev.pranav.applock.data.repository.AppLockRepository
-import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import java.util.Timer
 import java.util.TimerTask
@@ -34,6 +33,10 @@ class ExperimentalAppLockService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "ExperimentalAppLockService started")
         AppLockManager.resetRestartAttempts("ExperimentalAppLockService")
+
+        // Stop other services to ensure only one runs at a time
+        stopOtherServices()
+
         timer = Timer()
         timer?.schedule(object : TimerTask() {
             override fun run() {
@@ -50,6 +53,16 @@ class ExperimentalAppLockService : Service() {
             }
         }, 0, 250)
         return START_STICKY
+    }
+
+    private fun stopOtherServices() {
+        Log.d(TAG, "Stopping other app lock services")
+
+        try {
+            stopService(Intent(this, ShizukuAppLockService::class.java))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping other services", e)
+        }
     }
 
     override fun onDestroy() {
@@ -148,31 +161,6 @@ class ExperimentalAppLockService : Service() {
             return recentAppInfo
         }
         return null
-    }
-
-    private fun startServices() {
-        when (appLockRepository.getBackendImplementation()) {
-            BackendImplementation.SHIZUKU -> {
-                startService(Intent(this, ShizukuAppLockService::class.java))
-            }
-
-            else -> {
-                // if accessibility service is enabled, it should've already overtaken
-                // this is the last effort to restart the service, otherwise app lock is fucked
-                startService(Intent(this, ExperimentalAppLockService::class.java))
-            }
-        }
-        when (appLockRepository.getFallbackBackend()) {
-            BackendImplementation.SHIZUKU -> {
-                startService(Intent(this, ShizukuAppLockService::class.java))
-            }
-
-            else -> {
-                // if accessibility service is enabled, it should've already overtaken
-                // this is the last effort to restart the service, otherwise app lock is fucked
-                startService(Intent(this, ExperimentalAppLockService::class.java))
-            }
-        }
     }
 
     data class ForegroundAppInfo(

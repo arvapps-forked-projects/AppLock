@@ -152,6 +152,9 @@ object AppLockManager {
 
     private fun startServiceByBackend(context: Context, backend: BackendImplementation) {
         try {
+            // Stop all other services first to ensure only one runs at a time
+            stopAllServices(context)
+
             when (backend) {
                 BackendImplementation.SHIZUKU -> {
                     Log.d("AppLockManager", "Starting Shizuku service as fallback")
@@ -172,6 +175,17 @@ object AppLockManager {
             }
         } catch (e: Exception) {
             Log.e("AppLockManager", "Failed to start fallback service for backend: $backend", e)
+        }
+    }
+
+    private fun stopAllServices(context: Context) {
+        Log.d("AppLockManager", "Stopping all app lock services before starting new one")
+
+        try {
+            context.stopService(Intent(context, ExperimentalAppLockService::class.java))
+            context.stopService(Intent(context, ShizukuAppLockService::class.java))
+        } catch (e: Exception) {
+            Log.e("AppLockManager", "Error stopping services", e)
         }
     }
 

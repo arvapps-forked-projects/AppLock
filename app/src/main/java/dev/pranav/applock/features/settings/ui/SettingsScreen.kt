@@ -69,7 +69,6 @@ import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.core.utils.openAccessibilitySettings
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
-import dev.pranav.applock.features.admin.AdminDisableActivity
 import dev.pranav.applock.services.ExperimentalAppLockService
 import dev.pranav.applock.services.ShizukuAppLockService
 import dev.pranav.applock.ui.icons.Accessibility
@@ -119,6 +118,13 @@ fun SettingsScreen(
         mutableIntStateOf(appLockRepository.getUnlockTimeDuration())
     }
 
+    var antiUninstallEnabled by remember {
+        mutableStateOf(appLockRepository.isAntiUninstallEnabled())
+    }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var showDeviceAdminDialog by remember { mutableStateOf(false) }
+    var showAccessibilityDialog by remember { mutableStateOf(false) }
+
     val biometricManager = BiometricManager.from(context)
     val isBiometricAvailable = remember {
         biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
@@ -155,6 +161,52 @@ fun SettingsScreen(
                 unlockTimeDuration = newDuration
                 appLockRepository.setUnlockTimeDuration(newDuration)
                 showUnlockTimeDialog = false
+            }
+        )
+    }
+
+    if (showPermissionDialog) {
+        PermissionRequiredDialog(
+            onDismiss = { showPermissionDialog = false },
+            onConfirm = {
+                showPermissionDialog = false
+                showDeviceAdminDialog = true
+            }
+        )
+    }
+
+    if (showDeviceAdminDialog) {
+        DeviceAdminDialog(
+            onDismiss = { showDeviceAdminDialog = false },
+            onConfirm = {
+                showDeviceAdminDialog = false
+                val component = ComponentName(context, DeviceAdmin::class.java)
+                val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                    putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
+                    putExtra(
+                        DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                        "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
+                    )
+                }
+                context.startActivity(intent)
+            }
+        )
+    }
+
+    if (showAccessibilityDialog) {
+        AccessibilityDialog(
+            onDismiss = { showAccessibilityDialog = false },
+            onConfirm = {
+                showAccessibilityDialog = false
+                openAccessibilitySettings(context)
+
+                // Check if device admin is still needed after accessibility is granted
+                val dpm =
+                    context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val component = ComponentName(context, DeviceAdmin::class.java)
+                if (!dpm.isAdminActive(component)) {
+                    showDeviceAdminDialog = true
+                }
             }
         )
     }
@@ -263,47 +315,40 @@ fun SettingsScreen(
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                        ActionSettingItem(
-                            icon = Icons.Default.Person,
+                        SettingItem(
+                            icon = Icons.Default.Lock,
                             title = "Anti Uninstall",
                             description = "Prevents uninstallation of App Lock",
-                            onClick = {
-                                val dpm =
-                                    context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-                                val component = ComponentName(context, DeviceAdmin::class.java)
-                                if (dpm.isAdminActive(component)) {
-                                    if (appLockRepository.isAntiUninstallEnabled()) {
-                                        val intent =
-                                            Intent(context, AdminDisableActivity::class.java)
-                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                        context.startActivity(intent)
-                                    } else {
-                                        appLockRepository.setAntiUninstallEnabled(true)
-                                        Toast.makeText(
-                                            context,
-                                            "Anti Uninstall enabled.",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                            checked = antiUninstallEnabled,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    val dpm =
+                                        context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                                    val component = ComponentName(context, DeviceAdmin::class.java)
+                                    val hasDeviceAdmin = dpm.isAdminActive(component)
+                                    val hasAccessibility = context.isAccessibilityServiceEnabled()
+
+                                    when {
+                                        !hasDeviceAdmin && !hasAccessibility -> {
+                                            showPermissionDialog = true
+                                        }
+
+                                        !hasDeviceAdmin -> {
+                                            showDeviceAdminDialog = true
+                                        }
+
+                                        !hasAccessibility -> {
+                                            showAccessibilityDialog = true
+                                        }
+
+                                        else -> {
+                                            antiUninstallEnabled = true
+                                            appLockRepository.setAntiUninstallEnabled(true)
+                                        }
                                     }
                                 } else {
-                                    Toast.makeText(
-                                        context,
-                                        "Please enable Device Admin to use Anti Uninstall",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    val intent =
-                                        Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-                                            putExtra(
-                                                DevicePolicyManager.EXTRA_DEVICE_ADMIN,
-                                                component
-                                            )
-                                            putExtra(
-                                                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                                "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
-                                            )
-                                        }
-                                    context.startActivity(intent)
+                                    antiUninstallEnabled = false
+                                    appLockRepository.setAntiUninstallEnabled(false)
                                 }
                             }
                         )
@@ -566,10 +611,6 @@ fun BackendSelectionCard(
                         backend = backend,
                         isSelected = selectedBackend == backend,
                         onClick = {
-                            selectedBackend = backend
-                            appLockRepository.setBackendImplementation(backend)
-
-                            // Handle backend-specific setup
                             when (backend) {
                                 BackendImplementation.SHIZUKU -> {
                                     if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
@@ -579,6 +620,7 @@ fun BackendSelectionCard(
                                             Shizuku.requestPermission(423)
                                         }
                                     } else {
+                                        selectedBackend = backend
                                         appLockRepository.setBackendImplementation(
                                             BackendImplementation.SHIZUKU
                                         )
@@ -603,7 +645,10 @@ fun BackendSelectionCard(
                                             "Please grant usage access permission.",
                                             Toast.LENGTH_LONG
                                         ).show()
+                                        return@BackendSelectionItem
                                     }
+
+                                    selectedBackend = backend
 
                                     appLockRepository.setBackendImplementation(BackendImplementation.USAGE_STATS)
                                     context.startService(
@@ -617,7 +662,10 @@ fun BackendSelectionCard(
                                 BackendImplementation.ACCESSIBILITY -> {
                                     if (!context.isAccessibilityServiceEnabled()) {
                                         openAccessibilitySettings(context)
+                                        return@BackendSelectionItem
                                     }
+                                    selectedBackend = backend
+
                                     appLockRepository.setBackendImplementation(BackendImplementation.ACCESSIBILITY)
                                 }
                             }
@@ -806,4 +854,94 @@ private fun getBackendIcon(backend: BackendImplementation): ImageVector {
         BackendImplementation.USAGE_STATS -> Icons.Default.QueryStats
         BackendImplementation.SHIZUKU -> Icons.Default.AutoAwesome
     }
+}
+
+@Composable
+fun PermissionRequiredDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Permissions Required") },
+        text = {
+            Text(
+                "To enable Anti-Uninstall protection, App Lock needs two permissions:\n\n" +
+                        "1. Device Administrator - Prevents uninstallation\n" +
+                        "2. Accessibility Service - Monitors app usage\n\n" +
+                        "These permissions help protect the app from being removed without your knowledge."
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Grant Permissions")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun DeviceAdminDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Device Administrator") },
+        text = {
+            Text(
+                "App Lock needs Device Administrator permission to prevent uninstallation.\n\n" +
+                        "This permission allows the app to:\n" +
+                        "• Prevent itself from being uninstalled\n" +
+                        "• Protect your app lock settings\n\n" +
+                        "It will not affect your device's normal functionality."
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Enable")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun AccessibilityDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Accessibility Service") },
+        text = {
+            Text(
+                "App Lock needs Accessibility Service permission to monitor app usage.\n\n" +
+                        "This permission allows the app to:\n" +
+                        "• Detect when apps are opened\n" +
+                        "• Show lock screen when needed\n" +
+                        "• Provide seamless app protection\n\n" +
+                        "Your privacy is protected - no data is collected or shared."
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Enable")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

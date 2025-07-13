@@ -4,17 +4,11 @@ import android.util.Log
 import androidx.activity.compose.LocalActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntOffset
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
@@ -29,9 +23,7 @@ import dev.pranav.applock.features.settings.ui.SettingsScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController, startDestination: String) {
-    val duration = 700
-    val slideAnimationSpec: FiniteAnimationSpec<IntOffset> = tween(durationMillis = duration)
-    val fadeAndScaleAnimationSpec: FiniteAnimationSpec<Float> = tween(durationMillis = duration)
+    val duration = 400
 
     val application = LocalContext.current.applicationContext as AppLockApplication
 
@@ -39,37 +31,13 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
         navController = navController,
         startDestination = startDestination,
         enterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { it / 2 },
-                animationSpec = slideAnimationSpec
-            ) +
-                    fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                    scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-        },
-        exitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { -it / 2 },
-                animationSpec = slideAnimationSpec
-            ) +
-                    fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                    scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+            fadeIn(animationSpec = tween(duration)) +
+                    scaleIn(initialScale = 0.9f, animationSpec = tween(duration))
         },
         popEnterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { -it / 2 },
-                animationSpec = slideAnimationSpec
-            ) +
-                    fadeIn(animationSpec = fadeAndScaleAnimationSpec) +
-                    scaleIn(initialScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
+            fadeIn(animationSpec = tween(duration)) +
+                    scaleIn(initialScale = 0.9f, animationSpec = tween(duration))
         },
-        popExitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { it / 2 },
-                animationSpec = slideAnimationSpec
-            ) +
-                    fadeOut(animationSpec = fadeAndScaleAnimationSpec) +
-                    scaleOut(targetScale = 0.9f, animationSpec = fadeAndScaleAnimationSpec)
-        }
     ) {
         composable(Screen.AppIntro.route) { AppIntroScreen(navController) }
 
@@ -81,6 +49,7 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
 
         composable(Screen.PasswordOverlay.route) {
             val context = LocalActivity.current as FragmentActivity
+
             PasswordOverlayScreen(
                 showBiometricButton = application.appLockRepository.isBiometricAuthEnabled(),
                 fromMainActivity = true,
@@ -129,8 +98,13 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
                     biometricPrompt.authenticate(promptInfo)
                 },
                 onAuthSuccess = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo(Screen.PasswordOverlay.route) { inclusive = true }
+                    // if there is back stack, pop back, otherwise navigate to Main
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.PasswordOverlay.route) { inclusive = true }
+                        }
                     }
                 }
             )

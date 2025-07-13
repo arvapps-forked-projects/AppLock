@@ -63,6 +63,8 @@ import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.core.utils.launchBatterySettings
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.appintro.domain.AppIntroManager
+import dev.pranav.applock.services.ExperimentalAppLockService
+import dev.pranav.applock.services.ShizukuAppLockService
 import dev.pranav.applock.ui.icons.Accessibility
 import dev.pranav.applock.ui.icons.BatterySaver
 import dev.pranav.applock.ui.icons.Display
@@ -388,6 +390,9 @@ fun AppIntroScreen(navController: NavController) {
                     } else {
                         context.appLockRepository()
                             .setBackendImplementation(BackendImplementation.USAGE_STATS)
+                        context.startService(
+                            Intent(context, ExperimentalAppLockService::class.java)
+                        )
                         true
                     }
                 }
@@ -421,6 +426,9 @@ fun AppIntroScreen(navController: NavController) {
                     } else {
                         context.appLockRepository()
                             .setBackendImplementation(BackendImplementation.SHIZUKU)
+                        context.startService(
+                            Intent(context, ShizukuAppLockService::class.java)
+                        )
                         true
                     }
                 }

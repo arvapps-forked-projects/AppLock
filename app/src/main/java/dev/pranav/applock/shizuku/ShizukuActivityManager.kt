@@ -89,6 +89,7 @@ class ShizukuActivityManager(
     }
 
     fun stop() {
+        context.unregisterReceiver(deviceUnlockReceiver ?: return)
         try {
             if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
                 Log.e(TAG, "Shizuku is not available")
