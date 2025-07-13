@@ -32,14 +32,11 @@ fun vibrate(context: Context, duration: Long = 500) {
 }
 
 /**
- * Utility function to launch the appropriate OEM-specific settings screen for battery optimization.
- * This function handles various manufacturers and their specific intents for managing auto-start
- * and battery optimization settings.
- *
- * @param context The application context used to start the activity.
+ * Launches the battery optimization settings for the app.
+ * If the specific request intent is not available, it falls back to the standard settings.
  */
 @SuppressLint("BatteryLife")
-fun launchProprietaryOemSettings(context: Context) {
+fun launchBatterySettings(context: Context) {
     val pm = context.packageManager
     val requestIgnoreIntent =
         Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
@@ -89,3 +86,7 @@ fun Context.hasUsagePermission(): Boolean {
         return false
     }
 }
+
+fun Context.appLockRepository() =
+    (applicationContext as? dev.pranav.applock.AppLockApplication)?.appLockRepository
+        ?: throw IllegalStateException("AppLockRepository not initialized")

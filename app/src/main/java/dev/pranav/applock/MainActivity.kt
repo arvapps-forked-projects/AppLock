@@ -1,9 +1,6 @@
 package dev.pranav.applock
 
-import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -17,8 +14,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.compose.rememberNavController
 import dev.pranav.applock.core.navigation.AppNavHost
 import dev.pranav.applock.core.navigation.Screen
-import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
-import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.features.appintro.domain.AppIntroManager
 import dev.pranav.applock.ui.theme.AppLockTheme
 
@@ -52,30 +47,6 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (AppIntroManager.shouldShowIntro(this)) {
-            return
-        }
-        checkAccessibilityServiceStatus()
-    }
-
-    private fun checkAccessibilityServiceStatus() {
-        if (!isAccessibilityServiceEnabled()) {
-            Toast.makeText(
-                this,
-                "Please enable the accessibility service for App Lock to function properly",
-                Toast.LENGTH_LONG
-            ).show()
-
-            vibrate(this, 300)
-
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(intent)
         }
     }
 

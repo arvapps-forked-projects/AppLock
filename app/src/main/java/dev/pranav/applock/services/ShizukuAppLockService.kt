@@ -39,20 +39,37 @@ class ShizukuAppLockService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "ShizukuAppLockService started")
+        AppLockManager.resetRestartAttempts("ShizukuAppLockService")
         createNotificationChannel()
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
-        shizukuActivityManager?.start()
+
+        val shizukuStarted = shizukuActivityManager?.start()
+        if (shizukuStarted == false) {
+            Log.e(TAG, "Shizuku failed to start, triggering fallback")
+            AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         return START_STICKY
     }
 
     override fun onDestroy() {
         shizukuActivityManager?.stop()
+        Log.d(TAG, "ShizukuAppLockService destroyed")
+        AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "ShizukuAppLockService unbound")
+        AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
+        return super.onUnbind(intent)
     }
 
     private fun createNotificationChannel() {

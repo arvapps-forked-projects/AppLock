@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager
-import android.app.usage.UsageStatsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -16,6 +15,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 
 @SuppressLint("AccessibilityPolicy")
@@ -30,8 +30,6 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     // Package name of the system app that provides the recent apps functionality
     private var recentsPackage = ""
-
-    private lateinit var usageStatsManager: UsageStatsManager
 
     enum class BiometricState {
         IDLE, AUTH_STARTED
@@ -53,12 +51,9 @@ class AppLockAccessibilityService : AccessibilityService() {
         appLockRepository = AppLockRepository(applicationContext)
         isServiceRunning = true
         instance = this
+        AppLockManager.resetRestartAttempts("AppLockAccessibilityService")
 
-        if (appLockRepository.isShizukuImplEnabled()) {
-            startService(Intent(this, ShizukuAppLockService::class.java))
-        } else if (appLockRepository.isExperimentalImplEnabled()) {
-            startService(Intent(this, ExperimentalAppLockService::class.java))
-        }
+        startServices()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -80,7 +75,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (!::appLockRepository.isInitialized) return
 
-        if (appLockRepository.isShizukuImplEnabled() || appLockRepository.isExperimentalImplEnabled()) {
+        if (appLockRepository.getBackendImplementation() != BackendImplementation.ACCESSIBILITY && appLockRepository.getFallbackBackend() != BackendImplementation.ACCESSIBILITY) {
             if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
                 Log.d(TAG, "In settings, in activity: ${event.className}")
                 checkForDeviceAdminDeactivation(event)
@@ -132,7 +127,7 @@ class AppLockAccessibilityService : AccessibilityService() {
                 return
             }
 
-            if (secondLastEvent.first.packageName == getLauncherPackageNames(this) && AppLockManager.isAppTemporarilyUnlocked(
+            if (secondLastEvent.first.packageName in getLauncherPackageNames(this) && AppLockManager.isAppTemporarilyUnlocked(
                     lastEvent.first.packageName.toString()
                 ) && lastEvent.second - secondLastEvent.second < 5000
             ) {
@@ -221,12 +216,21 @@ class AppLockAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility service interrupted")
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "Accessibility service unbound")
+        isServiceRunning = false
+        instance = null
+        AppLockManager.startFallbackServices(this, AppLockAccessibilityService::class.java)
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         isServiceRunning = false
         instance = null
-        stopService(Intent(this, ShizukuAppLockService::class.java))
-        stopService(Intent(this, ExperimentalAppLockService::class.java))
+
+        Log.d(TAG, "Accessibility service destroyed")
+        AppLockManager.startFallbackServices(this, AppLockAccessibilityService::class.java)
     }
 
     fun validatePassword(password: String): Boolean {
@@ -249,14 +253,13 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // Check if password overlay is already active
-        if (PasswordOverlayActivity.isActive() && !appLockRepository.isShizukuImplEnabled()) {
+        if (PasswordOverlayActivity.isActive()) {
             Log.d(TAG, "Password overlay already active, skipping app lock for $packageName")
             return
         }
 
         val lockedApps = appLockRepository.getLockedApps()
         if (!lockedApps.contains(packageName)) {
-            Log.d(TAG, "App $packageName is not locked, skipping")
             return
         }
 
@@ -314,5 +317,32 @@ class AppLockAccessibilityService : AccessibilityService() {
         val resolveInfo =
             packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         return resolveInfo.map { it.activityInfo.packageName }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    }
+
+    private fun startServices() {
+        when (appLockRepository.getBackendImplementation()) {
+            BackendImplementation.SHIZUKU -> {
+                startService(Intent(this, ShizukuAppLockService::class.java))
+            }
+
+            BackendImplementation.USAGE_STATS -> {
+                startService(Intent(this, ExperimentalAppLockService::class.java))
+            }
+
+            else -> {}
+        }
+        when (appLockRepository.getFallbackBackend()) {
+            BackendImplementation.SHIZUKU -> {
+                startService(Intent(this, ShizukuAppLockService::class.java))
+            }
+
+            BackendImplementation.USAGE_STATS -> {
+                startService(Intent(this, ExperimentalAppLockService::class.java))
+            }
+
+            else -> {}
+        }
     }
 }

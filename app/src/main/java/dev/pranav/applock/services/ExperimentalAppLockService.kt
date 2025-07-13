@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.content.getSystemService
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import java.util.Timer
 import java.util.TimerTask
@@ -21,34 +22,40 @@ class ExperimentalAppLockService : Service() {
     override fun onCreate() {
         super.onCreate()
         appLockRepository = AppLockRepository(applicationContext)
-        if (appLockRepository.isExperimentalImplEnabled()) {
-            usageStatsManager = getSystemService()!!
-        }
+        usageStatsManager = getSystemService()!!
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.d(TAG, "ExperimentalAppLockService unbound")
+        AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
+        return super.onUnbind(intent)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (appLockRepository.isExperimentalImplEnabled()) {
-            timer = Timer()
-            timer?.schedule(object : TimerTask() {
-                override fun run() {
-                    if (isDeviceLocked()) {
-                        AppLockManager.appUnlockTimes.clear()
-                        AppLockManager.clearTemporarilyUnlockedApp()
-                    }
-                    val foregroundApp = getCurrentForegroundAppInfo()
-                    if (foregroundApp == null) {
-                        AppLockManager.clearTemporarilyUnlockedApp()
-                        return
-                    }
-                    checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
+        Log.d(TAG, "ExperimentalAppLockService started")
+        AppLockManager.resetRestartAttempts("ExperimentalAppLockService")
+        timer = Timer()
+        timer?.schedule(object : TimerTask() {
+            override fun run() {
+                if (isDeviceLocked()) {
+                    AppLockManager.appUnlockTimes.clear()
+                    AppLockManager.clearTemporarilyUnlockedApp()
                 }
-            }, 0, 250)
-        }
+                val foregroundApp = getCurrentForegroundAppInfo()
+                if (foregroundApp == null) {
+                    AppLockManager.clearTemporarilyUnlockedApp()
+                    return
+                }
+                checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
+            }
+        }, 0, 250)
         return START_STICKY
     }
 
     override fun onDestroy() {
         timer?.cancel()
+        Log.d(TAG, "ExperimentalAppLockService destroyed")
+        AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
         super.onDestroy()
     }
 
@@ -141,6 +148,31 @@ class ExperimentalAppLockService : Service() {
             return recentAppInfo
         }
         return null
+    }
+
+    private fun startServices() {
+        when (appLockRepository.getBackendImplementation()) {
+            BackendImplementation.SHIZUKU -> {
+                startService(Intent(this, ShizukuAppLockService::class.java))
+            }
+
+            else -> {
+                // if accessibility service is enabled, it should've already overtaken
+                // this is the last effort to restart the service, otherwise app lock is fucked
+                startService(Intent(this, ExperimentalAppLockService::class.java))
+            }
+        }
+        when (appLockRepository.getFallbackBackend()) {
+            BackendImplementation.SHIZUKU -> {
+                startService(Intent(this, ShizukuAppLockService::class.java))
+            }
+
+            else -> {
+                // if accessibility service is enabled, it should've already overtaken
+                // this is the last effort to restart the service, otherwise app lock is fucked
+                startService(Intent(this, ExperimentalAppLockService::class.java))
+            }
+        }
     }
 
     data class ForegroundAppInfo(

@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,8 +23,13 @@ fun AccessibilityServiceGuideDialog(
     onDismiss: () -> Unit
 ) {
     AlertDialog(
+        modifier = Modifier.fillMaxWidth(0.8f),
         onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true),
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        ),
         title = {
             Text(
                 text = "Enable Accessibility Service",
@@ -48,22 +54,22 @@ fun AccessibilityServiceGuideDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "1. Tap 'Open Settings' below\n2. Find and select 'App Lock'\n3. Toggle the switch to ON\n4. Tap 'Allow' in the confirmation dialog",
+                    text = "1. Tap 'Open Settings' below\n2. Toggle the switch to ON\n3. Tap 'Allow' in the confirmation dialog",
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            Button(onClick = onOpenSettings) {
+            FilledTonalButton(onClick = onOpenSettings) {
                 Text("Open Settings")
             }
         },
         dismissButton = {
-            Button(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

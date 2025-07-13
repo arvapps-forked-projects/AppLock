@@ -1,7 +1,10 @@
 package dev.pranav.applock.features.applist.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,9 +57,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import dev.pranav.applock.R
 import dev.pranav.applock.core.navigation.Screen
-import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
+import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.openAccessibilitySettings
+import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.ui.components.AccessibilityServiceGuideDialog
+import rikka.shizuku.Shizuku
 
 @OptIn(
     ExperimentalMaterial3ExpressiveApi::class,
@@ -78,11 +83,58 @@ fun MainScreen(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val isAccessibilityEnabled =
-            context.isAccessibilityServiceEnabled()
+        val appLockRepository = context.appLockRepository()
 
-        if (!isAccessibilityEnabled) {
-            showAccessibilityDialog = true
+        // Validate current backend and switch to fallback if needed
+        val validBackend = appLockRepository.validateAndSwitchBackend(context)
+
+        // Start background monitoring service for continuous permission monitoring
+        try {
+            val monitoringIntent = Intent(
+                context,
+                Class.forName("dev.pranav.applock.core.monitoring.BackendMonitoringService")
+            )
+            context.startService(monitoringIntent)
+        } catch (e: Exception) {
+            // Monitoring service not available
+        }
+
+        // Check if we have any working backend
+        val hasWorkingBackend = appLockRepository.isBackendAvailable(validBackend, context)
+
+        if (!hasWorkingBackend) {
+            // No working backend, request permissions for the best available option
+            when (validBackend) {
+                BackendImplementation.ACCESSIBILITY -> {
+                    showAccessibilityDialog = true
+                }
+
+                BackendImplementation.USAGE_STATS -> {
+                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                }
+
+                BackendImplementation.SHIZUKU -> {
+                    try {
+                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                            Toast.makeText(
+                                context,
+                                "Please grant Shizuku permission manually",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            Shizuku.requestPermission(423)
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Shizuku not available. Please install and configure Shizuku.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
         }
     }
 
