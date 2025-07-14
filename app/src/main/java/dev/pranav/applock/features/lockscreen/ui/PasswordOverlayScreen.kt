@@ -329,11 +329,11 @@ fun PasswordOverlayScreen(
 
             Text(
                 text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    "Unlock: $lockedAppName"
+                    lockedAppName
                 else
                     "Enter password to continue",
                 style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    MaterialTheme.typography.titleMediumEmphasized
+                    MaterialTheme.typography.titleLargeEmphasized
                 else
                     MaterialTheme.typography.headlineMediumEmphasized,
                 textAlign = TextAlign.Center
@@ -634,7 +634,7 @@ fun KeypadRow(
                         imageVector = icons[index]!!,
                         contentDescription = key,
                         modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = if (key == "backspace") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
                     )
                 } else {
                     Text(

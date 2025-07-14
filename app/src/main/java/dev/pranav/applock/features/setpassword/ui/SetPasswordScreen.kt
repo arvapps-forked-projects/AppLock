@@ -233,11 +233,6 @@ fun SetPasswordScreen(
                     }
                 }
             }
-            if (isVerifyOldPasswordMode) {
-                TextButton(onClick = { launchDeviceCredentialAuth() }) {
-                    Text("Reset using device password")
-                }
-            }
 
             if (showMismatchError) {
                 Text(
@@ -331,6 +326,11 @@ fun SetPasswordScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            if (isVerifyOldPasswordMode) {
+                TextButton(onClick = { launchDeviceCredentialAuth() }) {
+                    Text("Reset using device password")
+                }
+            }
 
             if (isVerifyOldPasswordMode || isConfirmationMode) {
                 TextButton(
