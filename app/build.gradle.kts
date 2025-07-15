@@ -14,8 +14,8 @@ android {
         applicationId = "dev.pranav.applock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,7 +40,6 @@ android {
     }
     buildFeatures {
         compose = true
-        aidl = true
     }
 
     dependenciesInfo {
@@ -67,7 +66,7 @@ dependencies {
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
-    compileOnly("dev.rikka.hidden:stub:4.4.0")
+    compileOnly(libs.shizuku.stub)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
