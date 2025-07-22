@@ -61,9 +61,12 @@ root required.
 
 ## Download
 
-The app is available for download via IzzyOnDroid aswell
+The app is available for download via F-Droid, IzzyOnDroid aswell
 as [Github Releases](https://github.com/PranavPurwar/AppLock/releases/latest).
 
+<a href="https://f-droid.org/packages/dev.pranav.applock/">
+    <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="F-Droid" height="100"/>
+  </a>
 <a href="https://apt.izzysoft.de/packages/dev.pranav.applock">
     <img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="IzzyOnDroid" height="100"/>
   </a>
