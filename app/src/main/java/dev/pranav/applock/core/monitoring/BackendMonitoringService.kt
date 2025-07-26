@@ -66,7 +66,7 @@ class BackendMonitoringService : Service() {
         // If backend changed, we need to start/stop appropriate services
         if (newActiveBackend != currentActive) {
             Log.i("BackendMonitor", "Backend switched from $currentActive to $newActiveBackend")
-            handleBackendSwitch(currentActive, newActiveBackend)
+            handleBackendSwitch(currentActive!!, newActiveBackend)
         }
     }
 

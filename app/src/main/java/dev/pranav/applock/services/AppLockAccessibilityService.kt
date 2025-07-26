@@ -17,6 +17,7 @@ import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
+import dev.pranav.applock.services.AppLockManager.isServiceRunning
 
 @SuppressLint("AccessibilityPolicy")
 class AppLockAccessibilityService : AccessibilityService() {
@@ -51,7 +52,6 @@ class AppLockAccessibilityService : AccessibilityService() {
         appLockRepository = AppLockRepository(applicationContext)
         isServiceRunning = true
         instance = this
-        AppLockManager.resetRestartAttempts("AppLockAccessibilityService")
 
         startServices()
     }
@@ -70,16 +70,46 @@ class AppLockAccessibilityService : AccessibilityService() {
         info.packageNames = null
         serviceInfo = info
         Log.d(TAG, "Accessibility service connected")
+
+        AppLockManager.resetRestartAttempts("AppLockAccessibilityService")
+        appLockRepository.setActiveBackend(BackendImplementation.ACCESSIBILITY)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (!::appLockRepository.isInitialized) return
 
-        if (appLockRepository.getBackendImplementation() != BackendImplementation.ACCESSIBILITY) {
-            if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
-                Log.d(TAG, "In settings, in activity: ${event.className}")
-                checkForDeviceAdminDeactivation(event)
+        // Always handle device admin deactivation regardless of backend
+        if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
+            Log.d(TAG, "In settings, in activity: ${event.className}")
+            checkForDeviceAdminDeactivation(event)
+        }
+
+        // Check if accessibility should handle app locking
+        val currentBackend = appLockRepository.getBackendImplementation()
+        val shouldHandleAppLocking = when (currentBackend) {
+            BackendImplementation.ACCESSIBILITY -> {
+                Log.d(TAG, "Accessibility is the chosen backend, handling app locking")
+                true
             }
+
+            BackendImplementation.SHIZUKU -> {
+                val shouldFallback = !isServiceRunning(ShizukuAppLockService::class.java)
+                if (shouldFallback) {
+                    Log.d(TAG, "Shizuku service not running, accessibility acting as fallback")
+                }
+                shouldFallback
+            }
+
+            BackendImplementation.USAGE_STATS -> {
+                val shouldFallback = !isServiceRunning(ExperimentalAppLockService::class.java)
+                if (shouldFallback) {
+                    Log.d(TAG, "Experimental service not running, accessibility acting as fallback")
+                }
+                shouldFallback
+            }
+        }
+
+        if (!shouldHandleAppLocking) {
             return
         }
 
@@ -234,6 +264,11 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     fun checkAndLockApp(packageName: String, currentTime: Long) {
+        if (AppLockManager.isLockScreenShown.get()) { // Check if lock screen is already shown
+            Log.d(TAG, "Password overlay already active, skipping app lock for $packageName")
+            return
+        }
+
         if (shouldBeIgnored(packageName)) {
             return
         }
@@ -246,12 +281,6 @@ class AppLockAccessibilityService : AccessibilityService() {
             return
         } else {
             AppLockManager.clearTemporarilyUnlockedApp()
-        }
-
-        // Check if password overlay is already active
-        if (PasswordOverlayActivity.isActive()) {
-            Log.d(TAG, "Password overlay already active, skipping app lock for $packageName")
-            return
         }
 
         val lockedApps = appLockRepository.getLockedApps()
@@ -291,9 +320,11 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         try {
+            AppLockManager.isLockScreenShown.set(true) // Set to true before attempting to start
             startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start password overlay: ${e.message}", e)
+            AppLockManager.isLockScreenShown.set(false) // Reset on failure
         }
     }
 

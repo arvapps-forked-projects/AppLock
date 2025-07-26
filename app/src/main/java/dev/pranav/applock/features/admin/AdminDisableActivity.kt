@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.pranav.applock.core.broadcast.DeviceAdmin
+import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.features.lockscreen.ui.KeypadSection
 import dev.pranav.applock.features.lockscreen.ui.PasswordIndicators
@@ -37,9 +38,10 @@ class AdminDisableActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        appLockRepository = AppLockRepository(this)
         devicePolicyManager = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         deviceAdminComponentName = ComponentName(this, DeviceAdmin::class.java)
+
+        appLockRepository = appLockRepository()
 
         // Set up back press callback to prevent admin disabling
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {

@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.0-alpha08"
+agp = "8.13.0-alpha02"
 shizuku = "13.1.5"
 biometric = "1.4.0-alpha02"
 fragmentKtx = "1.8.8"
@@ -11,7 +11,12 @@ composeBom = "2025.06.01"
 material3 = "1.4.0-alpha17"
 materialIconsCore = "1.7.8"
 navigationCompose = "2.9.1"
-shizuku-stub = "4.4.0"
+shizuku-hidden = "4.4.0"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+appcompat = "1.7.1"
+material = "1.12.0"
 
 [libraries]
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityCompose" }
@@ -30,9 +35,15 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+shizuku-compat = { module = "dev.rikka.hidden:compat", version.ref = "shizuku-hidden" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
-shizuku-stub = { module = "dev.rikka.hidden:stub", version.ref = "shizuku-stub" }
+shizuku-stub = { module = "dev.rikka.hidden:stub", version.ref = "shizuku-hidden" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

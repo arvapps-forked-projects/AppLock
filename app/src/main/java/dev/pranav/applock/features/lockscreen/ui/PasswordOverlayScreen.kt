@@ -87,22 +87,10 @@ class PasswordOverlayActivity : FragmentActivity() {
     private var movedToBackground = false
     private var appName: String = ""
 
-    companion object {
-        private const val TAG = "PasswordOverlay"
-        private var activeInstance: PasswordOverlayActivity? = null
-
-        fun isActive(): Boolean {
-            return activeInstance != null && !activeInstance!!.isFinishing && !activeInstance!!.isDestroyed
-        }
-    }
+    private val TAG = "PasswordOverlayActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        activeInstance?.let {
-            if (!it.isFinishing && it != this) it.finishAffinity()
-        }
-        activeInstance = this
 
         lockedPackageNameFromIntent = intent.getStringExtra("locked_package")
         if (lockedPackageNameFromIntent == null) {
@@ -245,6 +233,7 @@ class PasswordOverlayActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         movedToBackground = false
+        AppLockManager.isLockScreenShown.set(true) // Set to true when activity is visible
         // Apply user preferences asynchronously to avoid blocking
         Thread {
             applyUserPreferences()
@@ -283,6 +272,7 @@ class PasswordOverlayActivity : FragmentActivity() {
     override fun onPause() {
         super.onPause()
         movedToBackground = true
+        AppLockManager.isLockScreenShown.set(false) // Set to false when activity is no longer visible
         if (!isFinishing && !isDestroyed) {
             Log.d(TAG, "Activity moved to background: $lockedPackageNameFromIntent")
             AppLockManager.reportBiometricAuthFinished()
@@ -292,7 +282,7 @@ class PasswordOverlayActivity : FragmentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (activeInstance === this) activeInstance = null
+        AppLockManager.isLockScreenShown.set(false) // Failsafe: Ensure it's false on destroy
         AppLockManager.reportBiometricAuthFinished()
         Log.d(TAG, "PasswordOverlayActivity onDestroy for $lockedPackageNameFromIntent")
     }

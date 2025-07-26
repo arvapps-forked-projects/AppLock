@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("dev.rikka.tools.refine") version "4.4.0"
 }
 
 android {
@@ -66,7 +67,9 @@ dependencies {
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
-    compileOnly(libs.shizuku.stub)
+    implementation("dev.rikka.tools.refine:runtime:4.4.0")
+    compileOnly(project(":hidden-api"))
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

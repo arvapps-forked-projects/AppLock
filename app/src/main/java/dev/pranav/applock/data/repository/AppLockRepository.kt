@@ -10,6 +10,9 @@ import androidx.core.content.PermissionChecker.checkSelfPermission
 import androidx.core.content.edit
 import dev.pranav.applock.core.utils.hasUsagePermission
 import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
+import dev.pranav.applock.services.AppLockAccessibilityService
+import dev.pranav.applock.services.ExperimentalAppLockService
+import dev.pranav.applock.services.ShizukuAppLockService
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
 
@@ -20,6 +23,8 @@ class AppLockRepository(context: Context) {
 
     private val settingsPrefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME_SETTINGS, Context.MODE_PRIVATE)
+
+    private var activeBackend: BackendImplementation? = null
 
     // Locked Apps
     fun getLockedApps(): Set<String> {
@@ -98,48 +103,6 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_ANTI_UNINSTALL, false)
     }
 
-    // Legacy methods for backward compatibility - deprecated, use BackendImplementation instead
-    @Deprecated(
-        "Use BackendImplementation enum instead",
-        ReplaceWith("getBackendImplementation() == BackendImplementation.USAGE_STATS")
-    )
-    fun setExperimentalImplEnabled(enabled: Boolean) {
-        if (enabled) {
-            setBackendImplementation(BackendImplementation.USAGE_STATS)
-        } else if (getBackendImplementation() == BackendImplementation.USAGE_STATS) {
-            setBackendImplementation(BackendImplementation.ACCESSIBILITY)
-        }
-    }
-
-    @Deprecated(
-        "Use BackendImplementation enum instead",
-        ReplaceWith("getBackendImplementation() == BackendImplementation.USAGE_STATS")
-    )
-    fun isExperimentalImplEnabled(): Boolean {
-        return getBackendImplementation() == BackendImplementation.USAGE_STATS
-    }
-
-    @Deprecated(
-        "Use BackendImplementation enum instead",
-        ReplaceWith("getBackendImplementation() == BackendImplementation.SHIZUKU")
-    )
-    fun setShizukuImplEnabled(enabled: Boolean) {
-        if (enabled) {
-            setBackendImplementation(BackendImplementation.SHIZUKU)
-        } else if (getBackendImplementation() == BackendImplementation.SHIZUKU) {
-            setBackendImplementation(BackendImplementation.ACCESSIBILITY)
-        }
-    }
-
-    @Deprecated(
-        "Use BackendImplementation enum instead",
-        ReplaceWith("getBackendImplementation() == BackendImplementation.SHIZUKU")
-    )
-    fun isShizukuImplEnabled(): Boolean {
-        return getBackendImplementation() == BackendImplementation.SHIZUKU
-    }
-
-    // Backend implementation management
     fun setBackendImplementation(backend: BackendImplementation) {
         settingsPrefs.edit { putString(KEY_BACKEND_IMPLEMENTATION, backend.name) }
     }
@@ -172,19 +135,11 @@ class AppLockRepository(context: Context) {
 
     // Active backend tracking (runtime switching)
     fun setActiveBackend(backend: BackendImplementation) {
-        settingsPrefs.edit { putString(KEY_ACTIVE_BACKEND, backend.name) }
+        activeBackend = backend
     }
 
-    fun getActiveBackend(): BackendImplementation {
-        val backend = settingsPrefs.getString(
-            KEY_ACTIVE_BACKEND,
-            getBackendImplementation().name // Default to primary backend
-        )
-        return try {
-            BackendImplementation.valueOf(backend ?: getBackendImplementation().name)
-        } catch (e: IllegalArgumentException) {
-            getBackendImplementation()
-        }
+    fun getActiveBackend(): BackendImplementation? {
+        return activeBackend
     }
 
     // Backend status checking
@@ -209,16 +164,12 @@ class AppLockRepository(context: Context) {
         }
     }
 
-    // Get the best available backend (primary if available, fallback otherwise)
-    fun getBestAvailableBackend(context: Context): BackendImplementation {
-        val primary = getBackendImplementation()
-        val fallback = getFallbackBackend()
+    fun setShizukuExperimentalEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_SHIZUKU_EXPERIMENTAL, enabled) }
+    }
 
-        return when {
-            isBackendAvailable(primary, context) -> primary
-            primary != fallback && isBackendAvailable(fallback, context) -> fallback
-            else -> primary // Return primary even if not available (will trigger permission request)
-        }
+    fun isShizukuExperimentalEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_SHIZUKU_EXPERIMENTAL, true)
     }
 
     fun validateAndSwitchBackend(context: Context): BackendImplementation {
@@ -226,7 +177,7 @@ class AppLockRepository(context: Context) {
         val primary = getBackendImplementation()
         val fallback = getFallbackBackend()
 
-        if (isBackendAvailable(currentActive, context)) {
+        if (isBackendAvailable(currentActive!!, context)) {
             Log.d("AppLockRepository", "Current active backend is available: $currentActive")
             return currentActive // Still working, keep using it
         }
@@ -277,11 +228,44 @@ class AppLockRepository(context: Context) {
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
-        private const val KEY_ACCESSIBILITY_PLUS_USAGE_STATS = "accessibility_usage_stats"
-        private const val KEY_SHIZUKU_IMPL = "shizuku_impl"
         private const val KEY_BACKEND_IMPLEMENTATION = "backend_implementation"
         private const val KEY_FALLBACK_BACKEND = "fallback_backend"
         private const val KEY_ACTIVE_BACKEND = "active_backend"
+        private const val KEY_SHIZUKU_EXPERIMENTAL = "shizuku_experimental"
+
+
+        fun shouldStartService(rep: AppLockRepository, serviceClass: Class<*>): Boolean {
+            // check if some other service is already running, BUT this one should take precedence, and take over
+            // this function is called inside the service asked to start
+            rep.getActiveBackend().let { activeBackend ->
+                Log.d(
+                    "AppLockRepository",
+                    "activeBackend: ${activeBackend?.name}, requested service: ${serviceClass.simpleName}, chosen backend: ${rep.getBackendImplementation().name}, fallback: ${rep.getFallbackBackend().name}"
+                )
+                if (activeBackend == rep.getBackendImplementation()) {
+                    return false // current backend takes precedence
+                }
+                val backendClass = when (serviceClass) {
+                    AppLockAccessibilityService::class.java -> BackendImplementation.ACCESSIBILITY
+                    ExperimentalAppLockService::class.java -> BackendImplementation.USAGE_STATS
+                    ShizukuAppLockService::class.java -> BackendImplementation.SHIZUKU
+                    else -> return false // Unknown service class, do not start
+                }
+                if (backendClass == rep.getBackendImplementation()) {
+                    Log.d(
+                        "AppLockRepository",
+                        "Service ${serviceClass.simpleName} matches requested backend"
+                    )
+                    return true // This service requesting to start matches the active backend
+                }
+                rep.getFallbackBackend().let { fallbackBackend ->
+                    if (activeBackend == rep.getBackendImplementation()) {
+                        return false // Fallback backend takes precedence
+                    }
+                    return backendClass == fallbackBackend
+                }
+            }
+        }
     }
 }
 

@@ -121,6 +121,9 @@ fun SettingsScreen(
     var antiUninstallEnabled by remember {
         mutableStateOf(appLockRepository.isAntiUninstallEnabled())
     }
+    var shizukuExperimental by remember {
+        mutableStateOf(appLockRepository.isShizukuExperimentalEnabled())
+    }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showDeviceAdminDialog by remember { mutableStateOf(false) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
@@ -297,6 +300,44 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(16.dp),
                 ) {
                     Column {
+                        SettingItem(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "Experimental Shizuku",
+                            description = "A more robust app lock implementation using Shizuku",
+                            checked = shizukuExperimental,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                                            shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
+                                        } else {
+                                            Shizuku.requestPermission(423)
+                                        }
+                                    } else {
+                                        shizukuExperimental = true
+                                        appLockRepository.setShizukuExperimentalEnabled(true)
+                                        context.stopService(
+                                            Intent(context, ShizukuAppLockService::class.java)
+                                        )
+                                        context.startService(
+                                            Intent(context, ShizukuAppLockService::class.java)
+                                        )
+                                    }
+                                } else {
+                                    shizukuExperimental = false
+                                    appLockRepository.setShizukuExperimentalEnabled(false)
+                                    context.stopService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                    context.startService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                }
+                            },
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
                         ActionSettingItem(
                             icon = Icons.Default.Lock,
                             title = "Change PIN",

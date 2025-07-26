@@ -1,5 +1,6 @@
 package dev.pranav.applock.services
 
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Context.KEYGUARD_SERVICE
@@ -8,6 +9,8 @@ import android.util.Log
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+
 
 var knownRecentsClasses = setOf(
     "com.android.systemui.recents.RecentsActivity",
@@ -23,6 +26,13 @@ var knownAdminConfigClasses = setOf(
     "com.android.settings.deviceadmin.DeviceAdminAdd"
 )
 
+var knownAccessibilitySettingsClasses = setOf(
+    "com.android.settings.accessibility.AccessibilitySettings",
+    "com.android.settings.accessibility.AccessibilityMenuActivity",
+    "com.android.settings.accessibility.AccessibilityShortcutActivity",
+    "com.android.settings.Settings\$AccessibilitySettingsActivity"
+)
+
 val excludedApps = setOf(
     "com.android.systemui",
     "com.android.intentresolver"
@@ -32,6 +42,7 @@ object AppLockManager {
     var temporarilyUnlockedApp: String = ""
     val appUnlockTimes = ConcurrentHashMap<String, Long>()
     var currentBiometricState = AppLockAccessibilityService.BiometricState.IDLE
+    val isLockScreenShown = AtomicBoolean(false)
 
     private val serviceRestartAttempts = ConcurrentHashMap<String, Int>()
     private val lastRestartTime = ConcurrentHashMap<String, Long>()
@@ -193,6 +204,17 @@ object AppLockManager {
         serviceRestartAttempts.remove(serviceName)
         lastRestartTime.remove(serviceName)
         Log.d("AppLockManager", "Reset restart attempts for $serviceName")
+    }
+
+
+    fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Int.Companion.MAX_VALUE)) {
+            if (serviceClass.getName() == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
 }
 

@@ -6,8 +6,12 @@ import android.app.usage.UsageStatsManager
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import androidx.core.content.getSystemService
+import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.data.repository.AppLockRepository.Companion.shouldStartService
+import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import java.util.Timer
 import java.util.TimerTask
@@ -20,22 +24,25 @@ class ExperimentalAppLockService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        appLockRepository = AppLockRepository(applicationContext)
+        appLockRepository = appLockRepository()
         usageStatsManager = getSystemService()!!
-    }
 
-    override fun onUnbind(intent: Intent?): Boolean {
-        Log.d(TAG, "ExperimentalAppLockService unbound")
-        AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
-        return super.onUnbind(intent)
+        if (!shouldStartService(appLockRepository, this::class.java)) {
+            Log.d(TAG, "Service not needed, stopping service")
+            stopSelf()
+            return
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "ExperimentalAppLockService started")
         AppLockManager.resetRestartAttempts("ExperimentalAppLockService")
+        appLockRepository.setActiveBackend(BackendImplementation.USAGE_STATS)
 
         // Stop other services to ensure only one runs at a time
         stopOtherServices()
+
+        AppLockManager.isLockScreenShown.set(false) // Set to false on start to ensure correct initial state
 
         timer = Timer()
         timer?.schedule(object : TimerTask() {
@@ -43,16 +50,26 @@ class ExperimentalAppLockService : Service() {
                 if (isDeviceLocked()) {
                     AppLockManager.appUnlockTimes.clear()
                     AppLockManager.clearTemporarilyUnlockedApp()
+                    return
                 }
                 val foregroundApp = getCurrentForegroundAppInfo()
                 if (foregroundApp == null) {
                     AppLockManager.clearTemporarilyUnlockedApp()
                     return
                 }
+                if (foregroundApp.packageName == packageName || foregroundApp.packageName in getKeyboardPackageNames()) {
+                    return // Skip if the current app is this service or a keyboard app
+                }
                 checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
             }
         }, 0, 250)
         return START_STICKY
+    }
+
+
+    private fun getKeyboardPackageNames(): List<String> {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        return imm.enabledInputMethodList.map { it.packageName }
     }
 
     private fun stopOtherServices() {
@@ -68,7 +85,10 @@ class ExperimentalAppLockService : Service() {
     override fun onDestroy() {
         timer?.cancel()
         Log.d(TAG, "ExperimentalAppLockService destroyed")
-        AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
+        if (shouldStartService(appLockRepository, this::class.java)) {
+            AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
+        }
+        AppLockManager.isLockScreenShown.set(false) // Set to false on destroy
         super.onDestroy()
     }
 
@@ -80,7 +100,7 @@ class ExperimentalAppLockService : Service() {
         if (AppLockManager.currentBiometricState == AppLockAccessibilityService.BiometricState.AUTH_STARTED) {
             return
         }
-        if (PasswordOverlayActivity.isActive()) {
+        if (AppLockManager.isLockScreenShown.get()) {
             return
         }
         if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
@@ -121,11 +141,11 @@ class ExperimentalAppLockService : Service() {
         }
 
         try {
+            AppLockManager.isLockScreenShown.set(true) // Set to true before attempting to start
             startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting PasswordOverlayActivity for package: $packageName", e)
-        } finally {
-            AppLockManager.clearTemporarilyUnlockedApp()
+            AppLockManager.isLockScreenShown.set(false) // Reset on failure
         }
     }
 
