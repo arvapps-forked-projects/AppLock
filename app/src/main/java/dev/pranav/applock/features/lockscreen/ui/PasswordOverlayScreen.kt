@@ -141,18 +141,12 @@ class PasswordOverlayActivity : FragmentActivity() {
             }
 
             setupBiometricPromptInternal()
-            if (appLockRepository.shouldPromptForBiometricAuth() && !isBiometricPromptShowingLocal && appLockAccessibilityService != null) {
-                launch(Dispatchers.Main) {
-                    if (supportsBiometric()) {
-                        triggerBiometricPromptIfNeeded()
-                    } else {
-                        Log.w(TAG, "Biometric authentication not supported on this device.")
-                    }
-                }
-            }
 
             runOnUiThread {
                 setupUI()
+                if (appLockRepository.shouldPromptForBiometricAuth()) {
+                    triggerBiometricPromptIfNeeded()
+                }
             }
         }
     }
@@ -252,19 +246,15 @@ class PasswordOverlayActivity : FragmentActivity() {
     }
 
     fun triggerBiometricPromptIfNeeded() {
-        if (!isBiometricPromptShowingLocal && appLockRepository.isBiometricAuthEnabled() && appLockAccessibilityService != null) {
-            if (supportsBiometric()) {
-                AppLockManager.reportBiometricAuthStarted()
-                isBiometricPromptShowingLocal = true
-                try {
-                    biometricPrompt.authenticate(promptInfo)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error calling biometricPrompt.authenticate: ${e.message}", e)
-                    isBiometricPromptShowingLocal = false
-                    AppLockManager.reportBiometricAuthFinished()
-                }
-            } else {
-                Log.w(TAG, "Biometric authentication not available on this device.")
+        if (appLockRepository.isBiometricAuthEnabled()) {
+            AppLockManager.reportBiometricAuthStarted()
+            isBiometricPromptShowingLocal = true
+            try {
+                biometricPrompt.authenticate(promptInfo)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error calling biometricPrompt.authenticate: ${e.message}", e)
+                isBiometricPromptShowingLocal = false
+                AppLockManager.reportBiometricAuthFinished()
             }
         }
     }
