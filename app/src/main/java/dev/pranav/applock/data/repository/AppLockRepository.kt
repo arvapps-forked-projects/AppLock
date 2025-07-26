@@ -103,6 +103,14 @@ class AppLockRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_ANTI_UNINSTALL, false)
     }
 
+    fun setDisableHaptics(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_DISABLE_HAPTICS, enabled) }
+    }
+
+    fun shouldDisableHaptics(): Boolean {
+        return settingsPrefs.getBoolean(KEY_DISABLE_HAPTICS, false)
+    }
+
     fun setBackendImplementation(backend: BackendImplementation) {
         settingsPrefs.edit { putString(KEY_BACKEND_IMPLEMENTATION, backend.name) }
     }
@@ -225,6 +233,7 @@ class AppLockRepository(context: Context) {
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
         private const val KEY_PROMPT_FOR_BIOMETRIC_AUTH = "prompt_for_biometric_auth"
+        private const val KEY_DISABLE_HAPTICS = "disable_haptics"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"

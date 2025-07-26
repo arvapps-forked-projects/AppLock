@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.CardDefaults
@@ -123,6 +124,9 @@ fun SettingsScreen(
     }
     var shizukuExperimental by remember {
         mutableStateOf(appLockRepository.isShizukuExperimentalEnabled())
+    }
+    var disableHapticFeedback by remember {
+        mutableStateOf(appLockRepository.shouldDisableHaptics())
     }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showDeviceAdminDialog by remember { mutableStateOf(false) }
@@ -281,6 +285,17 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 popBiometricAuth = isChecked
                                 appLockRepository.setPromptForBiometricAuth(isChecked)
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.Vibration,
+                            title = "Disable haptic feedback",
+                            description = "Disable haptic feedback on lock screen",
+                            checked = disableHapticFeedback,
+                            onCheckedChange = { isChecked ->
+                                disableHapticFeedback = isChecked
+                                appLockRepository.setDisableHaptics(isChecked)
                             }
                         )
                     }

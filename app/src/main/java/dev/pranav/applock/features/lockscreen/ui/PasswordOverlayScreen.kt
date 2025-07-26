@@ -459,6 +459,8 @@ fun KeypadSection(
         }
     }
 
+    val disableHaptics = context.appLockRepository().shouldDisableHaptics()
+
     val onSpecialKeyClick = remember(
         passwordState,
         maxLength,
@@ -490,18 +492,22 @@ fun KeypadSection(
         modifier = Modifier
     ) {
         KeypadRow(
+            disableHaptics = disableHaptics,
             keys = listOf("1", "2", "3"),
             onKeyClick = onDigitKeyClick
         )
         KeypadRow(
+            disableHaptics = disableHaptics,
             keys = listOf("4", "5", "6"),
             onKeyClick = onDigitKeyClick
         )
         KeypadRow(
+            disableHaptics = disableHaptics,
             keys = listOf("7", "8", "9"),
             onKeyClick = onDigitKeyClick
         )
         KeypadRow(
+            disableHaptics = disableHaptics,
             keys = listOf("backspace", "0", "proceed"),
             icons = listOf(Backspace, null, Icons.AutoMirrored.Rounded.KeyboardArrowRight),
             onKeyClick = onSpecialKeyClick
@@ -565,7 +571,9 @@ private fun handleKeypadSpecialButtonLogic(
                         onAuthSuccess()
                     } else {
                         passwordState.value = ""
-                        vibrate(context, 100)
+                        if (!appLockRepository.shouldDisableHaptics()) {
+                            vibrate(context, 100)
+                        }
                         onPinIncorrect()
                     }
                 } else {
@@ -573,7 +581,9 @@ private fun handleKeypadSpecialButtonLogic(
                         val pinWasCorrectAndProcessed = attempt(passwordState.value)
                         if (!pinWasCorrectAndProcessed) {
                             passwordState.value = ""
-                            vibrate(context, 100)
+                            if (!appLockRepository.shouldDisableHaptics()) {
+                                vibrate(context, 100)
+                            }
                         }
                     } ?: run {
                         Log.e(
@@ -591,6 +601,7 @@ private fun handleKeypadSpecialButtonLogic(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun KeypadRow(
+    disableHaptics: Boolean = false,
     keys: List<String>,
     icons: List<ImageVector?> = emptyList(),
     onKeyClick: (String) -> Unit
@@ -609,7 +620,9 @@ fun KeypadRow(
             ElevatedButton(
                 onClick = {
                     scope.launch {
-                        vibrate(context, 50)
+                        if (!disableHaptics) {
+                            vibrate(context, 100)
+                        }
                     }
                     onKeyClick(key)
                 },
