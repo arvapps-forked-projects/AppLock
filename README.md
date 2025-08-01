@@ -2,7 +2,7 @@
   <img src="fastlane/metadata/android/en-US/images/featureGraphic.png" alt="AppLock Android Privacy Security" width="600" />
 </div>
 
-<h1 align="center">AppLock</h1>
+<h1 align="center">App Lock</h1>
 <p align="center"><b>Open Source Android App Locker & Privacy Guard</b></p>
 
 <p align="center">
@@ -49,6 +49,8 @@ root required.
 
 - Material You design, adapts to your theme
 - Biometric and PIN authentication
+- Fingerprint, Face Unlock, and PIN support
+- Lock any app on your device
 - Anti-uninstall protection
 - Unlock timeout for convenience
 - No root required
@@ -72,7 +74,7 @@ as [Github Releases](https://github.com/PranavPurwar/AppLock/releases/latest).
   </a>
 
 Beta Builds can be
-found [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/release/app-release.apk)
+found [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/debug/app-debug.apk)
 
 <b></b>
 
@@ -108,10 +110,10 @@ cd AppLock
 Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create a new branch (`git checkout -b feature/YourFeature`)
+2. Create a new branch (`git checkout -b feature/rootSupport`)
 3. Make your changes
-4. Commit your changes (`git commit -m 'Add some feature'`)
-5. Push to the branch (`git push origin feature/YourFeature`)
+4. Commit your changes (`git commit -m 'Add direct root support'`)
+5. Push to the branch (`git push origin feature/rootSupport`)
 6. Open a pull request
 
 <b></b>

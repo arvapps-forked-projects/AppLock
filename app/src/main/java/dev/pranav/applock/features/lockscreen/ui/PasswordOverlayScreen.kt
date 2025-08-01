@@ -1,9 +1,6 @@
 package dev.pranav.applock.features.lockscreen.ui
 
-import android.app.KeyguardManager
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -180,17 +177,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         }
     }
 
-    private fun supportsBiometric(): Boolean {
-        return if (Build.VERSION.SDK_INT < 29) {
-            val keyguardManager =
-                applicationContext.getSystemService(KEYGUARD_SERVICE) as? KeyguardManager
-            packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT) && keyguardManager?.isKeyguardSecure == true
-        } else {
-            val biometricManager = BiometricManager.from(this)
-            biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
-        }
-    }
-
     private fun setupBiometricPromptInternal() {
         executor = ContextCompat.getMainExecutor(this)
         biometricPrompt = BiometricPrompt(this, executor, authenticationCallbackInternal)
@@ -200,7 +186,7 @@ class PasswordOverlayActivity : FragmentActivity() {
             .setTitle("Unlock $appNameForPrompt")
             .setSubtitle("Confirm biometric to continue")
             .setNegativeButtonText("Use PIN")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
             .setConfirmationRequired(false)
             .build()
     }

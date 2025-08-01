@@ -5,7 +5,7 @@ AppLock is a modern, open-source privacy tool designed to keep your sensitive ap
 Features:
 
 * **Material You Design**: Seamlessly adapts to your system theme
-* **Biometric Unlock**: Use fingerprint or PIN for fast, secure access
+* **Biometric Unlock**: Use face unlock, fingerprint or PIN for fast, secure access
 * **Anti-uninstall**: Prevents unauthorized removal
 * **Unlock Timer**: Optional timer to keep apps unlocked for fixed time period after unlocking
 * **No Root required**: Works on all devices without root access

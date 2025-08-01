@@ -133,8 +133,9 @@ fun SettingsScreen(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
 
     val biometricManager = BiometricManager.from(context)
+
     val isBiometricAvailable = remember {
-        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     if (showDialog) {
@@ -267,7 +268,7 @@ fun SettingsScreen(
                         SettingItem(
                             icon = if (useBiometricAuth) Fingerprint else FingerprintOff,
                             title = "Biometric Unlock",
-                            description = if (isBiometricAvailable) "Use your fingerprint to unlock apps" else "Biometric authentication not available on this device",
+                            description = if (isBiometricAvailable) "Use Face Unlock/Fingerprint to unlock apps" else "Biometric authentication not available on this device",
                             checked = useBiometricAuth && isBiometricAvailable,
                             enabled = isBiometricAvailable,
                             onCheckedChange = { isChecked ->
