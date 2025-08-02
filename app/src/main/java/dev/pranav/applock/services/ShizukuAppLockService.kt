@@ -56,11 +56,21 @@ class ShizukuAppLockService : Service() {
 
         shizukuActivityManager =
             ShizukuActivityManager(this, appLockRepository) { packageName, className, timeMillis ->
+                if ((AppLockManager.isLockScreenShown.get() && packageName in appLockRepository.getLockedApps()) || packageName == this.packageName) {
+                    Log.d(
+                        TAG,
+                        "Package $packageName, class $className is the lock screen, ignoring"
+                    )
+                    return@ShizukuActivityManager
+                }
+                if (className.isEmpty() && packageName in excludedApps) {
+                    return@ShizukuActivityManager
+                }
                 if (packageName != AppLockManager.temporarilyUnlockedApp) {
                     AppLockManager.temporarilyUnlockedApp = ""
                 }
 
-                Log.d(TAG, "Checking app lock for: $packageName at $timeMillis")
+                Log.d(TAG, "Current package=$packageName, activity=$className")
 
                 checkAndLockApp(packageName, timeMillis)
             }
@@ -120,6 +130,10 @@ class ShizukuAppLockService : Service() {
         Log.d(TAG, "ShizukuAppLockService destroyed")
         //AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
         isServiceRunning = false
+
+        val notificationManager =
+            getSystemService(NotificationManager::class.java)
+        notificationManager.cancel(NOTIFICATION_ID)
         super.onDestroy()
     }
 
@@ -138,7 +152,7 @@ class ShizukuAppLockService : Service() {
     private fun createNotificationChannel() {
         val serviceChannel = NotificationChannel(
             CHANNEL_ID,
-            "AppLock Shizuku Service",
+            "AppLock Service",
             NotificationManager.IMPORTANCE_DEFAULT
         )
         val manager = getSystemService(NotificationManager::class.java)
@@ -149,7 +163,9 @@ class ShizukuAppLockService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("AppLock")
             .setContentText("Protecting your apps with Shizuku")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.baseline_shield_24)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
             .build()
     }
 
@@ -158,9 +174,7 @@ class ShizukuAppLockService : Service() {
             Log.d(TAG, "App $packageName is temporarily unlocked, skipping app lock")
             return
         } else {
-            if (AppLockManager.appUnlockTimes.isEmpty()) {
-                AppLockManager.clearTemporarilyUnlockedApp()
-            }
+            AppLockManager.clearTemporarilyUnlockedApp()
         }
         val lockedApps = appLockRepository.getLockedApps()
         if (!lockedApps.contains(packageName)) {

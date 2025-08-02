@@ -91,7 +91,7 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
                         .setTitle("Confirm password")
                         .setSubtitle("Confirm biometric to continue")
                         .setNegativeButtonText("Use PIN")
-                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                        .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG)
                         .setConfirmationRequired(false)
                         .build()
 

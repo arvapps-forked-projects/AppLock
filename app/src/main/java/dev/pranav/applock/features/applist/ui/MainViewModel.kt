@@ -26,7 +26,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _allApps = MutableStateFlow<List<ApplicationInfo>>(emptyList())
+    private val _allApps = MutableStateFlow<Set<ApplicationInfo>>(emptySet())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -35,7 +35,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _debouncedQuery = MutableStateFlow("")
 
-    val filteredApps: StateFlow<List<ApplicationInfo>> =
+    val filteredApps: StateFlow<Set<ApplicationInfo>> =
         combine(_allApps, _debouncedQuery) { apps, query ->
             if (query.isBlank()) {
                 apps
@@ -43,12 +43,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 apps.filter { appInfo ->
                     appInfo.loadLabel(getApplication<Application>().packageManager).toString()
                         .contains(query, ignoreCase = true)
-                }
+                }.toSet()
             }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000L),
-            initialValue = emptyList()
+            initialValue = emptySet()
         )
 
     init {
@@ -74,7 +74,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _allApps.value = apps
             } catch (e: Exception) {
                 e.printStackTrace()
-                _allApps.value = emptyList()
+                _allApps.value = emptySet()
             } finally {
                 _isLoading.value = false
             }

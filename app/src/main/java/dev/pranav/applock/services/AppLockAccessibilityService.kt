@@ -88,23 +88,23 @@ class AppLockAccessibilityService : AccessibilityService() {
         val currentBackend = appLockRepository.getBackendImplementation()
         val shouldHandleAppLocking = when (currentBackend) {
             BackendImplementation.ACCESSIBILITY -> {
-                Log.d(TAG, "Accessibility is the chosen backend, handling app locking")
+//                Log.d(TAG, "Accessibility is the chosen backend, handling app locking")
                 true
             }
 
             BackendImplementation.SHIZUKU -> {
                 val shouldFallback = !isServiceRunning(ShizukuAppLockService::class.java)
-                if (shouldFallback) {
-                    Log.d(TAG, "Shizuku service not running, accessibility acting as fallback")
-                }
+//                if (shouldFallback) {
+//                    Log.d(TAG, "Shizuku service not running, accessibility acting as fallback")
+//                }
                 shouldFallback
             }
 
             BackendImplementation.USAGE_STATS -> {
                 val shouldFallback = !isServiceRunning(ExperimentalAppLockService::class.java)
-                if (shouldFallback) {
-                    Log.d(TAG, "Experimental service not running, accessibility acting as fallback")
-                }
+//                if (shouldFallback) {
+//                    Log.d(TAG, "Experimental service not running, accessibility acting as fallback")
+//                }
                 shouldFallback
             }
         }
@@ -174,10 +174,10 @@ class AppLockAccessibilityService : AccessibilityService() {
         if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
             return
         }
-        Log.d(
-            TAG,
-            "Clearing unlocked app: ${AppLockManager.temporarilyUnlockedApp} because new event for package: $packageName"
-        )
+//        Log.d(
+//            TAG,
+//            "Clearing unlocked app: ${AppLockManager.temporarilyUnlockedApp} because new event for package: $packageName"
+//        )
         AppLockManager.clearTemporarilyUnlockedApp()
         lastForegroundPackage = packageName
         checkAndLockApp(packageName, event.eventTime)

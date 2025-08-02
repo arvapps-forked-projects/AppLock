@@ -32,8 +32,8 @@ import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -135,7 +135,7 @@ fun SettingsScreen(
     val biometricManager = BiometricManager.from(context)
 
     val isBiometricAvailable = remember {
-        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+        biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     if (showDialog) {
@@ -248,10 +248,10 @@ fun SettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                ElevatedCard(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
                     shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.elevatedCardColors()
                 ) {
                     Column {
                         SettingItem(
@@ -309,11 +309,10 @@ fun SettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.elevatedCardColors()
                 ) {
                     Column {
                         SettingItem(
@@ -428,10 +427,10 @@ fun SettingsScreen(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 0.dp, bottom = 12.dp)
                 )
-                ElevatedCard(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
                     shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.elevatedCardColors()
                 ) {
                     Column {
                         ActionSettingItem(
@@ -648,10 +647,10 @@ fun BackendSelectionCard(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        ElevatedCard(
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
             shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.elevatedCardColors()
         ) {
             Column {
                 Text(

@@ -8,10 +8,15 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,24 +25,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,13 +54,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -82,13 +90,12 @@ fun MainScreen(
     mainViewModel: MainViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     val searchQuery by mainViewModel.searchQuery.collectAsState()
     val isLoading by mainViewModel.isLoading.collectAsState()
     val filteredApps by mainViewModel.filteredApps.collectAsState()
 
-
-    // Check if accessibility service is enabled
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var showShizukuDialog by remember { mutableStateOf(false) }
     var showUsageStatsDialog by remember { mutableStateOf(false) }
@@ -97,11 +104,8 @@ fun MainScreen(
 
     LaunchedEffect(Unit) {
         val appLockRepository = context.appLockRepository()
-
         val selectedBackend = appLockRepository.getBackendImplementation()
-
-        val dpm =
-            context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val component = ComponentName(context, DeviceAdmin::class.java)
 
         if (appLockRepository.isAntiUninstallEnabled()) {
@@ -167,7 +171,6 @@ fun MainScreen(
                         ).show()
                     } else {
                         showShizukuDialog = false
-
                         Shizuku.requestPermission(423)
                     }
                 } catch (_: Exception) {
@@ -229,13 +232,16 @@ fun MainScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumFlexibleTopAppBar(
                 title = {
                     Text(
                         "App Lock",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Medium
                     )
                 },
                 actions = {
@@ -248,75 +254,142 @@ fun MainScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) {
-            val focusManager = LocalFocusManager.current
+        if (isLoading) {
+            LoadingContent(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+        } else {
+            MainContent(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                searchQuery = searchQuery,
+                filteredApps = filteredApps,
+                onSearchQueryChanged = { mainViewModel.onSearchQueryChanged(it) },
+                onAppToggle = { appInfo, isChecked ->
+                    mainViewModel.toggleAppLock(appInfo, isChecked)
+                },
+                viewModel = mainViewModel
+            )
+        }
+    }
+}
 
-            if (isLoading) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    LoadingIndicator(
-                        modifier = Modifier.size(80.dp),
-                        color = MaterialTheme.colorScheme.primary
+@Composable
+private fun LoadingContent(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4.dp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Loading applications...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainContent(
+    modifier: Modifier = Modifier,
+    searchQuery: String,
+    filteredApps: Set<ApplicationInfo>,
+    onSearchQueryChanged: (String) -> Unit,
+    onAppToggle: (ApplicationInfo, Boolean) -> Unit,
+    viewModel: MainViewModel
+) {
+    val focusManager = LocalFocusManager.current
+
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        item {
+            SearchBar(
+                inputField = {
+                    SearchBarDefaults.InputField(
+                        query = searchQuery,
+                        onQueryChange = onSearchQueryChanged,
+                        onSearch = { focusManager.clearFocus() },
+                        expanded = false,
+                        onExpandedChange = {},
+                        placeholder = {
+                            Text(
+                                "Search apps",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Loading applications...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                TextField(
+                },
+                expanded = false,
+                onExpandedChange = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(28.dp),
+                colors = SearchBarDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                content = {},
+            )
+        }
+
+        if (filteredApps.isEmpty() && searchQuery.isNotEmpty()) {
+            item {
+                EmptySearchState(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    value = searchQuery,
-                    onValueChange = { mainViewModel.onSearchQueryChanged(it) },
-                    placeholder = { Text("Search apps") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent,
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                        }
-                    )
+                        .padding(32.dp)
                 )
-
-                AppList(
-                    apps = filteredApps,
-                    context = context,
-                    onAppClick = { appInfo, isChecked ->
-                        mainViewModel.toggleAppLock(appInfo, isChecked)
-                    }
+            }
+        } else {
+            items(filteredApps.toList(), key = { it.packageName }) { appInfo ->
+                AppItem(
+                    appInfo = appInfo,
+                    viewModel = viewModel,
+                    onClick = { isChecked ->
+                        onAppToggle(appInfo, isChecked)
+                    },
+                    modifier = Modifier.animateContentSize(
+                        animationSpec = tween(
+                            durationMillis = 300,
+                            easing = LinearOutSlowInEasing
+                        )
+                    )
                 )
             }
         }
@@ -324,45 +397,41 @@ fun MainScreen(
 }
 
 @Composable
-fun AppList(
-    apps: List<ApplicationInfo>,
-    context: Context,
-    onAppClick: (ApplicationInfo, Boolean) -> Unit
-) {
-    val viewModel = viewModel<MainViewModel>()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+private fun EmptySearchState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        items(
-            apps.size,
-        ) { index ->
-            val appInfo = apps[index]
-            AppItem(
-                appInfo = appInfo,
-                context = context,
-                viewModel = viewModel,
-                onClick = { isChecked ->
-                    onAppClick(appInfo, isChecked)
-                }
-            )
-            if (index < apps.size - 1) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    thickness = 0.5.dp,
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.Outlined.Security,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.outline
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No apps found",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Try adjusting your search",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AppItem(
+private fun AppItem(
     appInfo: ApplicationInfo,
-    context: Context,
     viewModel: MainViewModel,
-    onClick: (Boolean) -> Unit
+    onClick: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val packageManager = context.packageManager
     val appName = remember(appInfo) { appInfo.loadLabel(packageManager).toString() }
     val icon = remember(appInfo) { appInfo.loadIcon(packageManager)?.toBitmap()?.asImageBitmap() }
@@ -370,6 +439,7 @@ fun AppItem(
     val isChecked = remember(appInfo) {
         mutableStateOf(viewModel.isAppLocked(appInfo.packageName))
     }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -377,30 +447,54 @@ fun AppItem(
                 isChecked.value = !isChecked.value
                 onClick(isChecked.value)
             }
-            .padding(12.dp),
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Image(
-            bitmap = icon ?: ImageBitmap.imageResource(R.drawable.ic_notification),
-            contentDescription = appName,
-            modifier = Modifier
-                .size(48.dp)
-                .padding(4.dp)
-        )
+        Surface(
+            modifier = Modifier.size(42.dp),
+            shape = RoundedCornerShape(30),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = icon ?: ImageBitmap.imageResource(R.drawable.ic_notification),
+                    contentDescription = appName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
 
-        Text(
-            text = appName,
+        Column(
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyLarge
-        )
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = appName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = appInfo.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
         Switch(
             checked = isChecked.value,
             onCheckedChange = { isCheckedValue ->
                 isChecked.value = isCheckedValue
                 onClick(isCheckedValue)
-            },
+            }
         )
     }
 }

@@ -35,7 +35,9 @@ var knownAccessibilitySettingsClasses = setOf(
 
 val excludedApps = setOf(
     "com.android.systemui",
-    "com.android.intentresolver"
+    "com.android.intentresolver",
+    "com.google.android.permissioncontroller",
+    "android.uid.system:1000"
 )
 
 object AppLockManager {

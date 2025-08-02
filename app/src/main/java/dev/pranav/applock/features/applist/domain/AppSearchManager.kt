@@ -13,7 +13,7 @@ class AppSearchManager(private val context: Context) {
     private var appNameCache: HashMap<ApplicationInfo, String> = HashMap()
     private var prefixIndexCache: HashMap<String, List<ApplicationInfo>> = HashMap()
 
-    suspend fun loadApps(): List<ApplicationInfo> {
+    suspend fun loadApps(): Set<ApplicationInfo> {
         return withContext(Dispatchers.IO) {
             val launcherApps =
                 context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
@@ -56,7 +56,7 @@ class AppSearchManager(private val context: Context) {
             }
             prefixIndexCache = finalPrefixCache
 
-            sortedApps
+            sortedApps.distinctBy { it.packageName }.toSet()
         }
     }
 }

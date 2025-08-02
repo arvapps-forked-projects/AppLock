@@ -1,13 +1,23 @@
 package dev.pranav.applock.services
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
+import android.app.admin.DevicePolicyManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
+import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
+import dev.pranav.applock.R
+import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository.Companion.shouldStartService
@@ -21,6 +31,8 @@ class ExperimentalAppLockService : Service() {
     private var timer: Timer? = null
     private lateinit var usageStatsManager: UsageStatsManager
     private val TAG = "ExperimentalAppLockService"
+    private val CHANNEL_ID = "ExperimentalAppLockServiceChannel"
+    private val NOTIFICATION_ID = 113
 
     override fun onCreate() {
         super.onCreate()
@@ -63,6 +75,25 @@ class ExperimentalAppLockService : Service() {
                 checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
             }
         }, 0, 250)
+
+
+        val dpm =
+            getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val component = ComponentName(this, DeviceAdmin::class.java)
+        val hasDeviceAdmin = dpm.isAdminActive(component)
+
+        createNotificationChannel()
+
+        val notification = createNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                if (hasDeviceAdmin) ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED else ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
         return START_STICKY
     }
 
@@ -88,7 +119,11 @@ class ExperimentalAppLockService : Service() {
         if (shouldStartService(appLockRepository, this::class.java)) {
             AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
         }
-        AppLockManager.isLockScreenShown.set(false) // Set to false on destroy
+        AppLockManager.isLockScreenShown.set(false)
+
+        val notificationManager =
+            getSystemService(NotificationManager::class.java)
+        notificationManager.cancel(NOTIFICATION_ID)
         super.onDestroy()
     }
 
@@ -147,6 +182,28 @@ class ExperimentalAppLockService : Service() {
             Log.e(TAG, "Error starting PasswordOverlayActivity for package: $packageName", e)
             AppLockManager.isLockScreenShown.set(false) // Reset on failure
         }
+    }
+
+
+    private fun createNotificationChannel() {
+        val serviceChannel = NotificationChannel(
+            CHANNEL_ID,
+            "AppLock Service",
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(serviceChannel)
+    }
+
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("App Lock")
+            .setContentText("Protecting your apps")
+            .setSmallIcon(R.drawable.baseline_shield_24)
+            .setSmallIcon(R.drawable.baseline_shield_24)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .build()
     }
 
     private fun getCurrentForegroundAppInfo(): ForegroundAppInfo? {
