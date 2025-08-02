@@ -8,9 +8,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,9 +28,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +43,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import dev.pranav.applock.R
@@ -231,6 +232,65 @@ fun MainScreen(
         )
     }
 
+    val appLockRepository = context.appLockRepository()
+
+    var showCommunityLink by remember { mutableStateOf(appLockRepository.isShowCommunityLink()) }
+
+    if (showCommunityLink && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog) {
+        AlertDialog(
+            onDismissRequest = { appLockRepository.setCommunityLinkShown(true) },
+            title = { Text("Join the Community") },
+            text = { Text("Join our discord community for updates and support.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    appLockRepository.setCommunityLinkShown(true)
+                    showCommunityLink = false
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://discord.gg/46wCMRVAre".toUri()
+                        )
+                    )
+                }) {
+                    Text("Join Discord")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { appLockRepository.setCommunityLinkShown(true) }) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
+
+    var showDonateDialog by remember { mutableStateOf(appLockRepository.isShowDonateLink()) }
+    if (showDonateDialog && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showCommunityLink) {
+        AlertDialog(
+            onDismissRequest = { showDonateDialog = false },
+            title = { Text("Support Development") },
+            text = { Text("Hi, I'm Pranav, the developer of App Lock. I'm a student developer passionate about creating useful apps. If you find it helpful, please consider supporting its development with a small donation. Any amount is greatly appreciated and helps me continue to improve the app and work on new features. Thank you for your support!") },
+            confirmButton = {
+                FilledTonalButton(
+                    onClick = {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                "https://paypal.me/pranavpurwar".toUri()
+                            )
+                        )
+                        showDonateDialog = false
+                    }
+                ) { Text("Donate") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDonateDialog = false
+                }) { Text("Cancel") }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    }
+
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
@@ -384,13 +444,7 @@ private fun MainContent(
                     viewModel = viewModel,
                     onClick = { isChecked ->
                         onAppToggle(appInfo, isChecked)
-                    },
-                    modifier = Modifier.animateContentSize(
-                        animationSpec = tween(
-                            durationMillis = 300,
-                            easing = LinearOutSlowInEasing
-                        )
-                    )
+                    }
                 )
             }
         }
@@ -429,8 +483,7 @@ private fun EmptySearchState(modifier: Modifier = Modifier) {
 private fun AppItem(
     appInfo: ApplicationInfo,
     viewModel: MainViewModel,
-    onClick: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    onClick: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val packageManager = context.packageManager

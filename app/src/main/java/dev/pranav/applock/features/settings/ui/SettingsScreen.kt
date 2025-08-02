@@ -455,12 +455,12 @@ fun SettingsScreen(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         ActionSettingItem(
                             icon = Icons.Filled.Person,
-                            title = "Developer Profile",
+                            title = "Join Community",
                             onClick = {
                                 context.startActivity(
                                     Intent(
                                         Intent.ACTION_VIEW,
-                                        "https://github.com/PranavPurwar".toUri()
+                                        "https://discord.gg/46wCMRVAre".toUri()
                                     )
                                 )
                             })

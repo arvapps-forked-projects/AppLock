@@ -16,7 +16,7 @@ import dev.pranav.applock.services.ShizukuAppLockService
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
 
-class AppLockRepository(context: Context) {
+class AppLockRepository(private val context: Context) {
 
     private val appLockPrefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME_APP_LOCK, Context.MODE_PRIVATE)
@@ -122,7 +122,7 @@ class AppLockRepository(context: Context) {
         )
         return try {
             BackendImplementation.valueOf(backend ?: BackendImplementation.ACCESSIBILITY.name)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             BackendImplementation.ACCESSIBILITY
         }
     }
@@ -136,7 +136,7 @@ class AppLockRepository(context: Context) {
             settingsPrefs.getString(KEY_FALLBACK_BACKEND, BackendImplementation.ACCESSIBILITY.name)
         return try {
             BackendImplementation.valueOf(fallback ?: BackendImplementation.ACCESSIBILITY.name)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             BackendImplementation.ACCESSIBILITY
         }
     }
@@ -148,6 +148,28 @@ class AppLockRepository(context: Context) {
 
     fun getActiveBackend(): BackendImplementation? {
         return activeBackend
+    }
+
+    fun isShowCommunityLink(): Boolean {
+        return !settingsPrefs.getBoolean(KEY_COMMUNITY_LINK_SHOWN, false)
+    }
+
+    fun setCommunityLinkShown(shown: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_COMMUNITY_LINK_SHOWN, shown) }
+    }
+
+    fun isShowDonateLink(): Boolean {
+        val currentVersionCode =
+            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+        val savedVersionCode = settingsPrefs.getInt(LAST_VERSION_CODE, -1)
+
+        if (currentVersionCode > savedVersionCode) {
+            settingsPrefs.edit {
+                putInt(LAST_VERSION_CODE, currentVersionCode)
+            }
+            return true
+        }
+        return false
     }
 
     // Backend status checking
@@ -163,9 +185,9 @@ class AppLockRepository(context: Context) {
                             ShizukuProvider.PERMISSION
                         ) == PermissionChecker.PERMISSION_GRANTED
                     } else {
-                        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+                        Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     false
                 }
             }
@@ -220,7 +242,7 @@ class AppLockRepository(context: Context) {
                 Class.forName("dev.pranav.applock.core.monitoring.BackendMonitoringService")
             )
             context.startService(intent)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Service class not found or other error, ignore
         }
     }
@@ -239,7 +261,8 @@ class AppLockRepository(context: Context) {
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
         private const val KEY_BACKEND_IMPLEMENTATION = "backend_implementation"
         private const val KEY_FALLBACK_BACKEND = "fallback_backend"
-        private const val KEY_ACTIVE_BACKEND = "active_backend"
+        private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
+        private const val LAST_VERSION_CODE = "last_version_code"
         private const val KEY_SHIZUKU_EXPERIMENTAL = "shizuku_experimental"
 
 
