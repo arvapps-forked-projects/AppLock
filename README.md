@@ -43,6 +43,25 @@ AppLock is a modern, open-source Android app locker designed to protect your pri
 data. Lock any app, prevent unauthorized access, and enjoy a seamless Material You experience. No
 root required.
 
+
+<b><b>
+
+> [!CAUTION]
+> Google Play Protect is blocking some people from installing/updating App Lock because it uses Overlay Permission. It uses a false pretext of "this app may try to access sensitive information"
+> without any base or information. If this happens to you, consider disabling Play Protect temporarily as mentioned [here](https://www.airdroid.com/quick-guides/disable-google-play-protect).
+>
+> You may enable it back later after you install the app. We understand this introduces unnecessary friction but there's nothing we can do about it. Google does not like it
+> when other developers try to fill the gaps they create themselves.
+
+<b><b>
+
+> [!NOTE]
+> You may confirm that the app is completely secure
+>
+> VirusTotal Analysis: [v1.5.0 Analysis](https://www.virustotal.com/gui/url/ead3a434b961ce332b49398d73a10598b2cee6d665c54bb4a66c825794465d72)
+> 
+> Exodus Privacy: [Privacy Report](https://reports.exodus-privacy.eu.org/en/reports/dev.pranav.applock/latest)
+
 <b></b>
 
 ## Features
