@@ -105,7 +105,6 @@ fun AdminDisableScreen(
     ) {
         val passwordState = remember { mutableStateOf("") }
         val showError = remember { mutableStateOf(false) }
-        val maxLength = 6
 
         Column(
             modifier = Modifier
@@ -125,8 +124,7 @@ fun AdminDisableScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             PasswordIndicators(
-                passwordLength = passwordState.value.length,
-                maxLength = maxLength
+                passwordLength = passwordState.value.length
             )
 
             if (showError.value) {
@@ -142,7 +140,7 @@ fun AdminDisableScreen(
 
             KeypadSection(
                 passwordState = passwordState,
-                maxLength = maxLength,
+                minLength = 4,
                 showBiometricButton = false,
                 fromMainActivity = false,
                 onBiometricAuth = {},
