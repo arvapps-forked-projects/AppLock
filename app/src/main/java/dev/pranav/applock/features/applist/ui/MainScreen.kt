@@ -132,7 +132,7 @@ fun MainScreen(
 
             BackendImplementation.SHIZUKU -> {
                 try {
-                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                    if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
                         showShizukuDialog = true
                     }
                 } catch (_: Exception) {
@@ -261,7 +261,7 @@ fun MainScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -359,6 +359,7 @@ private fun MainContent(
                 onExpandedChange = {},
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 8.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = SearchBarDefaults.colors(

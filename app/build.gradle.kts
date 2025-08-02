@@ -9,14 +9,17 @@ plugins {
 
 android {
     namespace = "dev.pranav.applock"
+    // Builds with Canary Preview won't work on non-Canary devices
+    // compileSdkPreview = "CANARY"
     compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.pranav.applock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.4.1"
+        // targetSdkPreview = "CANARY"
+        versionCode = 7
+        versionName = "1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -33,8 +36,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin.compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
@@ -47,6 +50,10 @@ android {
         includeInApk = false
         includeInBundle = false
     }
+    kotlin.compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+    ndkVersion = "29.0.13846066 rc3"
 }
 
 dependencies {
@@ -67,9 +74,9 @@ dependencies {
 
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
-    implementation("dev.rikka.tools.refine:runtime:4.4.0")
+    implementation(libs.refine.runtime)
     compileOnly(project(":hidden-api"))
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation(libs.hiddenapibypass)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

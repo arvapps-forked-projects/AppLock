@@ -244,35 +244,46 @@ class AppLockRepository(context: Context) {
 
 
         fun shouldStartService(rep: AppLockRepository, serviceClass: Class<*>): Boolean {
-            // check if some other service is already running, BUT this one should take precedence, and take over
-            // this function is called inside the service asked to start
             rep.getActiveBackend().let { activeBackend ->
                 Log.d(
                     "AppLockRepository",
                     "activeBackend: ${activeBackend?.name}, requested service: ${serviceClass.simpleName}, chosen backend: ${rep.getBackendImplementation().name}, fallback: ${rep.getFallbackBackend().name}"
                 )
-                if (activeBackend == rep.getBackendImplementation()) {
-                    return false // current backend takes precedence
-                }
+
                 val backendClass = when (serviceClass) {
                     AppLockAccessibilityService::class.java -> BackendImplementation.ACCESSIBILITY
                     ExperimentalAppLockService::class.java -> BackendImplementation.USAGE_STATS
                     ShizukuAppLockService::class.java -> BackendImplementation.SHIZUKU
                     else -> return false // Unknown service class, do not start
                 }
-                if (backendClass == rep.getBackendImplementation()) {
+
+                val chosenBackend = rep.getBackendImplementation()
+                val fallbackBackend = rep.getFallbackBackend()
+
+                // If this service matches the chosen backend, it should start
+                if (backendClass == chosenBackend) {
                     Log.d(
                         "AppLockRepository",
-                        "Service ${serviceClass.simpleName} matches requested backend"
+                        "Service ${serviceClass.simpleName} matches chosen backend, should start"
                     )
-                    return true // This service requesting to start matches the active backend
+                    return true
                 }
-                rep.getFallbackBackend().let { fallbackBackend ->
-                    if (activeBackend == rep.getBackendImplementation()) {
-                        return false // Fallback backend takes precedence
-                    }
-                    return backendClass == fallbackBackend
+
+                // If the chosen backend is not available and this service matches the fallback, it should start
+                if (backendClass == fallbackBackend && activeBackend != chosenBackend) {
+                    Log.d(
+                        "AppLockRepository",
+                        "Service ${serviceClass.simpleName} matches fallback backend and chosen backend is not active, should start"
+                    )
+                    return true
                 }
+
+                // Otherwise, this service should not start
+                Log.d(
+                    "AppLockRepository",
+                    "Service ${serviceClass.simpleName} should not start - not matching chosen or fallback backend"
+                )
+                return false
             }
         }
     }

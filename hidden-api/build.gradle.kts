@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -27,15 +29,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin.compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
 dependencies {
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
-    implementation("androidx.annotation:annotation:1.9.1")
-    annotationProcessor("dev.rikka.tools.refine:annotation-processor:4.4.0")
-    compileOnly("dev.rikka.tools.refine:annotation:4.4.0")
-
+    implementation(libs.hiddenapibypass)
+    implementation(libs.androidx.annotation)
+    annotationProcessor(libs.refine.annotation.processor)
+    compileOnly(libs.refine.annotation)
 }

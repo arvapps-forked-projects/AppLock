@@ -1,6 +1,7 @@
 package dev.pranav.applock.features.lockscreen.ui
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -70,6 +71,7 @@ import dev.pranav.applock.ui.theme.AppLockTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
+
 
 class PasswordOverlayActivity : FragmentActivity() {
     private lateinit var executor: Executor
@@ -226,11 +228,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                     AppLockManager.temporarilyUnlockAppWithBiometrics(pkgName)
                     val intent = packageManager.getLaunchIntentForPackage(pkgName)
                     if (intent != null) {
-                        intent.addFlags(
-                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                        )
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(intent)
                     } else {
                         Log.e(TAG, "No launch intent found for package: $pkgName")
@@ -307,7 +305,7 @@ fun PasswordOverlayScreen(
 ) {
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.background
     ) {
         val passwordState = remember { mutableStateOf("") }
         var showError by remember { mutableStateOf(false) }
@@ -655,7 +653,7 @@ fun KeypadRow(
                     pressedShape = RoundedCornerShape(25),
                 ),
                 colors = ButtonDefaults.elevatedButtonColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
                 elevation = ButtonDefaults.filledTonalButtonElevation()
             ) {
@@ -670,7 +668,7 @@ fun KeypadRow(
                     Text(
                         text = key,
                         style = MaterialTheme.typography.displaySmallEmphasized,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

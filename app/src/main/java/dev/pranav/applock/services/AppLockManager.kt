@@ -212,7 +212,7 @@ object AppLockManager {
     fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         for (service in manager.getRunningServices(Int.Companion.MAX_VALUE)) {
-            if (serviceClass.getName() == service.service.className) {
+            if (serviceClass.name == service.service.className) {
                 return true
             }
         }

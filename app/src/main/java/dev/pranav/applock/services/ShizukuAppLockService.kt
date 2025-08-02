@@ -48,7 +48,7 @@ class ShizukuAppLockService : Service() {
 
         AppLockManager.isLockScreenShown.set(false) // Reset lock screen state on service start
 
-        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+        if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Shizuku permission not granted, stopping service")
             stopSelf()
             return

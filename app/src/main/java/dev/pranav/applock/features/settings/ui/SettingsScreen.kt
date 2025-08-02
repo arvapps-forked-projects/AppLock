@@ -251,7 +251,9 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors()
+                    colors = CardDefaults.elevatedCardColors().copy(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
                 ) {
                     Column {
                         SettingItem(
@@ -268,7 +270,7 @@ fun SettingsScreen(
                         SettingItem(
                             icon = if (useBiometricAuth) Fingerprint else FingerprintOff,
                             title = "Biometric Unlock",
-                            description = if (isBiometricAvailable) "Use Face Unlock/Fingerprint to unlock apps" else "Biometric authentication not available on this device",
+                            description = if (isBiometricAvailable) "Use Face Unlock/Fingerprint to unlock apps" else "Biometric authentication not setup/unavailable.",
                             checked = useBiometricAuth && isBiometricAvailable,
                             enabled = isBiometricAvailable,
                             onCheckedChange = { isChecked ->
@@ -312,7 +314,9 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors()
+                    colors = CardDefaults.elevatedCardColors().copy(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
                 ) {
                     Column {
                         SettingItem(
@@ -430,7 +434,9 @@ fun SettingsScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors()
+                    colors = CardDefaults.elevatedCardColors().copy(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
                 ) {
                     Column {
                         ActionSettingItem(
@@ -650,7 +656,9 @@ fun BackendSelectionCard(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors()
+            colors = CardDefaults.elevatedCardColors().copy(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer
+            )
         ) {
             Column {
                 Text(
@@ -658,7 +666,7 @@ fun BackendSelectionCard(
                     text = "Primary Method",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -669,7 +677,7 @@ fun BackendSelectionCard(
                         onClick = {
                             when (backend) {
                                 BackendImplementation.SHIZUKU -> {
-                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                                    if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
                                         if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
                                             shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
                                         } else {
@@ -750,7 +758,7 @@ fun BackendSelectionCard(
                             text = "Fallback Method",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Used when primary method fails",

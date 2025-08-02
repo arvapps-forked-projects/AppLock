@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -28,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
@@ -149,32 +149,13 @@ fun SetPasswordScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (isFirstTimeSetup && !isConfirmationMode && !isVerifyOldPasswordMode) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Secure Your Apps",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                Text(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    textAlign = TextAlign.Center
+                )
             }
 
             Row(
@@ -191,18 +172,21 @@ fun SetPasswordScreen(
                     textAlign = TextAlign.Center
                 )
                 TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        TooltipAnchorPosition.Above
+                    ),
                     tooltip = {
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
+                            ),
+                            modifier = Modifier.padding(32.dp),
                         ) {
                             Text(
                                 text = when {
                                     isVerifyOldPasswordMode -> "Enter your current PIN to continue"
                                     isConfirmationMode -> "Please enter the same PIN again to confirm"
-                                    else -> "Create a PIN with at least 4 digits to protect your apps"
+                                    else -> "Create a PIN with at least 4 digits"
                                 },
                                 modifier = Modifier.padding(8.dp),
                                 style = MaterialTheme.typography.bodyMedium
