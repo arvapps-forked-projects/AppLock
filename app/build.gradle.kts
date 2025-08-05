@@ -18,8 +18,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // targetSdkPreview = "CANARY"
-        versionCode = 7
-        versionName = "1.5"
+        versionCode = 8
+        versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,7 +40,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin.compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
+        jvmTarget.set(JvmTarget.JVM_17)
     }
     buildFeatures {
         compose = true
