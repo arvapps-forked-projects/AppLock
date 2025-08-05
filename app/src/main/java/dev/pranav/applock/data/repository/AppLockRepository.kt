@@ -1,7 +1,6 @@
 package dev.pranav.applock.data.repository
 
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.util.Log
@@ -127,10 +126,6 @@ class AppLockRepository(private val context: Context) {
         }
     }
 
-    fun setFallbackBackend(fallback: BackendImplementation) {
-        settingsPrefs.edit { putString(KEY_FALLBACK_BACKEND, fallback.name) }
-    }
-
     fun getFallbackBackend(): BackendImplementation {
         val fallback =
             settingsPrefs.getString(KEY_FALLBACK_BACKEND, BackendImplementation.ACCESSIBILITY.name)
@@ -179,7 +174,7 @@ class AppLockRepository(private val context: Context) {
             BackendImplementation.USAGE_STATS -> context.hasUsagePermission()
             BackendImplementation.SHIZUKU -> {
                 try {
-                    if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                    if (Shizuku.isPreV11()) {
                         checkSelfPermission(
                             context,
                             ShizukuProvider.PERMISSION
@@ -202,51 +197,6 @@ class AppLockRepository(private val context: Context) {
         return settingsPrefs.getBoolean(KEY_SHIZUKU_EXPERIMENTAL, true)
     }
 
-    fun validateAndSwitchBackend(context: Context): BackendImplementation {
-        val currentActive = getActiveBackend()
-        val primary = getBackendImplementation()
-        val fallback = getFallbackBackend()
-
-        if (isBackendAvailable(currentActive!!, context)) {
-            Log.d("AppLockRepository", "Current active backend is available: $currentActive")
-            return currentActive // Still working, keep using it
-        }
-
-        Log.w("AppLockRepository", "Current active backend is not available: $currentActive")
-
-        // Current active backend failed, find next best option
-        val newBackend = when {
-            // Try primary first (if different from current)
-            currentActive != primary && isBackendAvailable(primary, context) -> primary
-            // Try fallback if primary also fails
-            primary != fallback && isBackendAvailable(fallback, context) -> fallback
-            // If both fail, return primary to trigger permission request
-            else -> primary
-        }
-
-        // Switch to new backend if it's different
-        if (newBackend != currentActive) {
-            setActiveBackend(newBackend)
-            // Start monitoring service to handle future backend switches
-            startBackendMonitoring(context)
-        }
-
-        return newBackend
-    }
-
-    // Start the backend monitoring service
-    private fun startBackendMonitoring(context: Context) {
-        try {
-            val intent = Intent(
-                context,
-                Class.forName("dev.pranav.applock.core.monitoring.BackendMonitoringService")
-            )
-            context.startService(intent)
-        } catch (_: Exception) {
-            // Service class not found or other error, ignore
-        }
-    }
-
     companion object {
         private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
@@ -267,47 +217,47 @@ class AppLockRepository(private val context: Context) {
 
 
         fun shouldStartService(rep: AppLockRepository, serviceClass: Class<*>): Boolean {
-            rep.getActiveBackend().let { activeBackend ->
-                Log.d(
-                    "AppLockRepository",
-                    "activeBackend: ${activeBackend?.name}, requested service: ${serviceClass.simpleName}, chosen backend: ${rep.getBackendImplementation().name}, fallback: ${rep.getFallbackBackend().name}"
-                )
+            val activeBackend = rep.getActiveBackend()
+            val chosenBackend = rep.getBackendImplementation()
 
-                val backendClass = when (serviceClass) {
-                    AppLockAccessibilityService::class.java -> BackendImplementation.ACCESSIBILITY
-                    ExperimentalAppLockService::class.java -> BackendImplementation.USAGE_STATS
-                    ShizukuAppLockService::class.java -> BackendImplementation.SHIZUKU
-                    else -> return false // Unknown service class, do not start
+            Log.d(
+                "AppLockRepository",
+                "activeBackend: ${activeBackend?.name}, requested service: ${serviceClass.simpleName}, chosen backend: ${chosenBackend.name}"
+            )
+
+            val serviceBackend = when (serviceClass) {
+                AppLockAccessibilityService::class.java -> BackendImplementation.ACCESSIBILITY
+                ExperimentalAppLockService::class.java -> BackendImplementation.USAGE_STATS
+                ShizukuAppLockService::class.java -> BackendImplementation.SHIZUKU
+                else -> {
+                    Log.d("AppLockRepository", "Unknown service class: ${serviceClass.simpleName}")
+                    return false
                 }
-
-                val chosenBackend = rep.getBackendImplementation()
-                val fallbackBackend = rep.getFallbackBackend()
-
-                // If this service matches the chosen backend, it should start
-                if (backendClass == chosenBackend) {
-                    Log.d(
-                        "AppLockRepository",
-                        "Service ${serviceClass.simpleName} matches chosen backend, should start"
-                    )
-                    return true
-                }
-
-                // If the chosen backend is not available and this service matches the fallback, it should start
-                if (backendClass == fallbackBackend && activeBackend != chosenBackend) {
-                    Log.d(
-                        "AppLockRepository",
-                        "Service ${serviceClass.simpleName} matches fallback backend and chosen backend is not active, should start"
-                    )
-                    return true
-                }
-
-                // Otherwise, this service should not start
-                Log.d(
-                    "AppLockRepository",
-                    "Service ${serviceClass.simpleName} should not start - not matching chosen or fallback backend"
-                )
-                return false
             }
+
+            // If this service matches the chosen backend, it should start
+            if (serviceBackend == chosenBackend) {
+                Log.d(
+                    "AppLockRepository",
+                    "Service ${serviceClass.simpleName} matches chosen backend, should start"
+                )
+                return true
+            }
+
+            // If this service matches the active backend (fallback scenario), it should start
+            if (activeBackend != null && serviceBackend == activeBackend) {
+                Log.d(
+                    "AppLockRepository",
+                    "Service ${serviceClass.simpleName} matches active backend, should start"
+                )
+                return true
+            }
+
+            Log.d(
+                "AppLockRepository",
+                "Service ${serviceClass.simpleName} should not start - not matching chosen or active backend"
+            )
+            return false
         }
     }
 }

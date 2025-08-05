@@ -39,21 +39,32 @@ class ShizukuAppLockService : Service() {
         super.onCreate()
 
         appLockRepository = appLockRepository()
-        if (!shouldStartService(appLockRepository, this::class.java)) {
-            Log.d(TAG, "Service not needed, stopping service")
-            stopSelf()
-            return
-        }
         Log.d(TAG, "ShizukuAppLockService created")
 
         AppLockManager.isLockScreenShown.set(false) // Reset lock screen state on service start
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "ShizukuAppLockService started")
+
+        if (!shouldStartService(appLockRepository, this::class.java)) {
+            Log.d(TAG, "Service not needed, stopping service")
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "Shizuku permission not granted, stopping service")
+            AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
             stopSelf()
-            return
+            return START_NOT_STICKY
         }
 
+        AppLockManager.resetRestartAttempts("ShizukuAppLockService")
+        appLockRepository.setActiveBackend(BackendImplementation.SHIZUKU)
+
+        // Initialize ShizukuActivityManager here since we have permissions
         shizukuActivityManager =
             ShizukuActivityManager(this, appLockRepository) { packageName, className, timeMillis ->
                 if ((AppLockManager.isLockScreenShown.get() && packageName in appLockRepository.getLockedApps()) || packageName == this.packageName) {
@@ -74,13 +85,6 @@ class ShizukuAppLockService : Service() {
 
                 checkAndLockApp(packageName, timeMillis)
             }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.P)
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "ShizukuAppLockService started")
-        AppLockManager.resetRestartAttempts("ShizukuAppLockService")
-        appLockRepository.setActiveBackend(BackendImplementation.SHIZUKU)
 
         // Stop other services to ensure only one runs at a time
         stopOtherServices()
@@ -127,8 +131,18 @@ class ShizukuAppLockService : Service() {
 
     override fun onDestroy() {
         shizukuActivityManager?.stop()
-        Log.d(TAG, "ShizukuAppLockService destroyed")
-        //AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
+        Log.d(
+            TAG,
+            "ShizukuAppLockService destroyed but it SHOULD let shizuku service start since its chosen"
+        )
+
+        // Only trigger fallback if this service was supposed to be running
+        // and it's being destroyed unexpectedly (not due to stopSelf() calls)
+        if (isServiceRunning && shouldStartService(appLockRepository, this::class.java)) {
+            Log.d(TAG, "Service destroyed unexpectedly, starting fallback")
+            AppLockManager.startFallbackServices(this, ShizukuAppLockService::class.java)
+        }
+
         isServiceRunning = false
 
         val notificationManager =
@@ -202,6 +216,7 @@ class ShizukuAppLockService : Service() {
 
         Log.d(TAG, "Locked app detected: $packageName")
 
+        Intent()
         val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
             flags =
                 Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_FROM_BACKGROUND or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT

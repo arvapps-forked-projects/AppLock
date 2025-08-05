@@ -5,8 +5,9 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.Context.KEYGUARD_SERVICE
 import android.content.Intent
+import android.os.Handler
 import android.util.Log
-import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.data.repository.BackendImplementation
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -54,11 +55,6 @@ object AppLockManager {
 
 
     fun unlockApp(packageName: String) {
-        // get where this function is called from and log it
-        Log.d(
-            "AppLockManager",
-            "Unlocking app: $packageName from ${Thread.currentThread().stackTrace[3].className}.${Thread.currentThread().stackTrace[3].methodName}"
-        )
         temporarilyUnlockedApp = packageName
         appUnlockTimes[packageName] = System.currentTimeMillis()
         Log.d(
@@ -90,45 +86,51 @@ object AppLockManager {
 
     fun startFallbackServices(context: Context, failedService: Class<*>) {
         val serviceName = failedService.simpleName
-        Log.d("AppLockManager", "Starting fallback services after $serviceName failed")
 
         if (!shouldAttemptRestart(serviceName)) {
-            Log.w(
-                "AppLockManager",
-                "Skipping fallback for $serviceName - too many attempts or cooldown active"
-            )
             return
         }
 
-        val appLockRepository = AppLockRepository(context)
-        val fallbackBackend = appLockRepository.getFallbackBackend()
-
         when (failedService) {
-            AppLockAccessibilityService::class.java -> {
-                Log.d("AppLockManager", "Accessibility service failed, trying fallback")
-                startServiceByBackend(context, fallbackBackend)
-            }
-
             ShizukuAppLockService::class.java -> {
-                Log.d("AppLockManager", "Shizuku service failed, trying fallback")
-                if (AppLockAccessibilityService.isServiceRunning) {
-                    Log.d("AppLockManager", "Accessibility service is running, no fallback needed")
-                    return
-                }
                 startServiceByBackend(context, BackendImplementation.USAGE_STATS)
             }
 
             ExperimentalAppLockService::class.java -> {
-                Log.d("AppLockManager", "Experimental service failed, trying fallback")
                 if (AppLockAccessibilityService.isServiceRunning) {
-                    Log.d("AppLockManager", "Accessibility service is running, no fallback needed")
                     return
                 }
-                startServiceByBackend(context, BackendImplementation.SHIZUKU)
+
+                if (!context.isAccessibilityServiceEnabled()) {
+                    showNoPermissionsToast(context)
+                    return
+                }
+
+                startServiceByBackend(context, BackendImplementation.ACCESSIBILITY)
+            }
+
+            AppLockAccessibilityService::class.java -> {
+                showNoPermissionsToast(context)
             }
         }
 
         recordRestartAttempt(serviceName)
+    }
+
+    private fun showNoPermissionsToast(context: Context) {
+        try {
+            val handler = Handler(context.mainLooper)
+            handler.post {
+                android.widget.Toast.makeText(
+                    context,
+                    "None of the backends have required permissions. " +
+                            "Please enable the required permissions in settings.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        } catch (e: Exception) {
+            Log.e("AppLockManager", "Failed to show toast", e)
+        }
     }
 
     private fun shouldAttemptRestart(serviceName: String): Boolean {
@@ -192,8 +194,6 @@ object AppLockManager {
     }
 
     private fun stopAllServices(context: Context) {
-        Log.d("AppLockManager", "Stopping all app lock services before starting new one")
-
         try {
             context.stopService(Intent(context, ExperimentalAppLockService::class.java))
             context.stopService(Intent(context, ShizukuAppLockService::class.java))

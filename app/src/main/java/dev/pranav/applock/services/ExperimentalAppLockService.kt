@@ -19,6 +19,7 @@ import androidx.core.content.getSystemService
 import dev.pranav.applock.R
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.utils.appLockRepository
+import dev.pranav.applock.core.utils.hasUsagePermission
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository.Companion.shouldStartService
 import dev.pranav.applock.data.repository.BackendImplementation
@@ -41,6 +42,13 @@ class ExperimentalAppLockService : Service() {
 
         if (!shouldStartService(appLockRepository, this::class.java)) {
             Log.d(TAG, "Service not needed, stopping service")
+            stopSelf()
+            return
+        }
+
+        if (!this.hasUsagePermission()) {
+            Log.e(TAG, "Usage permission not granted, stopping service")
+            AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
             stopSelf()
             return
         }

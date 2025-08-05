@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QueryStats
@@ -408,7 +407,7 @@ fun AppIntroScreen(navController: NavController) {
                 backgroundColor = Color(0xFFCE5151),
                 contentColor = Color.White,
                 onNext = {
-                    val isGranted = if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                    val isGranted = if (Shizuku.isPreV11()) {
                         checkSelfPermission(
                             context,
                             ShizukuProvider.PERMISSION
@@ -418,7 +417,7 @@ fun AppIntroScreen(navController: NavController) {
                     }
 
                     if (!isGranted) {
-                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                        if (Shizuku.isPreV11()) {
                             shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
                         } else {
                             Shizuku.requestPermission(423)
@@ -437,24 +436,6 @@ fun AppIntroScreen(navController: NavController) {
         )
     }
 
-    val accessibilityPage = IntroPage(
-        title = "Accessibility Service",
-        description = "Newer android versions block apps from launching screens in the background. You need this permission even if you are not using accessibility service.\n\nTap 'Next' to enable it.",
-        icon = Icons.Default.AccessibilityNew,
-        backgroundColor = Color(0xFF42A5F5),
-        contentColor = Color.White,
-        onNext = {
-            if (context.isAccessibilityServiceEnabled()) {
-                true
-            } else {
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                false
-            }
-        }
-    )
-
     val finalPage = IntroPage(
         title = "Complete Privacy",
         description = "Your data never leaves your device. AppLock protects your privacy at all times.",
@@ -472,7 +453,7 @@ fun AppIntroScreen(navController: NavController) {
                 AppUsageMethod.ACCESSIBILITY -> context.isAccessibilityServiceEnabled()
                 AppUsageMethod.USAGE_STATS -> context.hasUsagePermission()
                 AppUsageMethod.SHIZUKU -> {
-                    if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                    if (Shizuku.isPreV11()) {
                         checkSelfPermission(
                             context,
                             ShizukuProvider.PERMISSION
@@ -502,10 +483,10 @@ fun AppIntroScreen(navController: NavController) {
     )
 
     val allPages =
-        basicPages + methodSelectionPage + methodSpecificPages + (if (!context.isAccessibilityServiceEnabled()) accessibilityPage else null) + finalPage
+        basicPages + methodSelectionPage + methodSpecificPages + finalPage
 
     AppIntro(
-        pages = allPages.filterNotNull(),
+        pages = allPages,
         onSkip = {
             AppIntroManager.markIntroAsCompleted(context)
             navController.navigate(Screen.SetPassword.route) {

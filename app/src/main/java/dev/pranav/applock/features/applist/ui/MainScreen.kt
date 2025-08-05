@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -97,6 +98,7 @@ fun MainScreen(
     val isLoading by mainViewModel.isLoading.collectAsState()
     val filteredApps by mainViewModel.filteredApps.collectAsState()
 
+    var showOverlayDialog by remember { mutableStateOf(!Settings.canDrawOverlays(context)) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var showShizukuDialog by remember { mutableStateOf(false) }
     var showUsageStatsDialog by remember { mutableStateOf(false) }
@@ -147,8 +149,31 @@ fun MainScreen(
         }
     }
 
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverlayDialog = false },
+            title = { Text("Overlay Permission Required") },
+            text = { Text("Please grant the app permission to draw overlays in settings. This is required to allow app to show lock screen.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                        data = "package:${context.packageName}".toUri()
+                    })
+                    showOverlayDialog = false
+                }) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverlayDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // Show accessibility service guide dialog if needed
-    if (showAccessibilityDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.isAccessibilityServiceEnabled()) {
+    if (showAccessibilityDialog && !showOverlayDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.isAccessibilityServiceEnabled()) {
         AccessibilityServiceGuideDialog(
             onOpenSettings = {
                 openAccessibilitySettings(context)
@@ -160,11 +185,11 @@ fun MainScreen(
         )
     }
 
-    if (showShizukuDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+    if (showShizukuDialog && !showOverlayDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
         ShizukuPermissionDialog(
             onOpenSettings = {
                 try {
-                    if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                    if (Shizuku.isPreV11()) {
                         Toast.makeText(
                             context,
                             "Please grant Shizuku permission manually",
@@ -188,10 +213,10 @@ fun MainScreen(
         )
     }
 
-    if (showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.hasUsagePermission()) {
+    if (showUsageStatsDialog && !showOverlayDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !context.hasUsagePermission()) {
         UsageStatsPermission(
             onOpenSettings = {
-                context.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                 showUsageStatsDialog = false
             },
             onDismiss = {
@@ -200,7 +225,7 @@ fun MainScreen(
         )
     }
 
-    if (showAntiUninstallAccessibilityDialog) {
+    if (showAntiUninstallAccessibilityDialog && !showOverlayDialog && !showShizukuDialog && !showUsageStatsDialog && !showAccessibilityDialog) {
         AntiUninstallAccessibilityPermissionDialog(
             onOpenSettings = {
                 openAccessibilitySettings(context)
@@ -212,7 +237,7 @@ fun MainScreen(
         )
     }
 
-    if (showAntiUninstallDeviceAdminDialog) {
+    if (showAntiUninstallDeviceAdminDialog && !showOverlayDialog && !showShizukuDialog && !showUsageStatsDialog && !showAccessibilityDialog && !showAntiUninstallAccessibilityDialog) {
         AntiUninstallAccessibilityPermissionDialog(
             onOpenSettings = {
                 val component = ComponentName(context, DeviceAdmin::class.java)
@@ -236,7 +261,7 @@ fun MainScreen(
 
     var showCommunityLink by remember { mutableStateOf(appLockRepository.isShowCommunityLink()) }
 
-    if (showCommunityLink && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog) {
+    if (showCommunityLink && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showOverlayDialog) {
         AlertDialog(
             onDismissRequest = { appLockRepository.setCommunityLinkShown(true) },
             title = { Text("Join the Community") },
@@ -267,7 +292,7 @@ fun MainScreen(
     }
 
     var showDonateDialog by remember { mutableStateOf(appLockRepository.isShowDonateLink()) }
-    if (showDonateDialog && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showCommunityLink) {
+    if (showDonateDialog && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showCommunityLink && !showOverlayDialog) {
         AlertDialog(
             onDismissRequest = { showDonateDialog = false },
             title = { Text("Support Development") },

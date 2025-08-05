@@ -322,12 +322,12 @@ fun SettingsScreen(
                         SettingItem(
                             icon = Icons.Default.AutoAwesome,
                             title = "Experimental Shizuku",
-                            description = "A more robust app lock implementation using Shizuku",
+                            description = "Uses ActivityTaskManager APIs with Shizuku for enhanced experience. Requires Shizuku permission.",
                             checked = shizukuExperimental,
                             onCheckedChange = { isChecked ->
                                 if (isChecked) {
                                     if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
-                                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                                        if (Shizuku.isPreV11()) {
                                             shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
                                         } else {
                                             Shizuku.requestPermission(423)
@@ -630,24 +630,10 @@ fun BackendSelectionCard(
 ) {
     var selectedBackend by remember { mutableStateOf(appLockRepository.getBackendImplementation()) }
     var selectedFallback by remember { mutableStateOf(appLockRepository.getFallbackBackend()) }
-    var showFallbackDialog by remember { mutableStateOf(false) }
-
-    if (showFallbackDialog) {
-        FallbackSelectionDialog(
-            currentFallback = selectedFallback,
-            excludeBackend = selectedBackend,
-            onDismiss = { showFallbackDialog = false },
-            onConfirm = { fallback ->
-                selectedFallback = fallback
-                appLockRepository.setFallbackBackend(fallback)
-                showFallbackDialog = false
-            }
-        )
-    }
 
     Column {
         Text(
-            text = "Backend Implementation",
+            text = "PrimaryBackend",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -661,15 +647,6 @@ fun BackendSelectionCard(
             )
         ) {
             Column {
-                Text(
-                    modifier = Modifier.padding(start = 16.dp, top = 16.dp),
-                    text = "Primary Method",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
                 BackendImplementation.entries.forEach { backend ->
                     BackendSelectionItem(
                         backend = backend,
@@ -678,10 +655,16 @@ fun BackendSelectionCard(
                             when (backend) {
                                 BackendImplementation.SHIZUKU -> {
                                     if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
-                                        if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                                        if (Shizuku.isPreV11()) {
                                             shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
-                                        } else {
+                                        } else if (Shizuku.pingBinder()) {
                                             Shizuku.requestPermission(423)
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "Shizuku is not running",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     } else {
                                         selectedBackend = backend
@@ -737,39 +720,6 @@ fun BackendSelectionCard(
                     )
                     if (backend != BackendImplementation.entries.last()) {
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showFallbackDialog = true }
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                    ) {
-                        Text(
-                            text = "Fallback Method",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Used when primary method fails",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(
-                        onClick = { showFallbackDialog = true }
-                    ) {
-                        Text(getBackendDisplayName(selectedFallback))
                     }
                 }
             }
