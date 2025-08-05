@@ -10,7 +10,14 @@ fun Context.isAccessibilityServiceEnabled(): Boolean {
     val enabledServices = Settings.Secure.getString(
         contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
     )
-    return enabledServices?.contains(accessibilityServiceName) == true
+    if (enabledServices?.contains(accessibilityServiceName) == true) {
+        return true
+    } else {
+        if (enabledServices?.contains("$packageName/.services.AppLockAccessibilityService") == true) {
+            return true
+        }
+    }
+    return false
 }
 
 fun openAccessibilitySettings(context: Context) {
