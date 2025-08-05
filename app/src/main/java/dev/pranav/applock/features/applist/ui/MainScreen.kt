@@ -256,7 +256,10 @@ fun MainScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { appLockRepository.setCommunityLinkShown(true) }) {
+                TextButton(onClick = {
+                    appLockRepository.setCommunityLinkShown(true)
+                    showCommunityLink = false
+                }) {
                     Text("Dismiss")
                 }
             }
