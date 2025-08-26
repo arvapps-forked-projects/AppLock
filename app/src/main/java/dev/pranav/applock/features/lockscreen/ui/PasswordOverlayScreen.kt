@@ -160,18 +160,26 @@ class PasswordOverlayActivity : FragmentActivity() {
             if (isValid) {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     AppLockManager.unlockApp(pkgName)
-                    val intent = packageManager.getLaunchIntentForPackage(pkgName)
-                    if (intent != null) {
-                        intent.addFlags(
-                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                                    android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                        )
-                        startActivity(intent)
-                    } else {
-                        Log.e(TAG, "No launch intent found for package: $pkgName")
+
+                    when (appLockRepository.getUnlockBehavior()) {
+                        0 -> {
+                            finishAndRemoveTask()
+                        }
+
+                        1 -> {
+                            val intent = packageManager.getLaunchIntentForPackage(pkgName)
+                            if (intent != null) {
+                                intent.addFlags(
+                                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                )
+                                startActivity(intent)
+                            } else {
+                                Log.e(TAG, "No launch intent found for package: $pkgName")
+                            }
+                            finishAffinity()
+                        }
                     }
-                    finishAffinity()
                 }
             }
             isValid
@@ -303,6 +311,7 @@ fun PasswordOverlayScreen(
     lockedAppName: String? = null,
     onPinAttempt: ((pin: String) -> Boolean)? = null
 ) {
+    val appLockRepository = LocalContext.current.appLockRepository()
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -357,7 +366,13 @@ fun PasswordOverlayScreen(
                 onBiometricAuth = onBiometricAuth,
                 onAuthSuccess = onAuthSuccess,
                 onPinAttempt = onPinAttempt,
-                onPasswordChange = { showError = false },
+                onPasswordChange = {
+                    showError = false
+
+                    if (appLockRepository.isAutoUnlockEnabled()) {
+                        onPinAttempt?.invoke(passwordState.value)
+                    }
+                },
                 onPinIncorrect = { showError = true }
             )
         }
