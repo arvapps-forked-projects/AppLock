@@ -59,14 +59,15 @@ class ExperimentalAppLockService : Service() {
         AppLockManager.resetRestartAttempts("ExperimentalAppLockService")
         appLockRepository.setActiveBackend(BackendImplementation.USAGE_STATS)
 
-        // Stop other services to ensure only one runs at a time
         stopOtherServices()
 
-        AppLockManager.isLockScreenShown.set(false) // Set to false on start to ensure correct initial state
+        AppLockManager.isLockScreenShown.set(false)
 
         timer = Timer()
         timer?.schedule(object : TimerTask() {
             override fun run() {
+                if (!appLockRepository.isProtectEnabled()) return
+
                 if (isDeviceLocked()) {
                     AppLockManager.appUnlockTimes.clear()
                     AppLockManager.clearTemporarilyUnlockedApp()

@@ -25,10 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CropSquare
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.ShieldMoon
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -105,6 +107,14 @@ fun SettingsScreen(
                 ).show()
             }
         }
+
+    var autoUnlock by remember {
+        mutableStateOf(appLockRepository.isAutoUnlockEnabled())
+    }
+
+    var unlockBehavior by remember {
+        mutableIntStateOf(appLockRepository.getUnlockBehavior())
+    }
 
     var useMaxBrightness by remember {
         mutableStateOf(appLockRepository.shouldUseMaxBrightness())
@@ -301,6 +311,28 @@ fun SettingsScreen(
                                 appLockRepository.setDisableHaptics(isChecked)
                             }
                         )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.ShieldMoon,
+                            title = "Auto Unlock",
+                            description = "Automatically unlock apps as you type the correct password",
+                            checked = autoUnlock,
+                            onCheckedChange = { isChecked ->
+                                autoUnlock = isChecked
+                                appLockRepository.setAutoUnlockEnabled(isChecked)
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        SettingItem(
+                            icon = Icons.Default.CropSquare,
+                            title = "Unlock Behaviour",
+                            description = "Turn this off if unlocking apps causes them to exit.",
+                            checked = unlockBehavior == 1,
+                            onCheckedChange = { isChecked ->
+                                unlockBehavior = if (isChecked) 1 else 0
+                                appLockRepository.setUnlockBehavior(unlockBehavior)
+                            }
+                        )
                     }
                 }
             }
@@ -319,44 +351,6 @@ fun SettingsScreen(
                     )
                 ) {
                     Column {
-                        SettingItem(
-                            icon = Icons.Default.AutoAwesome,
-                            title = "Experimental Shizuku",
-                            description = "Uses ActivityTaskManager APIs with Shizuku for enhanced experience. Requires Shizuku permission.",
-                            checked = shizukuExperimental,
-                            onCheckedChange = { isChecked ->
-                                if (isChecked) {
-                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
-                                        if (Shizuku.isPreV11()) {
-                                            shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
-                                        } else {
-                                            Shizuku.requestPermission(423)
-                                        }
-                                    } else {
-                                        shizukuExperimental = true
-                                        appLockRepository.setShizukuExperimentalEnabled(true)
-                                        context.stopService(
-                                            Intent(context, ShizukuAppLockService::class.java)
-                                        )
-                                        context.startService(
-                                            Intent(context, ShizukuAppLockService::class.java)
-                                        )
-                                    }
-                                } else {
-                                    shizukuExperimental = false
-                                    appLockRepository.setShizukuExperimentalEnabled(false)
-                                    context.stopService(
-                                        Intent(context, ShizukuAppLockService::class.java)
-                                    )
-                                    context.startService(
-                                        Intent(context, ShizukuAppLockService::class.java)
-                                    )
-                                }
-                            },
-                        )
-
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
                         ActionSettingItem(
                             icon = Icons.Default.Lock,
                             title = "Change PIN",
@@ -411,6 +405,44 @@ fun SettingsScreen(
                                     appLockRepository.setAntiUninstallEnabled(false)
                                 }
                             }
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                        SettingItem(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "Experimental Shizuku",
+                            description = "Uses ActivityTaskManager APIs with Shizuku for enhanced experience. Requires Shizuku permission.",
+                            checked = shizukuExperimental,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
+                                        if (Shizuku.isPreV11()) {
+                                            shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
+                                        } else {
+                                            Shizuku.requestPermission(423)
+                                        }
+                                    } else {
+                                        shizukuExperimental = true
+                                        appLockRepository.setShizukuExperimentalEnabled(true)
+                                        context.stopService(
+                                            Intent(context, ShizukuAppLockService::class.java)
+                                        )
+                                        context.startService(
+                                            Intent(context, ShizukuAppLockService::class.java)
+                                        )
+                                    }
+                                } else {
+                                    shizukuExperimental = false
+                                    appLockRepository.setShizukuExperimentalEnabled(false)
+                                    context.stopService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                    context.startService(
+                                        Intent(context, ShizukuAppLockService::class.java)
+                                    )
+                                }
+                            },
                         )
                     }
                 }
@@ -629,11 +661,10 @@ fun BackendSelectionCard(
     shizukuPermissionLauncher: androidx.activity.result.ActivityResultLauncher<String>
 ) {
     var selectedBackend by remember { mutableStateOf(appLockRepository.getBackendImplementation()) }
-    var selectedFallback by remember { mutableStateOf(appLockRepository.getFallbackBackend()) }
 
     Column {
         Text(
-            text = "PrimaryBackend",
+            text = "Primary Backend",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)

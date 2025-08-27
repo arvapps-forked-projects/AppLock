@@ -28,7 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -104,12 +106,15 @@ fun MainScreen(
     var showUsageStatsDialog by remember { mutableStateOf(false) }
     var showAntiUninstallAccessibilityDialog by remember { mutableStateOf(false) }
     var showAntiUninstallDeviceAdminDialog by remember { mutableStateOf(false) }
+    var applockEnabled by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         val appLockRepository = context.appLockRepository()
         val selectedBackend = appLockRepository.getBackendImplementation()
         val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val component = ComponentName(context, DeviceAdmin::class.java)
+
+        applockEnabled = appLockRepository.isProtectEnabled()
 
         if (appLockRepository.isAntiUninstallEnabled()) {
             Log.d("MainScreen", "Anti-uninstall is enabled")
@@ -333,6 +338,18 @@ fun MainScreen(
                     )
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            appLockRepository.setProtectEnabled(!applockEnabled)
+                            applockEnabled = !applockEnabled
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (applockEnabled) Icons.Default.Shield else Icons.Outlined.Shield,
+                            contentDescription = "App Protection",
+                            tint = if (applockEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     IconButton(
                         onClick = {
                             navController.navigate(Screen.Settings.route) {

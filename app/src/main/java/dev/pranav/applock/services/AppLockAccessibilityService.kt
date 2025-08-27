@@ -78,6 +78,8 @@ class AppLockAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (!::appLockRepository.isInitialized) return
 
+        if (!appLockRepository.isProtectEnabled()) return
+
         // Always handle device admin deactivation regardless of backend
         if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
             Log.d(TAG, "In settings, in activity: ${event.className}")

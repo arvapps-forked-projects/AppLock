@@ -39,6 +39,8 @@ class ShizukuActivityManager(
         override fun onForegroundActivitiesChanged(
             pid: Int, uid: Int, foregroundActivity: Boolean
         ) {
+            if (!appLockRepository.isProtectEnabled()) return
+
             val packageName = getPackageNameForUid(uid)
             if (packageName == null) return
 
@@ -98,6 +100,8 @@ class ShizukuActivityManager(
                 timer = Timer()
                 timer?.schedule(object : TimerTask() {
                     override fun run() {
+                        if (!appLockRepository.isProtectEnabled()) return
+
                         if (!appLockRepository.isShizukuExperimentalEnabled()) {
                             cancel()
                             return

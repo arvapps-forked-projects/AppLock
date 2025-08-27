@@ -2,18 +2,11 @@ package dev.pranav.applock.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.util.Log
-import androidx.core.content.PermissionChecker
-import androidx.core.content.PermissionChecker.checkSelfPermission
 import androidx.core.content.edit
-import dev.pranav.applock.core.utils.hasUsagePermission
-import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.services.AppLockAccessibilityService
 import dev.pranav.applock.services.ExperimentalAppLockService
 import dev.pranav.applock.services.ShizukuAppLockService
-import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuProvider
 
 class AppLockRepository(private val context: Context) {
 
@@ -167,26 +160,12 @@ class AppLockRepository(private val context: Context) {
         return false
     }
 
-    // Backend status checking
-    fun isBackendAvailable(backend: BackendImplementation, context: Context): Boolean {
-        return when (backend) {
-            BackendImplementation.ACCESSIBILITY -> context.isAccessibilityServiceEnabled()
-            BackendImplementation.USAGE_STATS -> context.hasUsagePermission()
-            BackendImplementation.SHIZUKU -> {
-                try {
-                    if (Shizuku.isPreV11()) {
-                        checkSelfPermission(
-                            context,
-                            ShizukuProvider.PERMISSION
-                        ) == PermissionChecker.PERMISSION_GRANTED
-                    } else {
-                        Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-                    }
-                } catch (_: Exception) {
-                    false
-                }
-            }
-        }
+    fun isProtectEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_APPLOCK_ENABLED, true)
+    }
+
+    fun setProtectEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_APPLOCK_ENABLED, enabled) }
     }
 
     fun setShizukuExperimentalEnabled(enabled: Boolean) {
@@ -195,6 +174,22 @@ class AppLockRepository(private val context: Context) {
 
     fun isShizukuExperimentalEnabled(): Boolean {
         return settingsPrefs.getBoolean(KEY_SHIZUKU_EXPERIMENTAL, true)
+    }
+
+    fun isAutoUnlockEnabled(): Boolean {
+        return settingsPrefs.getBoolean(KEY_AUTO_UNLOCK, false)
+    }
+
+    fun setAutoUnlockEnabled(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_AUTO_UNLOCK, enabled) }
+    }
+
+    fun setUnlockBehavior(behavior: Int) {
+        settingsPrefs.edit { putInt(KEY_UNLOCK_BEHAVIOR, behavior) }
+    }
+
+    fun getUnlockBehavior(): Int {
+        return settingsPrefs.getInt(KEY_UNLOCK_BEHAVIOR, 1)
     }
 
     companion object {
@@ -214,6 +209,9 @@ class AppLockRepository(private val context: Context) {
         private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
         private const val LAST_VERSION_CODE = "last_version_code"
         private const val KEY_SHIZUKU_EXPERIMENTAL = "shizuku_experimental"
+        private const val KEY_APPLOCK_ENABLED = "applock_enabled"
+        private const val KEY_AUTO_UNLOCK = "auto_unlock"
+        private const val KEY_UNLOCK_BEHAVIOR = "unlock_behavior"
 
 
         fun shouldStartService(rep: AppLockRepository, serviceClass: Class<*>): Boolean {
