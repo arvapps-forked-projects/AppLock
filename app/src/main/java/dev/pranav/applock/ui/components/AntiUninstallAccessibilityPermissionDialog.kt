@@ -13,9 +13,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import dev.pranav.applock.R
 
 @Composable
 fun AntiUninstallAccessibilityPermissionDialog(
@@ -32,7 +34,7 @@ fun AntiUninstallAccessibilityPermissionDialog(
         ),
         title = {
             Text(
-                text = "Accessibility Permission Required",
+                text = stringResource(R.string.anti_uninstall_accessibility_permission_dialog_title),
                 style = MaterialTheme.typography.titleLarge
             )
         },
@@ -42,12 +44,12 @@ fun AntiUninstallAccessibilityPermissionDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "You've enabled anti-uninstall mode, but the app requires accessibility permissions to enforce it.",
+                    text = stringResource(R.string.anti_uninstall_accessibility_permission_dialog_text),
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Press 'Grant Permission' to open the settings and grant the necessary permissions.",
+                    text = stringResource(R.string.dialog_text_press_grant_permission_to_open_settings),
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -55,12 +57,12 @@ fun AntiUninstallAccessibilityPermissionDialog(
         },
         confirmButton = {
             FilledTonalButton(onClick = onOpenSettings) {
-                Text("Grant Permission")
+                Text(stringResource(R.string.grant_permission_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )

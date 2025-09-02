@@ -63,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,7 +118,7 @@ fun MainScreen(
         applockEnabled = appLockRepository.isProtectEnabled()
 
         if (appLockRepository.isAntiUninstallEnabled()) {
-            Log.d("MainScreen", "Anti-uninstall is enabled")
+            Log.d("MainScreen", context.getString(R.string.main_screen_anti_uninstall_log))
             if (!context.isAccessibilityServiceEnabled()) {
                 showAntiUninstallAccessibilityDialog = true
             } else if (!dpm.isAdminActive(component)) {
@@ -146,7 +147,7 @@ fun MainScreen(
                 } catch (_: Exception) {
                     Toast.makeText(
                         context,
-                        "Shizuku not available. Please install and configure Shizuku.",
+                        context.getString(R.string.main_screen_shizuku_not_available_toast),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -157,8 +158,8 @@ fun MainScreen(
     if (showOverlayDialog) {
         AlertDialog(
             onDismissRequest = { showOverlayDialog = false },
-            title = { Text("Overlay Permission Required") },
-            text = { Text("Please grant the app permission to draw overlays in settings. This is required to allow app to show lock screen.") },
+            title = { Text(stringResource(R.string.main_screen_overlay_permission_dialog_title)) },
+            text = { Text(stringResource(R.string.main_screen_overlay_permission_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
@@ -166,12 +167,12 @@ fun MainScreen(
                     })
                     showOverlayDialog = false
                 }) {
-                    Text("Open Settings")
+                    Text(stringResource(R.string.main_screen_overlay_permission_open_settings_button))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showOverlayDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel_button))
                 }
             }
         )
@@ -197,7 +198,7 @@ fun MainScreen(
                     if (Shizuku.isPreV11()) {
                         Toast.makeText(
                             context,
-                            "Please grant Shizuku permission manually",
+                            context.getString(R.string.main_screen_shizuku_manual_permission_toast),
                             Toast.LENGTH_LONG
                         ).show()
                     } else {
@@ -207,7 +208,7 @@ fun MainScreen(
                 } catch (_: Exception) {
                     Toast.makeText(
                         context,
-                        "Shizuku not available. Please install and configure Shizuku.",
+                        context.getString(R.string.main_screen_shizuku_not_available_toast),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -250,7 +251,7 @@ fun MainScreen(
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
                     putExtra(
                         DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                        "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
+                        context.getString(R.string.main_screen_device_admin_explanation)
                     )
                 }
                 context.startActivity(intent)
@@ -269,8 +270,8 @@ fun MainScreen(
     if (showCommunityLink && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showOverlayDialog) {
         AlertDialog(
             onDismissRequest = { appLockRepository.setCommunityLinkShown(true) },
-            title = { Text("Join the Community") },
-            text = { Text("Join our discord community for updates and support.") },
+            title = { Text(stringResource(R.string.main_screen_join_community_dialog_title)) },
+            text = { Text(stringResource(R.string.main_screen_join_community_dialog_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     appLockRepository.setCommunityLinkShown(true)
@@ -278,11 +279,11 @@ fun MainScreen(
                     context.startActivity(
                         Intent(
                             Intent.ACTION_VIEW,
-                            "https://discord.gg/46wCMRVAre".toUri()
+                            "https://discord.gg/46wCMRVAre".toUri() // Keep this as is, not a user-facing string
                         )
                     )
                 }) {
-                    Text("Join Discord")
+                    Text(stringResource(R.string.main_screen_join_community_join_discord_button))
                 }
             },
             dismissButton = {
@@ -290,7 +291,7 @@ fun MainScreen(
                     appLockRepository.setCommunityLinkShown(true)
                     showCommunityLink = false
                 }) {
-                    Text("Dismiss")
+                    Text(stringResource(R.string.main_screen_join_community_dismiss_button))
                 }
             }
         )
@@ -300,25 +301,25 @@ fun MainScreen(
     if (showDonateDialog && !showAccessibilityDialog && !showShizukuDialog && !showUsageStatsDialog && !showAntiUninstallAccessibilityDialog && !showAntiUninstallDeviceAdminDialog && !showCommunityLink && !showOverlayDialog) {
         AlertDialog(
             onDismissRequest = { showDonateDialog = false },
-            title = { Text("Support Development") },
-            text = { Text("Hi, I'm Pranav, the developer of App Lock. I'm a student developer passionate about creating useful apps. If you find it helpful, please consider supporting its development with a small donation. Any amount is greatly appreciated and helps me continue to improve the app and work on new features. Thank you for your support!") },
+            title = { Text(stringResource(R.string.main_screen_support_development_dialog_title)) },
+            text = { Text(stringResource(R.string.support_development_text)) },
             confirmButton = {
                 FilledTonalButton(
                     onClick = {
                         context.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                "https://paypal.me/pranavpurwar".toUri()
+                                "https://paypal.me/pranavpurwar".toUri() // Keep this as is, not a user-facing string
                             )
                         )
                         showDonateDialog = false
                     }
-                ) { Text("Donate") }
+                ) { Text(stringResource(R.string.main_screen_support_development_donate_button)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showDonateDialog = false
-                }) { Text("Cancel") }
+                }) { Text(stringResource(R.string.cancel_button)) }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
@@ -332,7 +333,7 @@ fun MainScreen(
             MediumFlexibleTopAppBar(
                 title = {
                     Text(
-                        "App Lock",
+                        stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -346,7 +347,7 @@ fun MainScreen(
                     ) {
                         Icon(
                             imageVector = if (applockEnabled) Icons.Default.Shield else Icons.Outlined.Shield,
-                            contentDescription = "App Protection",
+                            contentDescription = stringResource(R.string.main_screen_app_protection_cd),
                             tint = if (applockEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -359,7 +360,7 @@ fun MainScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = stringResource(R.string.main_screen_settings_cd),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -411,7 +412,7 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Loading applications...",
+                text = stringResource(R.string.main_screen_loading_applications_text),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -447,14 +448,14 @@ private fun MainContent(
                         onExpandedChange = {},
                         placeholder = {
                             Text(
-                                "Search apps",
+                                stringResource(R.string.main_screen_search_apps_placeholder),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
+                                contentDescription = stringResource(R.string.main_screen_search_cd),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
@@ -511,12 +512,12 @@ private fun EmptySearchState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No apps found",
+            text = stringResource(R.string.main_screen_empty_search_title),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "Try adjusting your search",
+            text = stringResource(R.string.main_screen_empty_search_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline
         )

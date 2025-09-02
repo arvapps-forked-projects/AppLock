@@ -13,9 +13,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import dev.pranav.applock.R
 
 @Composable
 fun AccessibilityServiceGuideDialog(
@@ -32,7 +34,7 @@ fun AccessibilityServiceGuideDialog(
         ),
         title = {
             Text(
-                text = "Enable Accessibility Service",
+                text = stringResource(R.string.accessibility_guide_dialog_title),
                 style = MaterialTheme.typography.titleLarge
             )
         },
@@ -42,14 +44,14 @@ fun AccessibilityServiceGuideDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "App Lock needs accessibility permission to detect when protected apps are launched.",
+                    text = stringResource(R.string.accessibility_guide_dialog_text_1),
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Please follow these steps:",
+                    text = stringResource(R.string.accessibility_guide_dialog_text_2),
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -57,7 +59,7 @@ fun AccessibilityServiceGuideDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "1. Tap 'Open Settings' below\n2. Toggle the switch to ON\n3. Tap 'Allow' in the confirmation dialog",
+                    text = stringResource(R.string.accessibility_guide_dialog_text_3),
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -65,12 +67,12 @@ fun AccessibilityServiceGuideDialog(
         },
         confirmButton = {
             FilledTonalButton(onClick = onOpenSettings) {
-                Text("Open Settings")
+                Text(stringResource(R.string.accessibility_guide_open_settings_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )

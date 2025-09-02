@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import dev.pranav.appintro.AppIntro
 import dev.pranav.appintro.IntroPage
+import dev.pranav.applock.R
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.hasUsagePermission
@@ -160,7 +162,7 @@ fun AppIntroScreen(navController: NavController) {
                 } else {
                     Toast.makeText(
                         context,
-                        "Notification permission is required for AppLock to function properly.",
+                        context.getString(R.string.notification_permission_required_desc),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -170,11 +172,15 @@ fun AppIntroScreen(navController: NavController) {
     val shizukuPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                Toast.makeText(context, "Shizuku permission granted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shizuku_permission_granted),
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 Toast.makeText(
                     context,
-                    "Shizuku permission is required for advanced features.",
+                    context.getString(R.string.shizuku_permission_required_desc),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -198,24 +204,24 @@ fun AppIntroScreen(navController: NavController) {
 
     val basicPages = listOf(
         IntroPage(
-            title = "Welcome to AppLock",
-            description = "Protect your apps and privacy with AppLock. We'll guide you through a quick setup.",
+            title = stringResource(R.string.welc_applock),
+            description = stringResource(R.string.welcome_desc),
             icon = Icons.Filled.Lock,
             backgroundColor = Color(0xFF0F52BA),
             contentColor = Color.White,
             onNext = { true }
         ),
         IntroPage(
-            title = "Secure Your Apps",
-            description = "Keep your private apps protected with advanced locking mechanisms",
+            title = stringResource(R.string.secure_apps),
+            description = stringResource(R.string.secure_apps_desc),
             icon = Icons.Default.Lock,
             backgroundColor = Color(0xFF3C9401),
             contentColor = Color.White,
             onNext = { true }
         ),
         IntroPage(
-            title = "Display Over Apps",
-            description = "AppLock needs permission to display over other apps to show the lock screen. Tap 'Next' and enable the permission.",
+            title = stringResource(R.string.display_over_apps),
+            description = stringResource(R.string.display_over_apps_desc),
             icon = Display,
             backgroundColor = Color(0xFFDC143C),
             contentColor = Color.White,
@@ -227,7 +233,7 @@ fun AppIntroScreen(navController: NavController) {
                     intent.data = "package:${context.packageName}".toUri()
                     Toast.makeText(
                         context,
-                        "Please allow AppLock to display over other apps.",
+                        context.getString(R.string.allow_display_over_other_apps),
                         Toast.LENGTH_LONG
                     ).show()
                     context.startActivity(intent)
@@ -238,8 +244,8 @@ fun AppIntroScreen(navController: NavController) {
             }
         ),
         IntroPage(
-            title = "Disable Battery Optimization",
-            description = "To ensure AppLock runs reliably in the background, please disable battery optimizations for the app. Tap 'Next' to open settings.",
+            title = stringResource(R.string.disable_battery_optimization_title),
+            description = stringResource(R.string.disable_battery_optimization_desc),
             icon = BatterySaver,
             backgroundColor = Color(0xFF08A471),
             contentColor = Color.White,
@@ -255,10 +261,10 @@ fun AppIntroScreen(navController: NavController) {
             }
         ),
         IntroPage(
-            title = "Notification Permission",
+            title = stringResource(R.string.notif_perm),
             description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                "AppLock needs permission to show notifications to keep you informed and keep running in background properly. Tap 'Next' to grant permission."
-            else "Notification permission is automatically granted on your Android version.",
+                stringResource(R.string.notif_perm_desc)
+            else stringResource(R.string.notif_perm_granted),
             icon = Icons.Default.Notifications,
             backgroundColor = Color(0xFFE78A02),
             contentColor = Color.White,
@@ -281,8 +287,8 @@ fun AppIntroScreen(navController: NavController) {
     )
 
     val methodSelectionPage = IntroPage(
-        title = "Choose App Detection Method",
-        description = "Select how you want AppLock to detect when protected apps are launched.",
+        title = stringResource(R.string.choose_app_detection),
+        description = stringResource(R.string.app_detection_desc),
         icon = Icons.Default.Lock,
         backgroundColor = Color(0xFF6B46C1),
         contentColor = Color.White,
@@ -296,7 +302,7 @@ fun AppIntroScreen(navController: NavController) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Choose App Detection Method",
+                    text = stringResource(R.string.choose_app_detection),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -304,7 +310,7 @@ fun AppIntroScreen(navController: NavController) {
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Select how you want AppLock to detect when protected apps are launched. Each method has its own advantages and requirements.",
+                    text = stringResource(R.string.app_detection_desc),
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
                     color = Color.White.copy(alpha = 0.9f),
@@ -313,24 +319,24 @@ fun AppIntroScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 MethodSelectionCard(
-                    title = "Accessibility Service",
-                    description = "Standard method that works on most devices. Requires accessibility permission. May have slight delays on some OEMs.",
+                    title = stringResource(R.string.accessibility_service_title),
+                    description = stringResource(R.string.accessibility_service_card_desc),
                     icon = Accessibility,
                     isSelected = selectedMethod == AppUsageMethod.ACCESSIBILITY,
                     onClick = { selectedMethod = AppUsageMethod.ACCESSIBILITY },
                 )
 
                 MethodSelectionCard(
-                    title = "Usage Stats",
-                    description = "Experimental method utilizing system usage statistics. Works better on some devices.",
+                    title = stringResource(R.string.usage_stats_title),
+                    description = stringResource(R.string.usage_stats_card_desc),
                     icon = Icons.Default.QueryStats,
                     isSelected = selectedMethod == AppUsageMethod.USAGE_STATS,
                     onClick = { selectedMethod = AppUsageMethod.USAGE_STATS },
                 )
 
                 MethodSelectionCard(
-                    title = "Shizuku Service",
-                    description = "Advanced method with better performance and superior experience. Requires Shizuku app installed and enabled via ADB.",
+                    title = stringResource(R.string.shizuku_service_title),
+                    description = stringResource(R.string.shizuku_service_card_desc),
                     icon = Icons.Default.QueryStats,
                     isSelected = selectedMethod == AppUsageMethod.SHIZUKU,
                     onClick = { selectedMethod = AppUsageMethod.SHIZUKU },
@@ -338,7 +344,7 @@ fun AppIntroScreen(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "You can change this later in settings",
+                    text = stringResource(R.string.can_change_later_in_settings),
                     fontSize = 12.sp,
                     color = Color.White.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -352,8 +358,8 @@ fun AppIntroScreen(navController: NavController) {
     val methodSpecificPages = when (selectedMethod) {
         AppUsageMethod.ACCESSIBILITY -> listOf(
             IntroPage(
-                title = "Accessibility Service",
-                description = "Accessibility service is required for AppLock to function properly.\n\nIf you get the message \"Restricted Setting\", please manually go to Settings > Apps > App Lock > Upper Right menu, and press \"Allow restricted settings\".\n\nTap 'Next' to enable it.",
+                title = stringResource(R.string.accessibility_service_title),
+                description = stringResource(R.string.app_intro_accessibility_desc),
                 icon = Accessibility,
                 backgroundColor = Color(0xFFF1550E),
                 contentColor = Color.White,
@@ -375,8 +381,8 @@ fun AppIntroScreen(navController: NavController) {
 
         AppUsageMethod.USAGE_STATS -> listOf(
             IntroPage(
-                title = "Usage Stats Permission",
-                description = "This permission is required to detect when locked apps are launched.\n\nIf you get the message \"Restricted Setting\", please manually go to Settings > Apps > App Lock > Upper Right menu, and press \"Allow restricted settings\".\n\nTap 'Next' to enable it.",
+                title = stringResource(R.string.app_intro_usage_stats_title),
+                description = stringResource(R.string.app_intro_usage_stats_desc),
                 icon = Icons.Default.QueryStats,
                 backgroundColor = Color(0xFFB453A4),
                 contentColor = Color.White,
@@ -401,8 +407,8 @@ fun AppIntroScreen(navController: NavController) {
 
         AppUsageMethod.SHIZUKU -> listOf(
             IntroPage(
-                title = "Shizuku Service",
-                description = "Shizuku provides advanced features like locking system apps and more.\n\nMake sure you have Shizuku installed and enabled via ADB. Tap 'Next' to grant permission.",
+                title = stringResource(R.string.shizuku_service_title),
+                description = stringResource(R.string.app_intro_shizuku_desc),
                 icon = Icons.Default.QueryStats,
                 backgroundColor = Color(0xFFCE5151),
                 contentColor = Color.White,
@@ -437,8 +443,8 @@ fun AppIntroScreen(navController: NavController) {
     }
 
     val finalPage = IntroPage(
-        title = "Complete Privacy",
-        description = "Your data never leaves your device. AppLock protects your privacy at all times.",
+        title = stringResource(R.string.app_intro_complete_privacy_title),
+        description = stringResource(R.string.app_intro_complete_privacy_desc),
         icon = Icons.Default.Lock,
         backgroundColor = Color(0xFF0047AB),
         contentColor = Color.White,
@@ -474,7 +480,7 @@ fun AppIntroScreen(navController: NavController) {
             if (!allPermissionsGranted) {
                 Toast.makeText(
                     context,
-                    "All permissions are required to proceed.",
+                    context.getString(R.string.all_permissions_required),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -496,7 +502,7 @@ fun AppIntroScreen(navController: NavController) {
         onFinish = onFinishCallback,
         showSkipButton = false,
         useAnimatedPager = true,
-        nextButtonText = "Next",
-        finishButtonText = "Get Started"
+        nextButtonText = stringResource(R.string.next_button),
+        finishButtonText = stringResource(R.string.get_started_button)
     )
 }

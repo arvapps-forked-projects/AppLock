@@ -1,17 +1,17 @@
 [versions]
-agp = "9.0.0-alpha02"
+agp = "9.0.0-alpha03"
 annotation = "1.9.1"
 refine = "4.4.0"
 hiddenapibypass = "6.1"
 shizuku = "13.1.5"
 biometric = "1.4.0-alpha02"
 fragmentKtx = "1.8.9"
-kotlin = "2.2.20-RC"
+kotlin = "2.2.20-RC2"
 coreKtx = "1.17.0"
-lifecycleRuntimeKtx = "2.10.0-alpha02"
-activityCompose = "1.12.0-alpha06"
-composeBom = "2025.08.00"
-material3 = "1.5.0-alpha02"
+lifecycleRuntimeKtx = "2.10.0-alpha03"
+activityCompose = "1.12.0-alpha07"
+composeBom = "2025.08.01"
+material3 = "1.5.0-alpha03"
 materialIconsCore = "1.7.8"
 navigationCompose = "2.9.3"
 
@@ -45,4 +45,3 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-
