@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
+import dev.pranav.applock.R
 
 fun vibrate(context: Context, duration: Long = 500) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -47,7 +48,7 @@ fun launchBatterySettings(context: Context) {
         context.startActivity(requestIgnoreIntent)
         Toast.makeText(
             context,
-            "Please allow our app to ignore battery optimizations.",
+            context.getString(R.string.utils_battery_ignore_toast),
             Toast.LENGTH_LONG
         ).show()
     } else {
@@ -57,14 +58,14 @@ fun launchBatterySettings(context: Context) {
             context.startActivity(standardIntent)
             Toast.makeText(
                 context,
-                "Could not find specific settings. Please remove app from battery restrictions.",
+                context.getString(R.string.utils_battery_specific_settings_not_found_toast),
                 Toast.LENGTH_LONG
             ).show()
         } else {
             // Very rare case where even the standard settings screen is missing.
             Toast.makeText(
                 context,
-                "Could not open any battery settings.",
+                context.getString(R.string.utils_battery_settings_not_found_toast),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -82,7 +83,7 @@ fun Context.hasUsagePermission(): Boolean {
         )
         return (mode == AppOpsManager.MODE_ALLOWED)
     } catch (e: PackageManager.NameNotFoundException) {
-        Log.e("AppLockUtils", "Error checking usage permission: ${e.message}")
+        Log.e("AppLockUtils", getString(R.string.utils_usage_permission_error_log) + e.message)
         return false
     }
 }

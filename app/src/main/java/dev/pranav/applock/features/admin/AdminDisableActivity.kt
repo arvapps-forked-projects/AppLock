@@ -22,8 +22,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.pranav.applock.R
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository
@@ -63,7 +65,7 @@ class AdminDisableActivity : ComponentActivity() {
 
                             Toast.makeText(
                                 this,
-                                "Password verified, you can now disable admin permission",
+                                R.string.password_verified_admin,
                                 Toast.LENGTH_SHORT
                             ).show()
                             appLockRepository.setAntiUninstallEnabled(false)
@@ -79,7 +81,7 @@ class AdminDisableActivity : ComponentActivity() {
                                 if (!isValid) {
                                     Toast.makeText(
                                         this,
-                                        "Incorrect password. Please try again.",
+                                        R.string.incorrect_pin_try_again,
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
@@ -116,7 +118,7 @@ fun AdminDisableScreen(
             Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "Enter your password to disable admin permission",
+                text = stringResource(R.string.unlock_to_disable_admin),
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center
             )
@@ -129,7 +131,7 @@ fun AdminDisableScreen(
 
             if (showError.value) {
                 Text(
-                    text = "Incorrect PIN. Please try again.",
+                    text = stringResource(R.string.incorrect_pin_try_again),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)

@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,10 +60,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
+import dev.pranav.applock.R
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.core.utils.hasUsagePermission
@@ -98,11 +99,15 @@ fun SettingsScreen(
     val shizukuPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
-                Toast.makeText(context, "Shizuku permission granted", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.settings_screen_shizuku_permission_granted),
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 Toast.makeText(
                     context,
-                    "Shizuku permission is required for advanced features.",
+                    context.getString(R.string.settings_screen_shizuku_permission_required_desc),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -121,9 +126,6 @@ fun SettingsScreen(
     }
     var useBiometricAuth by remember {
         mutableStateOf(appLockRepository.isBiometricAuthEnabled())
-    }
-    var popBiometricAuth by remember {
-        mutableStateOf(appLockRepository.shouldPromptForBiometricAuth())
     }
     var unlockTimeDuration by remember {
         mutableIntStateOf(appLockRepository.getUnlockTimeDuration())
@@ -151,8 +153,8 @@ fun SettingsScreen(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text("Support Development") },
-            text = { Text("Hi, I'm Pranav, the developer of App Lock. I'm a student developer passionate about creating useful apps. If you find it helpful, please consider supporting its development with a small donation. Any amount is greatly appreciated and helps me continue to improve the app and work on new features. Thank you for your support!") },
+            title = { Text(stringResource(R.string.settings_screen_support_development_dialog_title)) },
+            text = { Text(stringResource(R.string.support_development_text)) },
             confirmButton = {
                 FilledTonalButton(
                     onClick = {
@@ -164,9 +166,13 @@ fun SettingsScreen(
                         )
                         showDialog = false
                     }
-                ) { Text("Donate") }
+                ) { Text(stringResource(R.string.settings_screen_support_development_donate_button)) }
             },
-            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                }) { Text(stringResource(R.string.cancel_button)) }
+            },
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     }
@@ -203,7 +209,7 @@ fun SettingsScreen(
                     putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
                     putExtra(
                         DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                        "App Lock requires Device Admin permission to prevent uninstallation. It will not affect your device's functionality."
+                        context.getString(R.string.main_screen_device_admin_explanation)
                     )
                 }
                 context.startActivity(intent)
@@ -232,12 +238,17 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", style = MaterialTheme.typography.titleLargeEmphasized) },
+                title = {
+                    Text(
+                        stringResource(R.string.settings_screen_title),
+                        style = MaterialTheme.typography.titleLargeEmphasized
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.settings_screen_back_cd)
                         )
                     }
                 },
@@ -253,7 +264,7 @@ fun SettingsScreen(
         ) {
             item {
                 Text(
-                    text = "Lock Screen Customization",
+                    text = stringResource(R.string.settings_screen_lock_screen_customization_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -268,8 +279,8 @@ fun SettingsScreen(
                     Column {
                         SettingItem(
                             icon = BrightnessHigh,
-                            title = "Maximum Brightness",
-                            description = "Display lock screen at maximum brightness for clarity",
+                            title = stringResource(R.string.settings_screen_max_brightness_title),
+                            description = stringResource(R.string.settings_screen_max_brightness_desc),
                             checked = useMaxBrightness,
                             onCheckedChange = { isChecked ->
                                 useMaxBrightness = isChecked
@@ -279,8 +290,10 @@ fun SettingsScreen(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = if (useBiometricAuth) Fingerprint else FingerprintOff,
-                            title = "Biometric Unlock",
-                            description = if (isBiometricAvailable) "Use Face Unlock/Fingerprint to unlock apps" else "Biometric authentication not setup/unavailable.",
+                            title = stringResource(R.string.settings_screen_biometric_auth_title),
+                            description = if (isBiometricAvailable) stringResource(R.string.settings_screen_biometric_auth_desc_available) else stringResource(
+                                R.string.settings_screen_biometric_auth_desc_unavailable
+                            ),
                             checked = useBiometricAuth && isBiometricAvailable,
                             enabled = isBiometricAvailable,
                             onCheckedChange = { isChecked ->
@@ -290,21 +303,9 @@ fun SettingsScreen(
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
-                            icon = Icons.Default.Person,
-                            title = "Prompt for Biometric",
-                            description = "Prompt for biometric authentication before entering PIN",
-                            checked = popBiometricAuth,
-                            enabled = useBiometricAuth,
-                            onCheckedChange = { isChecked ->
-                                popBiometricAuth = isChecked
-                                appLockRepository.setPromptForBiometricAuth(isChecked)
-                            }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingItem(
                             icon = Icons.Default.Vibration,
-                            title = "Disable haptic feedback",
-                            description = "Disable haptic feedback on lock screen",
+                            title = stringResource(R.string.settings_screen_haptic_feedback_title),
+                            description = stringResource(R.string.settings_screen_haptic_feedback_desc),
                             checked = disableHapticFeedback,
                             onCheckedChange = { isChecked ->
                                 disableHapticFeedback = isChecked
@@ -314,8 +315,8 @@ fun SettingsScreen(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = Icons.Default.ShieldMoon,
-                            title = "Auto Unlock",
-                            description = "Automatically unlock apps as you type the correct password",
+                            title = stringResource(R.string.settings_screen_auto_unlock_title),
+                            description = stringResource(R.string.settings_screen_auto_unlock_desc),
                             checked = autoUnlock,
                             onCheckedChange = { isChecked ->
                                 autoUnlock = isChecked
@@ -325,8 +326,8 @@ fun SettingsScreen(
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = Icons.Default.CropSquare,
-                            title = "Unlock Behaviour",
-                            description = "Turn this off if unlocking apps causes them to exit.",
+                            title = stringResource(R.string.settings_screen_unlock_behavior_title),
+                            description = stringResource(R.string.settings_screen_unlock_behavior_desc),
                             checked = unlockBehavior == 1,
                             onCheckedChange = { isChecked ->
                                 unlockBehavior = if (isChecked) 1 else 0
@@ -338,7 +339,7 @@ fun SettingsScreen(
             }
             item {
                 Text(
-                    text = "Security",
+                    text = stringResource(R.string.settings_screen_security_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -353,8 +354,8 @@ fun SettingsScreen(
                     Column {
                         ActionSettingItem(
                             icon = Icons.Default.Lock,
-                            title = "Change PIN",
-                            description = "Change your App Lock PIN",
+                            title = stringResource(R.string.settings_screen_change_pin_title),
+                            description = stringResource(R.string.settings_screen_change_pin_desc),
                             onClick = {
                                 navController.navigate(Screen.ChangePassword.route)
                             }
@@ -363,16 +364,19 @@ fun SettingsScreen(
 
                         ActionSettingItem(
                             icon = Timer,
-                            title = "Unlock Duration",
-                            description = if (unlockTimeDuration > 0) "Apps remain unlocked for $unlockTimeDuration minutes" else "Apps lock immediately after exit",
+                            title = stringResource(R.string.settings_screen_unlock_duration_title),
+                            description = if (unlockTimeDuration > 0) stringResource(
+                                R.string.settings_screen_unlock_duration_summary_minutes,
+                                unlockTimeDuration
+                            ) else stringResource(R.string.settings_screen_unlock_duration_summary_immediate),
                             onClick = { showUnlockTimeDialog = true }
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
                         SettingItem(
                             icon = Icons.Default.Lock,
-                            title = "Anti Uninstall",
-                            description = "Prevents uninstallation of App Lock",
+                            title = stringResource(R.string.settings_screen_anti_uninstall_title),
+                            description = stringResource(R.string.settings_screen_anti_uninstall_desc),
                             checked = antiUninstallEnabled,
                             onCheckedChange = { isChecked ->
                                 if (isChecked) {
@@ -411,8 +415,8 @@ fun SettingsScreen(
 
                         SettingItem(
                             icon = Icons.Default.AutoAwesome,
-                            title = "Experimental Shizuku",
-                            description = "Uses ActivityTaskManager APIs with Shizuku for enhanced experience. Requires Shizuku permission.",
+                            title = stringResource(R.string.settings_screen_backend_implementation_shizuku_experimental_title),
+                            description = stringResource(R.string.settings_screen_backend_implementation_shizuku_experimental_desc),
                             checked = shizukuExperimental,
                             onCheckedChange = { isChecked ->
                                 if (isChecked) {
@@ -458,7 +462,7 @@ fun SettingsScreen(
             }
             item {
                 Text(
-                    text = "About & Support",
+                    text = stringResource(R.string.settings_screen_about_and_support_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 0.dp, bottom = 12.dp)
@@ -473,21 +477,24 @@ fun SettingsScreen(
                     Column {
                         ActionSettingItem(
                             icon = Icons.Filled.Favorite,
-                            title = "Support Development",
+                            title = stringResource(R.string.settings_screen_support_development_title),
                             onClick = { showDialog = true })
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        ActionSettingItem(icon = Github, title = "View Source Code", onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    "https://github.com/PranavPurwar/AppLock".toUri()
+                        ActionSettingItem(
+                            icon = Github,
+                            title = stringResource(R.string.settings_screen_source_code_title),
+                            onClick = {
+                                context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        "https://github.com/PranavPurwar/AppLock".toUri()
+                                    )
                                 )
-                            )
-                        })
+                            })
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         ActionSettingItem(
                             icon = Icons.Filled.Person,
-                            title = "Join Community",
+                            title = stringResource(R.string.settings_screen_join_community_title),
                             onClick = {
                                 context.startActivity(
                                     Intent(
@@ -555,11 +562,11 @@ fun SettingItem(
 
 @Composable
 fun ActionSettingItem(
+    modifier: Modifier = Modifier,
     icon: ImageVector,
     title: String,
     description: String? = null,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.primary
 ) {
     Row(
@@ -611,10 +618,10 @@ fun UnlockTimeDurationDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("App Unlock Duration") },
+        title = { Text(stringResource(R.string.settings_screen_unlock_duration_dialog_title)) },
         text = {
             Column {
-                Text("Choose how long apps should remain unlocked after entering the PIN:")
+                Text(stringResource(R.string.settings_screen_unlock_duration_dialog_description_new))
 
                 durations.forEach { duration ->
                     Row(
@@ -630,10 +637,17 @@ fun UnlockTimeDurationDialog(
                         )
                         Text(
                             text = when (duration) {
-                                0 -> "Lock immediately"
-                                1 -> "1 minute"
-                                60 -> "1 hour"
-                                else -> "$duration minutes"
+                                0 -> stringResource(R.string.settings_screen_unlock_duration_dialog_option_immediate)
+                                1 -> stringResource(
+                                    R.string.settings_screen_unlock_duration_dialog_option_minute,
+                                    duration
+                                )
+
+                                60 -> stringResource(R.string.settings_screen_unlock_duration_dialog_option_hour)
+                                else -> stringResource(
+                                    R.string.settings_screen_unlock_duration_summary_minutes,
+                                    duration
+                                )
                             },
                             modifier = Modifier.padding(start = 8.dp)
                         )
@@ -643,12 +657,12 @@ fun UnlockTimeDurationDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(selectedDuration) }) {
-                Text("Confirm")
+                Text(stringResource(R.string.confirm_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )
@@ -664,7 +678,7 @@ fun BackendSelectionCard(
 
     Column {
         Text(
-            text = "Primary Backend",
+            text = stringResource(R.string.settings_screen_backend_implementation_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -693,7 +707,7 @@ fun BackendSelectionCard(
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "Shizuku is not running",
+                                                context.getString(R.string.settings_screen_shizuku_not_running_toast),
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
@@ -720,7 +734,7 @@ fun BackendSelectionCard(
                                         context.startActivity(intent)
                                         Toast.makeText(
                                             context,
-                                            "Please grant usage access permission.",
+                                            context.getString(R.string.settings_screen_usage_permission_toast),
                                             Toast.LENGTH_LONG
                                         ).show()
                                         return@BackendSelectionItem
@@ -796,7 +810,7 @@ fun BackendSelectionItem(
                         contentColor = MaterialTheme.colorScheme.onTertiary
                     ) {
                         Text(
-                            text = "Advanced",
+                            text = stringResource(R.string.settings_screen_backend_implementation_shizuku_advanced),
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -817,64 +831,6 @@ fun BackendSelectionItem(
             )
         )
     }
-}
-
-@Composable
-fun FallbackSelectionDialog(
-    currentFallback: BackendImplementation,
-    excludeBackend: BackendImplementation,
-    onDismiss: () -> Unit,
-    onConfirm: (BackendImplementation) -> Unit
-) {
-    var selectedFallback by remember { mutableStateOf(currentFallback) }
-    val availableBackends = BackendImplementation.entries.filter { it != excludeBackend }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Fallback Method") },
-        text = {
-            Column {
-                Text("Choose a fallback method to use when the primary method fails:")
-                Spacer(modifier = Modifier.height(16.dp))
-
-                availableBackends.forEach { backend ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedFallback = backend }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedFallback == backend,
-                            onClick = { selectedFallback = backend }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = getBackendIcon(backend),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = getBackendDisplayName(backend),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selectedFallback) }) {
-                Text("Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }
 
 private fun getBackendDisplayName(backend: BackendImplementation): String {
@@ -908,23 +864,21 @@ fun PermissionRequiredDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Permissions Required") },
+        title = { Text(stringResource(R.string.settings_screen_permission_required_dialog_title)) },
         text = {
-            Text(
-                "To enable Anti-Uninstall protection, App Lock needs two permissions:\n\n" +
-                        "1. Device Administrator - Prevents uninstallation\n" +
-                        "2. Accessibility Service - Monitors app usage\n\n" +
-                        "These permissions help protect the app from being removed without your knowledge."
-            )
+            Column {
+                Text(stringResource(R.string.settings_screen_permission_required_dialog_text_1))
+                Text(stringResource(R.string.settings_screen_permission_required_dialog_text_2))
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Grant Permissions")
+                Text(stringResource(R.string.grant_permission_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )
@@ -937,24 +891,21 @@ fun DeviceAdminDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Device Administrator") },
+        title = { Text(stringResource(R.string.settings_screen_device_admin_dialog_title)) },
         text = {
-            Text(
-                "App Lock needs Device Administrator permission to prevent uninstallation.\n\n" +
-                        "This permission allows the app to:\n" +
-                        "• Prevent itself from being uninstalled\n" +
-                        "• Protect your app lock settings\n\n" +
-                        "It will not affect your device's normal functionality."
-            )
+            Column {
+                Text(stringResource(R.string.settings_screen_device_admin_dialog_text_1))
+                Text(stringResource(R.string.settings_screen_device_admin_dialog_text_2))
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Enable")
+                Text(stringResource(R.string.enable_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )
@@ -967,25 +918,22 @@ fun AccessibilityDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Accessibility Service") },
+        title = { Text(stringResource(R.string.settings_screen_accessibility_dialog_title)) },
         text = {
-            Text(
-                "App Lock needs Accessibility Service permission to monitor app usage.\n\n" +
-                        "This permission allows the app to:\n" +
-                        "• Detect when apps are opened\n" +
-                        "• Show lock screen when needed\n" +
-                        "• Provide seamless app protection\n\n" +
-                        "Your privacy is protected - no data is collected or shared."
-            )
+            Column {
+                Text(stringResource(R.string.settings_screen_accessibility_dialog_text_1))
+                Text(stringResource(R.string.settings_screen_accessibility_dialog_text_2))
+                Text(stringResource(R.string.settings_screen_accessibility_dialog_text_3))
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Enable")
+                Text(stringResource(R.string.enable_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel_button))
             }
         }
     )

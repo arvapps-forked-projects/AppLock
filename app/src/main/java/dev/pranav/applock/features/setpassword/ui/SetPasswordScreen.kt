@@ -42,11 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.R
 import dev.pranav.applock.core.navigation.Screen
 import dev.pranav.applock.features.lockscreen.ui.KeypadRow
 import dev.pranav.applock.features.lockscreen.ui.PasswordIndicators
@@ -80,7 +82,7 @@ fun SetPasswordScreen(
 
     BackHandler {
         if (isFirstTimeSetup) {
-            Toast.makeText(context, "Please set a PIN to continue", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.set_pin_to_continue_toast, Toast.LENGTH_SHORT).show()
         } else {
             if (navController.previousBackStackEntry != null) {
                 navController.popBackStack()
@@ -96,8 +98,8 @@ fun SetPasswordScreen(
         if (fragmentActivity == null) return
         val executor = ContextCompat.getMainExecutor(context)
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Authenticate to reset PIN")
-            .setSubtitle("Use your device PIN, pattern, or password")
+            .setTitle(context.getString(R.string.authenticate_to_reset_pin_title))
+            .setSubtitle(context.getString(R.string.use_device_pin_pattern_password_subtitle))
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
@@ -124,10 +126,10 @@ fun SetPasswordScreen(
                 title = {
                     Text(
                         text = when {
-                            isFirstTimeSetup -> "Welcome to App Lock"
-                            isVerifyOldPasswordMode -> "Enter Current PIN"
-                            isConfirmationMode -> "Confirm PIN"
-                            else -> "Set New PIN"
+                            isFirstTimeSetup -> stringResource(R.string.welc_applock)
+                            isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_title)
+                            isConfirmationMode -> stringResource(R.string.confirm_pin_title)
+                            else -> stringResource(R.string.set_new_pin_title)
                         },
                         style = MaterialTheme.typography.titleLargeEmphasized,
                     )
@@ -151,7 +153,7 @@ fun SetPasswordScreen(
             if (isFirstTimeSetup && !isConfirmationMode && !isVerifyOldPasswordMode) {
                 Text(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    text = "Please create a PIN to protect your locked apps. This PIN will be required whenever you try to access a locked app.",
+                    text = stringResource(R.string.create_pin_explanation),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                     textAlign = TextAlign.Center
@@ -164,9 +166,9 @@ fun SetPasswordScreen(
             ) {
                 Text(
                     text = when {
-                        isVerifyOldPasswordMode -> "Enter your current PIN"
-                        isConfirmationMode -> "Confirm your new PIN"
-                        else -> "Create a new PIN"
+                        isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                        isConfirmationMode -> stringResource(R.string.confirm_new_pin_label)
+                        else -> stringResource(R.string.create_new_pin_label)
                     },
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
@@ -184,9 +186,9 @@ fun SetPasswordScreen(
                         ) {
                             Text(
                                 text = when {
-                                    isVerifyOldPasswordMode -> "Enter your current PIN to continue"
-                                    isConfirmationMode -> "Please enter the same PIN again to confirm"
-                                    else -> "Create a PIN with at least 4 digits"
+                                    isVerifyOldPasswordMode -> stringResource(R.string.tooltip_enter_current_pin)
+                                    isConfirmationMode -> stringResource(R.string.tooltip_confirm_pin)
+                                    else -> stringResource(R.string.tooltip_create_pin_min_length)
                                 },
                                 modifier = Modifier.padding(8.dp),
                                 style = MaterialTheme.typography.bodyMedium
@@ -198,7 +200,7 @@ fun SetPasswordScreen(
                     IconButton(onClick = {}) {
                         Icon(
                             imageVector = Icons.Default.Info,
-                            contentDescription = "Information",
+                            contentDescription = stringResource(R.string.information_cd),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -207,7 +209,7 @@ fun SetPasswordScreen(
 
             if (showMismatchError) {
                 Text(
-                    text = "PINs don't match. Try again.",
+                    text = stringResource(R.string.pins_dont_match_error),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(8.dp)
@@ -215,7 +217,7 @@ fun SetPasswordScreen(
             }
             if (showLengthError) {
                 Text(
-                    text = "PIN must be at least 4 digits",
+                    text = stringResource(R.string.pin_min_length_error),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(8.dp)
@@ -223,7 +225,7 @@ fun SetPasswordScreen(
             }
             if (showInvalidOldPasswordError) {
                 Text(
-                    text = "Incorrect PIN. Please try again.",
+                    text = stringResource(R.string.incorrect_pin_try_again),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(8.dp)
@@ -242,9 +244,9 @@ fun SetPasswordScreen(
 
             Text(
                 text = when {
-                    isVerifyOldPasswordMode -> "Enter your current PIN"
-                    isConfirmationMode -> "Re-enter your new PIN to confirm"
-                    else -> "Enter a PIN with at least 4 digits"
+                    isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                    isConfirmationMode -> stringResource(R.string.re_enter_new_pin_confirm_label)
+                    else -> stringResource(R.string.tooltip_create_pin_min_length)
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.alpha(0.8f),
@@ -255,7 +257,7 @@ fun SetPasswordScreen(
 
             if (isVerifyOldPasswordMode) {
                 TextButton(onClick = { launchDeviceCredentialAuth() }) {
-                    Text("Reset using device password")
+                    Text(stringResource(R.string.reset_using_device_password_button))
                 }
             }
 
@@ -282,7 +284,11 @@ fun SetPasswordScreen(
                     },
                     modifier = Modifier.padding(bottom = 16.dp)
                 ) {
-                    Text(if (isVerifyOldPasswordMode) "Cancel" else "Start Over")
+                    Text(
+                        if (isVerifyOldPasswordMode) stringResource(R.string.cancel_button) else stringResource(
+                            R.string.start_over_button
+                        )
+                    )
                 }
             }
 
@@ -340,7 +346,7 @@ fun SetPasswordScreen(
                                             appLockRepository?.setPassword(passwordState)
                                             Toast.makeText(
                                                 context,
-                                                "Password set successfully",
+                                                context.getString(R.string.password_set_successfully_toast),
                                                 Toast.LENGTH_SHORT
                                             ).show()
 

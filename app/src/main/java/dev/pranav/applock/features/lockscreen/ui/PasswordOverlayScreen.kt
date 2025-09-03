@@ -54,11 +54,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import dev.pranav.applock.R
 import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
@@ -118,7 +120,7 @@ class PasswordOverlayActivity : FragmentActivity() {
     override fun onPostResume() {
         super.onPostResume()
         setupBiometricPromptInternal()
-        if (appLockRepository.shouldPromptForBiometricAuth()) {
+        if (appLockRepository.isBiometricAuthEnabled()) {
             triggerBiometricPrompt()
         }
     }
@@ -148,7 +150,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                 ).toString()
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading app name: ${e.message}")
-                appName = "App"
+                appName = getString(R.string.default_app_name)
             }
         }
         setupUI()
@@ -207,11 +209,11 @@ class PasswordOverlayActivity : FragmentActivity() {
         biometricPrompt =
             BiometricPrompt(this@PasswordOverlayActivity, executor, authenticationCallbackInternal)
 
-        val appNameForPrompt = appName.ifEmpty { "this app" }
+        val appNameForPrompt = appName.ifEmpty { getString(R.string.this_app) }
         promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock $appNameForPrompt")
-            .setSubtitle("Confirm biometric to continue")
-            .setNegativeButtonText("Use PIN")
+            .setTitle(getString(R.string.unlock_app_title, appNameForPrompt))
+            .setSubtitle(getString(R.string.confirm_biometric_subtitle))
+            .setNegativeButtonText(getString(R.string.use_pin_button))
             .setAllowedAuthenticators(
                 BiometricManager.Authenticators.BIOMETRIC_WEAK or
                         BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -333,7 +335,7 @@ fun PasswordOverlayScreen(
                 text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
                     lockedAppName
                 else
-                    "Enter password to continue",
+                    stringResource(R.string.enter_password_to_continue),
                 style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
                     MaterialTheme.typography.titleLargeEmphasized
                 else
@@ -349,7 +351,7 @@ fun PasswordOverlayScreen(
 
             if (showError) {
                 Text(
-                    text = "Incorrect PIN. Please try again.",
+                    text = stringResource(R.string.incorrect_pin_try_again),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
@@ -558,7 +560,7 @@ fun KeypadSection(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp),
-                    contentDescription = "Biometric Authentication",
+                    contentDescription = stringResource(R.string.biometric_authentication_cd),
                     tint = MaterialTheme.colorScheme.surfaceTint
                 )
             }

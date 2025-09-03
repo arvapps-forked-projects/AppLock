@@ -22,11 +22,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import dev.pranav.applock.R
 
 @Composable
 fun AdminPasswordVerificationDialog(
@@ -34,6 +37,7 @@ fun AdminPasswordVerificationDialog(
     onDismiss: () -> Unit,
     validatePassword: (String) -> Boolean
 ) {
+    val context = LocalContext.current
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
 
@@ -42,7 +46,7 @@ fun AdminPasswordVerificationDialog(
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
         title = {
             Text(
-                text = "Password Verification Required",
+                text = stringResource(R.string.admin_password_verification_dialog_title),
                 style = MaterialTheme.typography.titleLarge
             )
         },
@@ -52,7 +56,7 @@ fun AdminPasswordVerificationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Please enter your app lock password to disable admin permissions",
+                    text = stringResource(R.string.admin_password_verification_dialog_text),
                     textAlign = TextAlign.Center
                 )
 
@@ -64,7 +68,7 @@ fun AdminPasswordVerificationDialog(
                         password = it
                         error = "" // Clear error when user types
                     },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.password_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     isError = error.isNotEmpty(),
@@ -87,7 +91,7 @@ fun AdminPasswordVerificationDialog(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel_button))
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -95,15 +99,15 @@ fun AdminPasswordVerificationDialog(
                 Button(
                     onClick = {
                         if (password.isEmpty()) {
-                            error = "Password cannot be empty"
+                            error = context.getString(R.string.password_empty_error)
                         } else if (validatePassword(password)) {
                             onPasswordVerified()
                         } else {
-                            error = "Incorrect password"
+                            error = context.getString(R.string.incorrect_password_error)
                         }
                     }
                 ) {
-                    Text("Verify")
+                    Text(stringResource(R.string.verify_button))
                 }
             }
         },
