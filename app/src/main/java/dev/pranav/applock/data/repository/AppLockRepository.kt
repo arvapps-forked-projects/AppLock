@@ -1,270 +1,107 @@
 package dev.pranav.applock.data.repository
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.util.Log
-import androidx.core.content.edit
-import dev.pranav.applock.services.AppLockAccessibilityService
-import dev.pranav.applock.services.ExperimentalAppLockService
-import dev.pranav.applock.services.ShizukuAppLockService
+import dev.pranav.applock.data.manager.BackendServiceManager
 
+/**
+ * Main repository that coordinates between different specialized repositories and managers.
+ * Provides a unified interface for all app lock functionality.
+ */
 class AppLockRepository(private val context: Context) {
 
-    private val appLockPrefs: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME_APP_LOCK, Context.MODE_PRIVATE)
+    private val preferencesRepository = PreferencesRepository(context)
+    private val lockedAppsRepository = LockedAppsRepository(context)
+    private val backendServiceManager = BackendServiceManager(context)
 
-    private val settingsPrefs: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME_SETTINGS, Context.MODE_PRIVATE)
+    // Delegate locked apps operations
+    fun getLockedApps(): Set<String> = lockedAppsRepository.getLockedApps()
+    fun addLockedApp(packageName: String) = lockedAppsRepository.addLockedApp(packageName)
+    fun removeLockedApp(packageName: String) = lockedAppsRepository.removeLockedApp(packageName)
+    fun isAppLocked(packageName: String): Boolean = lockedAppsRepository.isAppLocked(packageName)
 
-    private var activeBackend: BackendImplementation? = null
+    // Delegate trigger exclusions operations
+    fun getTriggerExcludedApps(): Set<String> = lockedAppsRepository.getTriggerExcludedApps()
+    fun addTriggerExcludedApp(packageName: String) =
+        lockedAppsRepository.addTriggerExcludedApp(packageName)
 
-    // Locked Apps
-    fun getLockedApps(): Set<String> {
-        return appLockPrefs.getStringSet(KEY_LOCKED_APPS, emptySet()) ?: emptySet()
-    }
+    fun removeTriggerExcludedApp(packageName: String) =
+        lockedAppsRepository.removeTriggerExcludedApp(packageName)
 
-    fun addLockedApp(packageName: String) {
-        val currentApps = getLockedApps().toMutableSet()
-        currentApps.add(packageName)
-        appLockPrefs.edit { putStringSet(KEY_LOCKED_APPS, currentApps) }
-    }
+    fun isAppTriggerExcluded(packageName: String): Boolean =
+        lockedAppsRepository.isAppTriggerExcluded(packageName)
 
-    fun removeLockedApp(packageName: String) {
-        val currentApps = getLockedApps().toMutableSet()
-        currentApps.remove(packageName)
-        appLockPrefs.edit { putStringSet(KEY_LOCKED_APPS, currentApps) }
-    }
+    // Delegate authentication operations
+    fun getPassword(): String? = preferencesRepository.getPassword()
+    fun setPassword(password: String) = preferencesRepository.setPassword(password)
+    fun validatePassword(inputPassword: String): Boolean =
+        preferencesRepository.validatePassword(inputPassword)
 
-    // Trigger Exclusions
-    fun getTriggerExcludedApps(): Set<String> {
-        return appLockPrefs.getStringSet(KEY_TRIGGER_EXCLUDED_APPS, emptySet()) ?: emptySet()
-    }
+    // Delegate biometric operations
+    fun setBiometricAuthEnabled(enabled: Boolean) =
+        preferencesRepository.setBiometricAuthEnabled(enabled)
 
-    fun addTriggerExcludedApp(packageName: String) {
-        val currentApps = getTriggerExcludedApps().toMutableSet()
-        currentApps.add(packageName)
-        appLockPrefs.edit { putStringSet(KEY_TRIGGER_EXCLUDED_APPS, currentApps) }
-    }
+    fun isBiometricAuthEnabled(): Boolean = preferencesRepository.isBiometricAuthEnabled()
+    fun setPromptForBiometricAuth(enabled: Boolean) =
+        preferencesRepository.setPromptForBiometricAuth(enabled)
 
-    fun removeTriggerExcludedApp(packageName: String) {
-        val currentApps = getTriggerExcludedApps().toMutableSet()
-        currentApps.remove(packageName)
-        appLockPrefs.edit { putStringSet(KEY_TRIGGER_EXCLUDED_APPS, currentApps) }
-    }
+    fun shouldPromptForBiometricAuth(): Boolean =
+        preferencesRepository.shouldPromptForBiometricAuth()
 
-    // Password
-    fun getPassword(): String? {
-        return appLockPrefs.getString(KEY_PASSWORD, null)
-    }
+    // Delegate UI settings
+    fun setUseMaxBrightness(enabled: Boolean) = preferencesRepository.setUseMaxBrightness(enabled)
+    fun shouldUseMaxBrightness(): Boolean = preferencesRepository.shouldUseMaxBrightness()
+    fun setDisableHaptics(enabled: Boolean) = preferencesRepository.setDisableHaptics(enabled)
+    fun shouldDisableHaptics(): Boolean = preferencesRepository.shouldDisableHaptics()
 
-    fun setPassword(password: String) {
-        appLockPrefs.edit { putString(KEY_PASSWORD, password) }
-    }
+    // Delegate security settings
+    fun setAntiUninstallEnabled(enabled: Boolean) =
+        preferencesRepository.setAntiUninstallEnabled(enabled)
 
-    // Password validation
-    fun validatePassword(inputPassword: String): Boolean {
-        val storedPassword = getPassword()
-        return storedPassword != null && inputPassword == storedPassword
-    }
+    fun isAntiUninstallEnabled(): Boolean = preferencesRepository.isAntiUninstallEnabled()
+    fun setProtectEnabled(enabled: Boolean) = preferencesRepository.setProtectEnabled(enabled)
+    fun isProtectEnabled(): Boolean = preferencesRepository.isProtectEnabled()
 
-    // Unlock time duration
-    fun setUnlockTimeDuration(minutes: Int) {
-        settingsPrefs.edit { putInt(KEY_UNLOCK_TIME_DURATION, minutes) }
-    }
+    // Delegate unlock settings
+    fun setUnlockTimeDuration(minutes: Int) = preferencesRepository.setUnlockTimeDuration(minutes)
+    fun getUnlockTimeDuration(): Int = preferencesRepository.getUnlockTimeDuration()
+    fun setAutoUnlockEnabled(enabled: Boolean) = preferencesRepository.setAutoUnlockEnabled(enabled)
+    fun isAutoUnlockEnabled(): Boolean = preferencesRepository.isAutoUnlockEnabled()
+    fun setUnlockBehavior(behavior: Int) = preferencesRepository.setUnlockBehavior(behavior)
+    fun getUnlockBehavior(): Int = preferencesRepository.getUnlockBehavior()
 
-    fun getUnlockTimeDuration(): Int {
-        return settingsPrefs.getInt(KEY_UNLOCK_TIME_DURATION, 0)
-    }
+    // Delegate backend operations
+    fun setBackendImplementation(backend: BackendImplementation) =
+        preferencesRepository.setBackendImplementation(backend)
 
-    // Settings
-    fun setBiometricAuthEnabled(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_BIOMETRIC_AUTH_ENABLED, enabled) }
-    }
+    fun getBackendImplementation(): BackendImplementation =
+        preferencesRepository.getBackendImplementation()
 
-    fun isBiometricAuthEnabled(): Boolean {
-        return settingsPrefs.getBoolean(KEY_BIOMETRIC_AUTH_ENABLED, false)
-    }
+    fun getFallbackBackend(): BackendImplementation = preferencesRepository.getFallbackBackend()
 
-    fun setPromptForBiometricAuth(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_PROMPT_FOR_BIOMETRIC_AUTH, enabled) }
-    }
+    // Delegate app state operations
+    fun isShowCommunityLink(): Boolean = preferencesRepository.isShowCommunityLink()
+    fun setCommunityLinkShown(shown: Boolean) = preferencesRepository.setCommunityLinkShown(shown)
+    fun isShowDonateLink(): Boolean = preferencesRepository.isShowDonateLink(context)
 
-    fun shouldPromptForBiometricAuth(): Boolean {
-        return isBiometricAuthEnabled() && settingsPrefs.getBoolean(
-            KEY_PROMPT_FOR_BIOMETRIC_AUTH,
-            true
-        )
-    }
+    // Backend service management
+    fun setActiveBackend(backend: BackendImplementation) =
+        backendServiceManager.setActiveBackend(backend)
 
-    fun setUseMaxBrightness(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_USE_MAX_BRIGHTNESS, enabled) }
-    }
+    fun getActiveBackend(): BackendImplementation? = backendServiceManager.getActiveBackend()
+    fun startBackendService(backend: BackendImplementation): Boolean =
+        backendServiceManager.startService(backend)
 
-    fun shouldUseMaxBrightness(): Boolean {
-        return settingsPrefs.getBoolean(KEY_USE_MAX_BRIGHTNESS, false)
-    }
-
-    fun setAntiUninstallEnabled(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_ANTI_UNINSTALL, enabled) }
-    }
-
-    fun isAntiUninstallEnabled(): Boolean {
-        return settingsPrefs.getBoolean(KEY_ANTI_UNINSTALL, false)
-    }
-
-    fun setDisableHaptics(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_DISABLE_HAPTICS, enabled) }
-    }
-
-    fun shouldDisableHaptics(): Boolean {
-        return settingsPrefs.getBoolean(KEY_DISABLE_HAPTICS, false)
-    }
-
-    fun setBackendImplementation(backend: BackendImplementation) {
-        settingsPrefs.edit { putString(KEY_BACKEND_IMPLEMENTATION, backend.name) }
-    }
-
-    fun getBackendImplementation(): BackendImplementation {
-        val backend = settingsPrefs.getString(
-            KEY_BACKEND_IMPLEMENTATION,
-            BackendImplementation.ACCESSIBILITY.name
-        )
-        return try {
-            BackendImplementation.valueOf(backend ?: BackendImplementation.ACCESSIBILITY.name)
-        } catch (_: IllegalArgumentException) {
-            BackendImplementation.ACCESSIBILITY
-        }
-    }
-
-    fun getFallbackBackend(): BackendImplementation {
-        val fallback =
-            settingsPrefs.getString(KEY_FALLBACK_BACKEND, BackendImplementation.ACCESSIBILITY.name)
-        return try {
-            BackendImplementation.valueOf(fallback ?: BackendImplementation.ACCESSIBILITY.name)
-        } catch (_: IllegalArgumentException) {
-            BackendImplementation.ACCESSIBILITY
-        }
-    }
-
-    // Active backend tracking (runtime switching)
-    fun setActiveBackend(backend: BackendImplementation) {
-        activeBackend = backend
-    }
-
-    fun getActiveBackend(): BackendImplementation? {
-        return activeBackend
-    }
-
-    fun isShowCommunityLink(): Boolean {
-        return !settingsPrefs.getBoolean(KEY_COMMUNITY_LINK_SHOWN, false)
-    }
-
-    fun setCommunityLinkShown(shown: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_COMMUNITY_LINK_SHOWN, shown) }
-    }
-
-    fun isShowDonateLink(): Boolean {
-        val currentVersionCode =
-            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
-        val savedVersionCode = settingsPrefs.getInt(LAST_VERSION_CODE, -1)
-
-        if (currentVersionCode > savedVersionCode) {
-            settingsPrefs.edit {
-                putInt(LAST_VERSION_CODE, currentVersionCode)
-            }
-            return true
-        }
-        return false
-    }
-
-    fun isProtectEnabled(): Boolean {
-        return settingsPrefs.getBoolean(KEY_APPLOCK_ENABLED, true)
-    }
-
-    fun setProtectEnabled(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_APPLOCK_ENABLED, enabled) }
-    }
-
-    fun isAutoUnlockEnabled(): Boolean {
-        return settingsPrefs.getBoolean(KEY_AUTO_UNLOCK, false)
-    }
-
-    fun setAutoUnlockEnabled(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_AUTO_UNLOCK, enabled) }
-    }
-
-    fun setUnlockBehavior(behavior: Int) {
-        settingsPrefs.edit { putInt(KEY_UNLOCK_BEHAVIOR, behavior) }
-    }
-
-    fun getUnlockBehavior(): Int {
-        return settingsPrefs.getInt(KEY_UNLOCK_BEHAVIOR, 1)
-    }
+    fun stopBackendService(backend: BackendImplementation): Boolean =
+        backendServiceManager.stopService(backend)
 
     companion object {
-        private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
-        private const val PREFS_NAME_SETTINGS = "app_lock_settings"
+        private const val TAG = "AppLockRepository"
 
-        private const val KEY_LOCKED_APPS = "locked_apps"
-        private const val KEY_TRIGGER_EXCLUDED_APPS = "trigger_excluded_apps"
-        private const val KEY_PASSWORD = "password"
-        private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
-        private const val KEY_PROMPT_FOR_BIOMETRIC_AUTH = "prompt_for_biometric_auth"
-        private const val KEY_DISABLE_HAPTICS = "disable_haptics"
-        private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
-        private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
-        private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
-        private const val KEY_BACKEND_IMPLEMENTATION = "backend_implementation"
-        private const val KEY_FALLBACK_BACKEND = "fallback_backend"
-        private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
-        private const val LAST_VERSION_CODE = "last_version_code"
-        private const val KEY_APPLOCK_ENABLED = "applock_enabled"
-        private const val KEY_AUTO_UNLOCK = "auto_unlock"
-        private const val KEY_UNLOCK_BEHAVIOR = "unlock_behavior"
-
-
-        fun shouldStartService(rep: AppLockRepository, serviceClass: Class<*>): Boolean {
-            val activeBackend = rep.getActiveBackend()
-            val chosenBackend = rep.getBackendImplementation()
-
-            Log.d(
-                "AppLockRepository",
-                "activeBackend: ${activeBackend?.name}, requested service: ${serviceClass.simpleName}, chosen backend: ${chosenBackend.name}"
+        fun shouldStartService(repository: AppLockRepository, serviceClass: Class<*>): Boolean {
+            return repository.backendServiceManager.shouldStartService(
+                serviceClass,
+                repository.getBackendImplementation()
             )
-
-            val serviceBackend = when (serviceClass) {
-                AppLockAccessibilityService::class.java -> BackendImplementation.ACCESSIBILITY
-                ExperimentalAppLockService::class.java -> BackendImplementation.USAGE_STATS
-                ShizukuAppLockService::class.java -> BackendImplementation.SHIZUKU
-                else -> {
-                    Log.d("AppLockRepository", "Unknown service class: ${serviceClass.simpleName}")
-                    return false
-                }
-            }
-
-            // If this service matches the chosen backend, it should start
-            if (serviceBackend == chosenBackend) {
-                Log.d(
-                    "AppLockRepository",
-                    "Service ${serviceClass.simpleName} matches chosen backend, should start"
-                )
-                return true
-            }
-
-            // If this service matches the active backend (fallback scenario), it should start
-            if (activeBackend != null && serviceBackend == activeBackend) {
-                Log.d(
-                    "AppLockRepository",
-                    "Service ${serviceClass.simpleName} matches active backend, should start"
-                )
-                return true
-            }
-
-            Log.d(
-                "AppLockRepository",
-                "Service ${serviceClass.simpleName} should not start - not matching chosen or active backend"
-            )
-            return false
         }
     }
 }

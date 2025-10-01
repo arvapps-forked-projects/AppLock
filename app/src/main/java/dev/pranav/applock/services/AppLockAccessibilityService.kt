@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.core.content.getSystemService
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.utils.appLockRepository
+import dev.pranav.applock.core.utils.enableAccessibilityServiceWithShizuku
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
@@ -23,6 +24,7 @@ import dev.pranav.applock.services.AppLockConstants.ACCESSIBILITY_SETTINGS_CLASS
 import dev.pranav.applock.services.AppLockConstants.ADMIN_CONFIG_CLASSES
 import dev.pranav.applock.services.AppLockConstants.EXCLUDED_APPS
 import dev.pranav.applock.services.AppLockConstants.KNOWN_RECENTS_CLASSES
+import rikka.shizuku.Shizuku
 
 @SuppressLint("AccessibilityPolicy")
 class AppLockAccessibilityService : AccessibilityService() {
@@ -61,7 +63,7 @@ class AppLockAccessibilityService : AccessibilityService() {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                     AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                     AccessibilityEvent.TYPE_WINDOWS_CHANGED
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_VISUAL
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             packageNames = null
         }
 
@@ -155,34 +157,28 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
     }
 
-    // --- Core Lock Logic (Unified with other services) ---
 
     private fun checkAndLockApp(packageName: String, triggeringPackage: String, currentTime: Long) {
         if (AppLockManager.isLockScreenShown.get() || AppLockManager.currentBiometricState == BiometricState.AUTH_STARTED) return
         if (packageName !in appLockRepository.getLockedApps()) return
 
-        // 1. Check Temporary Unlock
         if (AppLockManager.isAppTemporarilyUnlocked(packageName)) return
         AppLockManager.clearTemporarilyUnlockedApp()
 
-        // 2. Check Time-based Grace Period
         val unlockDurationMinutes = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0L
 
         if (unlockDurationMinutes > 0 && unlockTimestamp > 0) {
             val durationMillis = unlockDurationMinutes * 60 * 1000L
             if (currentTime - unlockTimestamp < durationMillis) {
-                // Keep unlocked if within time
                 AppLockManager.unlockApp(packageName)
                 return
             }
 
-            // Grace period expired, clear timestamp
             AppLockManager.appUnlockTimes.remove(packageName)
             AppLockManager.clearTemporarilyUnlockedApp()
         }
 
-        // 3. Execute Lock
         Log.d(TAG, "Locked app detected: $packageName. Showing overlay.")
         AppLockManager.isLockScreenShown.set(true)
 
@@ -204,14 +200,21 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
     }
 
-    // --- Anti-Uninstall Logic ---
-
     private fun checkForDeviceAdminDeactivation(event: AccessibilityEvent) {
         val rootNode = rootInActiveWindow ?: return
 
-        val isDeviceAdminPage = (event.className in ADMIN_CONFIG_CLASSES) ||
-                (event.className in ACCESSIBILITY_SETTINGS_CLASSES) ||
-                findNodeWithTextContaining(rootNode, "Device admin") != null
+        if ((event.className == "com.android.settings.SubSettings" && event.text.first() == "App Lock") || (event.className == "android.app.AlertDialog" && event.text.first()
+                .contains("App Lock")) || (event.className in ACCESSIBILITY_SETTINGS_CLASSES && event.text.any { it == "App Lock" })
+        ) {
+            // there ain't no way someone bypasses this without root/shizuku lol
+
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            performGlobalAction(GLOBAL_ACTION_HOME)
+            performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+        }
+
+        val isDeviceAdminPage =
+            (event.contentDescription?.contains("Device admin app") == true && event.className == "android.widget.FrameLayout") || (event.className in ADMIN_CONFIG_CLASSES)
 
         val isOurAppVisible = findNodeWithTextContaining(rootNode, "App Lock") != null ||
                 findNodeWithTextContaining(rootNode, "AppLock") != null
@@ -224,7 +227,11 @@ class AppLockAccessibilityService : AccessibilityService() {
 
             if (dpm?.isAdminActive(component) == true) {
                 // If the user is on the deactivation page and DPM is still active, block it.
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                performGlobalAction(GLOBAL_ACTION_BACK)
                 performGlobalAction(GLOBAL_ACTION_HOME)
+                Thread.sleep(100)
+                performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
                 Toast.makeText(
                     this,
                     "Disable anti-uninstall from AppLock settings to remove this restriction.",
@@ -263,7 +270,7 @@ class AppLockAccessibilityService : AccessibilityService() {
         // Query for all activities that can handle the HOME intent
         val resolveInfoList: List<ResolveInfo> = packageManager.queryIntentActivities(
             homeIntent,
-            PackageManager.MATCH_DEFAULT_ONLY // Only include activities that are a full match
+            PackageManager.MATCH_DEFAULT_ONLY
         )
 
         // A system launcher typically has the SYSTEM flag set, or is the one provided by the system.
@@ -319,6 +326,11 @@ class AppLockAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility service unbound")
         isServiceRunning = false
         AppLockManager.startFallbackServices(this, AppLockAccessibilityService::class.java)
+
+        if (Shizuku.pingBinder() && appLockRepository.isAntiUninstallEnabled()) {
+            enableAccessibilityServiceWithShizuku(ComponentName(packageName, javaClass.name))
+        }
+
         return super.onUnbind(intent)
     }
 

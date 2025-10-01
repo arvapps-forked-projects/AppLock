@@ -1,12 +1,8 @@
 package dev.pranav.applock.core.utils
 
 import android.annotation.SuppressLint
-import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Binder.clearCallingIdentity
-import android.os.Binder.restoreCallingIdentity
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -15,10 +11,27 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
-import dev.pranav.applock.R
+import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.data.repository.AppLockRepository
 
-fun vibrate(context: Context, duration: Long = 500) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+/**
+ * Provides vibration feedback with proper error handling and API level compatibility.
+ */
+fun vibrate(context: Context, duration: Long = DEFAULT_VIBRATION_DURATION) {
+    try {
+        val vibrator = getVibrator(context)
+        val vibrationEffect = VibrationEffect.createOneShot(
+            duration,
+            VibrationEffect.DEFAULT_AMPLITUDE
+        )
+        vibrator.vibrate(vibrationEffect)
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to vibrate device", e)
+    }
+}
+
+private fun getVibrator(context: Context): Vibrator {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager =
             context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
         vibratorManager.defaultVibrator
@@ -26,86 +39,79 @@ fun vibrate(context: Context, duration: Long = 500) {
         @Suppress("DEPRECATION")
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
-    vibrator.vibrate(
-        VibrationEffect.createOneShot(
-            duration,
-            VibrationEffect.DEFAULT_AMPLITUDE
-        )
-    )
 }
 
 /**
- * Launches the battery optimization settings for the app.
- * If the specific request intent is not available, it falls back to the standard settings.
+ * Launches battery optimization settings for the app.
+ * Falls back to standard settings if specific request intent is not available.
  */
 @SuppressLint("BatteryLife")
 fun launchBatterySettings(context: Context) {
-    val pm = context.packageManager
-    val requestIgnoreIntent =
-        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = "package:${context.packageName}".toUri()
-        }
+    try {
+        val pm = context.packageManager
+        val requestIgnoreIntent = createBatteryOptimizationIntent(context)
 
-    if (requestIgnoreIntent.resolveActivity(pm) != null) {
-        context.startActivity(requestIgnoreIntent)
-        Toast.makeText(
-            context,
-            context.getString(R.string.utils_battery_ignore_toast),
-            Toast.LENGTH_LONG
-        ).show()
-    } else {
-        val standardIntent =
-            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-        if (standardIntent.resolveActivity(pm) != null) {
-            context.startActivity(standardIntent)
-            Toast.makeText(
-                context,
-                context.getString(R.string.utils_battery_specific_settings_not_found_toast),
-                Toast.LENGTH_LONG
-            ).show()
+        if (requestIgnoreIntent.resolveActivity(pm) != null) {
+            context.startActivity(requestIgnoreIntent)
+            showBatteryOptimizationToast(context, "Battery optimization request sent")
         } else {
-            // Very rare case where even the standard settings screen is missing.
-            Toast.makeText(
-                context,
-                context.getString(R.string.utils_battery_settings_not_found_toast),
-                Toast.LENGTH_LONG
-            ).show()
+            Log.w(
+                TAG,
+                "Battery optimization intent not available, falling back to general settings"
+            )
+            launchGeneralBatterySettings(context)
         }
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to launch battery settings", e)
+        showBatteryOptimizationToast(context, "Failed to open battery settings")
     }
 }
 
+/**
+ * Checks if the app has usage stats permission.
+ */
 fun Context.hasUsagePermission(): Boolean {
+    val appOps = getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val mode = appOps.checkOpNoThrow(
+        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+        android.os.Process.myUid(),
+        packageName
+    )
+    return mode == android.app.AppOpsManager.MODE_ALLOWED
+}
+
+private fun createBatteryOptimizationIntent(context: Context): Intent {
+    return Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+        data = "package:${context.packageName}".toUri()
+    }
+}
+
+private fun launchGeneralBatterySettings(context: Context) {
     try {
-        val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
-        val appOpsManager = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val mode = appOpsManager.checkOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            applicationInfo.uid,
-            applicationInfo.packageName
+        val generalBatteryIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        context.startActivity(generalBatteryIntent)
+        showBatteryOptimizationToast(
+            context,
+            "Please find and configure this app in battery settings"
         )
-        return (mode == AppOpsManager.MODE_ALLOWED)
-    } catch (e: PackageManager.NameNotFoundException) {
-        Log.e("AppLockUtils", getString(R.string.utils_usage_permission_error_log) + e.message)
-        return false
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to launch general battery settings", e)
     }
 }
 
-fun Context.appLockRepository() =
-    (applicationContext as? dev.pranav.applock.AppLockApplication)?.appLockRepository
-        ?: throw IllegalStateException("AppLockRepository not initialized")
-
-
-fun withCleanCallingIdentity(action: Runnable) {
-    var throwableToPropagate: Throwable? = null
-    val callingIdentity: Long = clearCallingIdentity()
+private fun showBatteryOptimizationToast(context: Context, message: String) {
     try {
-        action.run()
-    } catch (throwable: Throwable) {
-        throwableToPropagate = throwable
-    } finally {
-        restoreCallingIdentity(callingIdentity)
-        if (throwableToPropagate != null) {
-            throw RuntimeException(throwableToPropagate)
-        }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to show toast message", e)
     }
 }
+
+private const val TAG = "AppLockUtils"
+private const val DEFAULT_VIBRATION_DURATION = 500L
+
+/**
+ * Extension function to get AppLockRepository from Context
+ */
+fun Context.appLockRepository(): AppLockRepository =
+    (applicationContext as AppLockApplication).appLockRepository
