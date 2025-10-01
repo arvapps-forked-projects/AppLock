@@ -20,6 +20,7 @@ import dev.pranav.applock.features.applist.ui.MainScreen
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayScreen
 import dev.pranav.applock.features.setpassword.ui.SetPasswordScreen
 import dev.pranav.applock.features.settings.ui.SettingsScreen
+import dev.pranav.applock.features.triggerexclusions.ui.TriggerExclusionsScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController, startDestination: String) {
@@ -110,6 +111,8 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
             )
         }
         composable(Screen.Settings.route) { SettingsScreen(navController) }
+
+        composable(Screen.TriggerExclusions.route) { TriggerExclusionsScreen(navController) }
     }
 }
 

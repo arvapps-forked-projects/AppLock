@@ -10,6 +10,7 @@ import android.content.pm.IPackageDataObserver;
 import android.content.pm.ParceledListSlice;
 import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.Debug;
 import android.os.IBinder;
@@ -1041,4 +1042,11 @@ public interface IActivityManager {
      * @hide
      */
     IBinder refreshIntentCreatorToken(Intent intent);
+
+    abstract class Stub extends Binder implements IActivityManager {
+
+        public static IActivityManager asInterface(IBinder obj) {
+            throw new RuntimeException("STUB");
+        }
+    }
 }

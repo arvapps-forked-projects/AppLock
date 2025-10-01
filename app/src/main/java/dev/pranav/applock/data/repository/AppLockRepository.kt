@@ -35,6 +35,23 @@ class AppLockRepository(private val context: Context) {
         appLockPrefs.edit { putStringSet(KEY_LOCKED_APPS, currentApps) }
     }
 
+    // Trigger Exclusions
+    fun getTriggerExcludedApps(): Set<String> {
+        return appLockPrefs.getStringSet(KEY_TRIGGER_EXCLUDED_APPS, emptySet()) ?: emptySet()
+    }
+
+    fun addTriggerExcludedApp(packageName: String) {
+        val currentApps = getTriggerExcludedApps().toMutableSet()
+        currentApps.add(packageName)
+        appLockPrefs.edit { putStringSet(KEY_TRIGGER_EXCLUDED_APPS, currentApps) }
+    }
+
+    fun removeTriggerExcludedApp(packageName: String) {
+        val currentApps = getTriggerExcludedApps().toMutableSet()
+        currentApps.remove(packageName)
+        appLockPrefs.edit { putStringSet(KEY_TRIGGER_EXCLUDED_APPS, currentApps) }
+    }
+
     // Password
     fun getPassword(): String? {
         return appLockPrefs.getString(KEY_PASSWORD, null)
@@ -168,14 +185,6 @@ class AppLockRepository(private val context: Context) {
         settingsPrefs.edit { putBoolean(KEY_APPLOCK_ENABLED, enabled) }
     }
 
-    fun setShizukuExperimentalEnabled(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_SHIZUKU_EXPERIMENTAL, enabled) }
-    }
-
-    fun isShizukuExperimentalEnabled(): Boolean {
-        return settingsPrefs.getBoolean(KEY_SHIZUKU_EXPERIMENTAL, true)
-    }
-
     fun isAutoUnlockEnabled(): Boolean {
         return settingsPrefs.getBoolean(KEY_AUTO_UNLOCK, false)
     }
@@ -197,6 +206,7 @@ class AppLockRepository(private val context: Context) {
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
 
         private const val KEY_LOCKED_APPS = "locked_apps"
+        private const val KEY_TRIGGER_EXCLUDED_APPS = "trigger_excluded_apps"
         private const val KEY_PASSWORD = "password"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
         private const val KEY_PROMPT_FOR_BIOMETRIC_AUTH = "prompt_for_biometric_auth"
@@ -208,7 +218,6 @@ class AppLockRepository(private val context: Context) {
         private const val KEY_FALLBACK_BACKEND = "fallback_backend"
         private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
         private const val LAST_VERSION_CODE = "last_version_code"
-        private const val KEY_SHIZUKU_EXPERIMENTAL = "shizuku_experimental"
         private const val KEY_APPLOCK_ENABLED = "applock_enabled"
         private const val KEY_AUTO_UNLOCK = "auto_unlock"
         private const val KEY_UNLOCK_BEHAVIOR = "unlock_behavior"

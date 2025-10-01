@@ -5,6 +5,8 @@ import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Binder.clearCallingIdentity
+import android.os.Binder.restoreCallingIdentity
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -91,3 +93,19 @@ fun Context.hasUsagePermission(): Boolean {
 fun Context.appLockRepository() =
     (applicationContext as? dev.pranav.applock.AppLockApplication)?.appLockRepository
         ?: throw IllegalStateException("AppLockRepository not initialized")
+
+
+fun withCleanCallingIdentity(action: Runnable) {
+    var throwableToPropagate: Throwable? = null
+    val callingIdentity: Long = clearCallingIdentity()
+    try {
+        action.run()
+    } catch (throwable: Throwable) {
+        throwableToPropagate = throwable
+    } finally {
+        restoreCallingIdentity(callingIdentity)
+        if (throwableToPropagate != null) {
+            throw RuntimeException(throwableToPropagate)
+        }
+    }
+}
