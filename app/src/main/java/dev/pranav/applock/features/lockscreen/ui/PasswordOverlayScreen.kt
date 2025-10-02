@@ -12,10 +12,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,10 +56,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -188,7 +193,10 @@ class PasswordOverlayActivity : FragmentActivity() {
 
         setContent {
             AppLockTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    contentColor = MaterialTheme.colorScheme.primaryContainer
+                ) { innerPadding ->
                     PasswordOverlayScreen(
                         modifier = Modifier.padding(innerPadding),
                         showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
@@ -238,7 +246,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                     AppLockManager.temporarilyUnlockAppWithBiometrics(pkgName)
                     val intent = packageManager.getLaunchIntentForPackage(pkgName)
                     if (intent != null) {
-                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
                     } else {
                         Log.e(TAG, "No launch intent found for package: $pkgName")
@@ -316,7 +324,7 @@ fun PasswordOverlayScreen(
     val appLockRepository = LocalContext.current.appLockRepository()
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         val passwordState = remember { mutableStateOf("") }
         var showError by remember { mutableStateOf(false) }
@@ -531,8 +539,10 @@ fun KeypadSection(
         }
     }
 
+    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(screenWidth / 20),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
     ) {
@@ -659,43 +669,84 @@ fun KeypadRow(
     onKeyClick: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val numKeys = keys.size.toFloat()
+
+    // Keypad dimension calculation remains the same
+    val totalSpacing = screenWidth / 5
+    val maxButtonDiameter = (screenWidth - totalSpacing) / numKeys
+    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 60.dp, maximumValue = 100.dp)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.Start,
+            .padding(horizontal = (totalSpacing / 4)),
+        horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
         keys.forEachIndexed { index, key ->
+            val interactionSource = remember { MutableInteractionSource() }
+
+            val isPressed by interactionSource.collectIsPressedAsState()
+
+            val targetColor = if (isPressed) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                if (icons.isNotEmpty() && index < icons.size && icons[index] != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+            }
+
+            val animatedContainerColor by animateColorAsState(
+                targetValue = targetColor,
+                animationSpec = tween(durationMillis = 150),
+                label = "ButtonContainerColorAnimation"
+            )
+
+            val normalTextSize = MaterialTheme.typography.headlineLargeEmphasized.fontSize
+
+            val targetFontSize = if (isPressed) normalTextSize * 1.2f else normalTextSize
+
+            val animatedFontSize by animateFloatAsState(
+                targetValue = targetFontSize.value,
+                animationSpec = tween(durationMillis = 100),
+                label = "ButtonTextSizeAnimation"
+            )
+
             FilledTonalButton(
                 onClick = {
                     if (!disableHaptics) vibrate(context, 100)
                     onKeyClick(key)
                 },
                 modifier = Modifier
-                    .padding(8.dp)
-                    .weight(1f),
+                    .size(buttonSize),
+
+                interactionSource = interactionSource,
+
                 shapes = ButtonShapes(
                     shape = CircleShape,
                     pressedShape = RoundedCornerShape(25),
                 ),
-                colors = ButtonDefaults.elevatedButtonColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = animatedContainerColor,
                 ),
                 elevation = ButtonDefaults.filledTonalButtonElevation()
             ) {
+                val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+
                 if (icons.isNotEmpty() && index < icons.size && icons[index] != null) {
                     Icon(
                         imageVector = icons[index]!!,
                         contentDescription = key,
-                        modifier = Modifier.size(40.dp),
-                        tint = if (key == "backspace") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSecondaryContainer
+                        modifier = Modifier
+                            .size(buttonSize * 0.45f),
+                        tint = contentColor
                     )
                 } else {
                     Text(
                         text = key,
-                        style = MaterialTheme.typography.displaySmallEmphasized,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        style = MaterialTheme.typography.headlineLargeEmphasized.copy(
+                            fontSize = animatedFontSize.sp
+                        ),
                     )
                 }
             }

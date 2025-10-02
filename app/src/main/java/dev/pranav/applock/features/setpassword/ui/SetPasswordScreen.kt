@@ -16,23 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -120,7 +112,7 @@ fun SetPasswordScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 title = {
@@ -135,7 +127,8 @@ fun SetPasswordScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -150,15 +143,6 @@ fun SetPasswordScreen(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (isFirstTimeSetup && !isConfirmationMode && !isVerifyOldPasswordMode) {
-                Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    text = stringResource(R.string.create_pin_explanation),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                    textAlign = TextAlign.Center
-                )
-            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -173,38 +157,6 @@ fun SetPasswordScreen(
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = TextAlign.Center
                 )
-                TooltipBox(
-                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                        TooltipAnchorPosition.Above
-                    ),
-                    tooltip = {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                            modifier = Modifier.padding(32.dp),
-                        ) {
-                            Text(
-                                text = when {
-                                    isVerifyOldPasswordMode -> stringResource(R.string.tooltip_enter_current_pin)
-                                    isConfirmationMode -> stringResource(R.string.tooltip_confirm_pin)
-                                    else -> stringResource(R.string.tooltip_create_pin_min_length)
-                                },
-                                modifier = Modifier.padding(8.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    },
-                    state = rememberTooltipState()
-                ) {
-                    IconButton(onClick = {}) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = stringResource(R.string.information_cd),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
             }
 
             if (showMismatchError) {
@@ -292,8 +244,10 @@ fun SetPasswordScreen(
                 }
             }
 
+            val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+
             Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(screenWidth / 20),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val onKeyClick: (String) -> Unit = { key ->
@@ -373,26 +327,33 @@ fun SetPasswordScreen(
                     }
                 }
 
+                val disableHaptics = appLockRepository!!.shouldDisableHaptics()
+
                 KeypadRow(
+                    disableHaptics = disableHaptics,
                     keys = listOf("1", "2", "3"),
-                    onKeyClick = onKeyClick
+                    onKeyClick = onKeyClick,
                 )
                 KeypadRow(
+                    disableHaptics = disableHaptics,
                     keys = listOf("4", "5", "6"),
-                    onKeyClick = onKeyClick
+                    onKeyClick = onKeyClick,
                 )
                 KeypadRow(
+                    disableHaptics = disableHaptics,
                     keys = listOf("7", "8", "9"),
-                    onKeyClick = onKeyClick
+                    onKeyClick = onKeyClick,
                 )
+
                 KeypadRow(
+                    disableHaptics = disableHaptics,
                     keys = listOf("backspace", "0", "proceed"),
                     icons = listOf(
                         Backspace,
                         null,
                         if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
                     ),
-                    onKeyClick = onKeyClick
+                    onKeyClick = onKeyClick,
                 )
             }
         }
