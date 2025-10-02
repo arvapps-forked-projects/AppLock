@@ -7,5 +7,6 @@ sealed class Screen(val route: String) {
     object Main : Screen("main")
     object PasswordOverlay : Screen("password_overlay")
     object Settings : Screen("settings")
+    object TriggerExclusions : Screen("trigger_exclusions")
 }
 

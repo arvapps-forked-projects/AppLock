@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import dev.pranav.applock.R
@@ -25,237 +26,222 @@ import dev.pranav.applock.data.repository.AppLockRepository.Companion.shouldStar
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import java.util.Timer
-import java.util.TimerTask
+import kotlin.concurrent.timerTask
 
 class ExperimentalAppLockService : Service() {
-    private lateinit var appLockRepository: AppLockRepository
-    private var timer: Timer? = null
-    private lateinit var usageStatsManager: UsageStatsManager
     private val TAG = "ExperimentalAppLockService"
-    private val CHANNEL_ID = "ExperimentalAppLockServiceChannel"
     private val NOTIFICATION_ID = 113
+    private val CHANNEL_ID = "ExperimentalAppLockServiceChannel"
 
-    override fun onCreate() {
-        super.onCreate()
-        appLockRepository = appLockRepository()
-        usageStatsManager = getSystemService()!!
+    private val appLockRepository: AppLockRepository by lazy { applicationContext.appLockRepository() }
+    private val usageStatsManager: UsageStatsManager by lazy { getSystemService()!! }
+    private val notificationManager: NotificationManager by lazy { getSystemService()!! }
+    private val biometricAuthStarted by lazy { AppLockAccessibilityService.BiometricState.AUTH_STARTED.toString() }
 
-        if (!shouldStartService(appLockRepository, this::class.java)) {
-            Log.d(TAG, "Service not needed, stopping service")
-            stopSelf()
-            return
-        }
-
-        if (!this.hasUsagePermission()) {
-            Log.e(TAG, "Usage permission not granted, stopping service")
-            AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
-            stopSelf()
-            return
-        }
-    }
+    private var timer: Timer? = null
+    private var previousForegroundPackage = ""
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "ExperimentalAppLockService started")
-        AppLockManager.resetRestartAttempts("ExperimentalAppLockService")
+        if (!shouldStartService(appLockRepository, this::class.java) || !hasUsagePermission()) {
+            Log.e(TAG, "Permissions missing or service not needed. Falling back.")
+            AppLockManager.startFallbackServices(this, this::class.java)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        Log.d(TAG, "Service starting.")
+        AppLockManager.resetRestartAttempts(TAG)
         appLockRepository.setActiveBackend(BackendImplementation.USAGE_STATS)
-
-        stopOtherServices()
-
+        AppLockManager.stopAllOtherServices(this, this::class.java)
         AppLockManager.isLockScreenShown.set(false)
 
-        timer = Timer()
-        timer?.schedule(object : TimerTask() {
-            override fun run() {
-                if (!appLockRepository.isProtectEnabled()) return
+        startMonitoringTimer()
+        startForegroundService()
 
-                if (isDeviceLocked()) {
-                    AppLockManager.appUnlockTimes.clear()
-                    AppLockManager.clearTemporarilyUnlockedApp()
-                    return
-                }
-                val foregroundApp = getCurrentForegroundAppInfo()
-                if (foregroundApp == null) {
-                    AppLockManager.clearTemporarilyUnlockedApp()
-                    return
-                }
-                if (foregroundApp.packageName == packageName || foregroundApp.packageName in getKeyboardPackageNames()) {
-                    return // Skip if the current app is this service or a keyboard app
-                }
-                checkAndLockApp(foregroundApp.packageName, System.currentTimeMillis())
-            }
-        }, 0, 250)
-
-
-        val dpm =
-            getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val component = ComponentName(this, DeviceAdmin::class.java)
-        val hasDeviceAdmin = dpm.isAdminActive(component)
-
-        createNotificationChannel()
-
-        val notification = createNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                if (hasDeviceAdmin) ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED else ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
         return START_STICKY
-    }
-
-
-    private fun getKeyboardPackageNames(): List<String> {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        return imm.enabledInputMethodList.map { it.packageName }
-    }
-
-    private fun stopOtherServices() {
-        Log.d(TAG, "Stopping other app lock services")
-
-        try {
-            stopService(Intent(this, ShizukuAppLockService::class.java))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping other services", e)
-        }
     }
 
     override fun onDestroy() {
         timer?.cancel()
-        Log.d(TAG, "ExperimentalAppLockService destroyed")
-        if (shouldStartService(appLockRepository, this::class.java)) {
-            AppLockManager.startFallbackServices(this, ExperimentalAppLockService::class.java)
-        }
-        AppLockManager.isLockScreenShown.set(false)
+        Log.d(TAG, "Service destroyed. Checking for fallback.")
 
-        val notificationManager =
-            getSystemService(NotificationManager::class.java)
+        if (shouldStartService(appLockRepository, this::class.java)) {
+            AppLockManager.startFallbackServices(this, this::class.java)
+        }
+
+        AppLockManager.isLockScreenShown.set(false)
         notificationManager.cancel(NOTIFICATION_ID)
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    // --- Monitoring ---
+
+    private fun startMonitoringTimer() {
+        timer?.cancel()
+        timer = Timer()
+        timer?.schedule(timerTask {
+            if (!appLockRepository.isProtectEnabled() || applicationContext.isDeviceLocked()) {
+                if (applicationContext.isDeviceLocked()) {
+                    AppLockManager.appUnlockTimes.clear()
+                }
+                AppLockManager.clearTemporarilyUnlockedApp()
+                return@timerTask
+            }
+
+            val foregroundApp = getCurrentForegroundAppPackage() ?: return@timerTask
+            val currentPackage = foregroundApp.first
+            val triggeringPackage = previousForegroundPackage
+            previousForegroundPackage = currentPackage
+
+            if (isExclusionApp(currentPackage)) return@timerTask
+
+            if (triggeringPackage in appLockRepository.getTriggerExcludedApps()) {
+                return@timerTask
+            }
+
+            // CRITICAL FIX: Clear temporary unlock if a NEW app (that isn't the temporarily unlocked one) is foreground.
+            if (currentPackage != AppLockManager.temporarilyUnlockedApp) {
+                AppLockManager.clearTemporarilyUnlockedApp()
+            }
+
+            checkAndLockApp(currentPackage, triggeringPackage, System.currentTimeMillis())
+        }, 0, 250)
     }
 
-    private fun checkAndLockApp(packageName: String, currentTime: Long) {
-        if (AppLockManager.currentBiometricState == AppLockAccessibilityService.BiometricState.AUTH_STARTED) {
-            return
+    private fun isExclusionApp(packageName: String): Boolean {
+        val keyboardPackages = getSystemService<InputMethodManager>()
+            ?.enabledInputMethodList
+            ?.map { it.packageName }
+            ?: emptyList()
+
+        return packageName == this.packageName ||
+                packageName in keyboardPackages ||
+                packageName in AppLockConstants.EXCLUDED_APPS
+    }
+
+    /**
+     * Returns the foreground package name and class name, or null if filtered.
+     */
+    private fun getCurrentForegroundAppPackage(): Pair<String, String>? {
+        val time = System.currentTimeMillis()
+        val events = usageStatsManager.queryEvents(time - 1000 * 100, time)
+        val event = UsageEvents.Event()
+        var recentApp: Pair<String, String>? = null
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+
+            if (event.eventType != UsageEvents.Event.ACTIVITY_RESUMED) continue
+            if (event.packageName == "dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity") continue
+
+            if (event.className in AppLockConstants.KNOWN_RECENTS_CLASSES ||
+                event.className in AppLockConstants.ADMIN_CONFIG_CLASSES ||
+                event.className in AppLockConstants.ACCESSIBILITY_SETTINGS_CLASSES
+            ) {
+                continue
+            }
+
+            recentApp = Pair(event.packageName, event.className)
         }
-        if (AppLockManager.isLockScreenShown.get()) {
-            return
-        }
-        if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
-            return
-        } else {
-            AppLockManager.clearTemporarilyUnlockedApp()
-        }
+        return recentApp
+    }
+
+    // --- Core Lock Logic ---
+
+    private fun checkAndLockApp(packageName: String, triggeringPackage: String, currentTime: Long) {
+        if (AppLockManager.isLockScreenShown.get() || AppLockManager.currentBiometricState.toString() == biometricAuthStarted) return
 
         val lockedApps = appLockRepository.getLockedApps()
-        if (!lockedApps.contains(packageName)) {
-            return
+        if (packageName !in lockedApps) return
+
+        // App is locked. Check for temporary unlock/grace period.
+        if (AppLockManager.isAppTemporarilyUnlocked(packageName)) return
+
+        val unlockDurationMinutes = appLockRepository.getUnlockTimeDuration()
+        val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0L
+
+        if (unlockDurationMinutes > 0 && unlockTimestamp > 0) {
+            val durationMillis = unlockDurationMinutes * 60 * 1000L
+            val elapsedMillis = currentTime - unlockTimestamp
+
+            if (elapsedMillis < durationMillis) return
+
+            // Grace period expired, clear
+            AppLockManager.appUnlockTimes.remove(packageName)
         }
 
-        val unlockDuration = appLockRepository.getUnlockTimeDuration()
-        val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0
-
-        Log.d(
-            TAG,
-            "Checking app lock for $packageName at $currentTime, unlockTimestamp: $unlockTimestamp, unlockDuration: $unlockDuration"
-        )
-
-        if (unlockDuration > 0 && unlockTimestamp > 0) {
-            val elapsedMinutes = (currentTime - unlockTimestamp) / (60 * 1000)
-            if (elapsedMinutes < unlockDuration) {
-                return
-            } else {
-                AppLockManager.appUnlockTimes.remove(packageName)
-                if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
-                    AppLockManager.clearTemporarilyUnlockedApp()
-                }
-            }
-        }
+        // Execute Lock
+        Log.d(TAG, "Locked app: $packageName. Showing overlay.")
+        AppLockManager.isLockScreenShown.set(true)
 
         val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
-            flags =
-                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_FROM_BACKGROUND or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                    Intent.FLAG_FROM_BACKGROUND or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             putExtra("locked_package", packageName)
+            putExtra("triggering_package", triggeringPackage)
         }
 
         try {
-            AppLockManager.isLockScreenShown.set(true) // Set to true before attempting to start
             startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting PasswordOverlayActivity for package: $packageName", e)
-            AppLockManager.isLockScreenShown.set(false) // Reset on failure
+            Log.e(TAG, "Error starting overlay for: $packageName", e)
+            AppLockManager.isLockScreenShown.set(false)
         }
     }
 
+    // --- Foreground Service Setup ---
+
+    private fun startForegroundService() {
+        createNotificationChannel()
+        val notification = createNotification()
+
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            determineForegroundServiceType()
+        } else 0
+
+        if (type != 0) {
+            startForeground(NOTIFICATION_ID, notification, type)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun determineForegroundServiceType(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val dpm: DevicePolicyManager? = getSystemService()
+            val component = ComponentName(this, DeviceAdmin::class.java)
+
+            return if (dpm?.isAdminActive(component) == true) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            }
+        }
+        return 0
+    }
 
     private fun createNotificationChannel() {
         val serviceChannel = NotificationChannel(
             CHANNEL_ID,
-            "AppLock Service",
+            "AppLock Service (Usage Stats)",
             NotificationManager.IMPORTANCE_DEFAULT
         )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(serviceChannel)
+        notificationManager.createNotificationChannel(serviceChannel)
     }
 
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("App Lock")
-            .setContentText("Protecting your apps")
-            .setSmallIcon(R.drawable.baseline_shield_24)
+            .setContentText("Protecting your apps (Experimental)")
             .setSmallIcon(R.drawable.baseline_shield_24)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .build()
-    }
-
-    private fun getCurrentForegroundAppInfo(): ForegroundAppInfo? {
-        val time = System.currentTimeMillis()
-        val usageStatsList =
-            usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                time - 1000 * 10,
-                time
-            )
-
-        if (usageStatsList != null && usageStatsList.isNotEmpty()) {
-            var recentAppInfo: ForegroundAppInfo? = null
-            val events = usageStatsManager.queryEvents(time - 1000 * 100, time)
-            val event = UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                if (event.className == "dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity") {
-                    continue
-                }
-                if (event.className in knownRecentsClasses || event.className in knownAdminConfigClasses) {
-                    continue
-                }
-                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                    recentAppInfo = ForegroundAppInfo(
-                        packageName = event.packageName,
-                        className = event.className,
-                        timestamp = event.timeStamp
-                    )
-                }
-            }
-            return recentAppInfo
-        }
-        return null
-    }
-
-    data class ForegroundAppInfo(
-        val packageName: String,
-        val className: String,
-        val timestamp: Long
-    ) {
-        override fun toString(): String {
-            return "ForegroundAppInfo(packageName='$packageName', className='$className', timestamp=$timestamp)"
-        }
     }
 }

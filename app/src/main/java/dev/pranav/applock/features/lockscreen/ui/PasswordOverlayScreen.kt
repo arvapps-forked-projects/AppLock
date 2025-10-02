@@ -65,7 +65,6 @@ import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
-import dev.pranav.applock.services.AppLockAccessibilityService
 import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
@@ -80,8 +79,8 @@ class PasswordOverlayActivity : FragmentActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
     private lateinit var appLockRepository: AppLockRepository
-    private var appLockAccessibilityService: AppLockAccessibilityService? = null
     internal var lockedPackageNameFromIntent: String? = null
+    internal var triggeringPackageNameFromIntent: String? = null
 
     private var isBiometricPromptShowingLocal = false
     private var movedToBackground = false
@@ -93,6 +92,7 @@ class PasswordOverlayActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         lockedPackageNameFromIntent = intent.getStringExtra("locked_package")
+        triggeringPackageNameFromIntent = intent.getStringExtra("triggering_package")
         if (lockedPackageNameFromIntent == null) {
             Log.e(TAG, "No locked_package name provided in intent. Finishing.")
             finishAffinity()
@@ -102,7 +102,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         enableEdgeToEdge()
 
         appLockRepository = AppLockRepository(applicationContext)
-        appLockAccessibilityService = AppLockAccessibilityService.getInstance()
 
         onBackPressedDispatcher.addCallback(this) {
             // Prevent back navigation to maintain security
@@ -172,8 +171,8 @@ class PasswordOverlayActivity : FragmentActivity() {
                             val intent = packageManager.getLaunchIntentForPackage(pkgName)
                             if (intent != null) {
                                 intent.addFlags(
-                                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                            android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                                 )
                                 startActivity(intent)
                             } else {
@@ -197,6 +196,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                         onBiometricAuth = { triggerBiometricPrompt() },
                         onAuthSuccess = {},
                         lockedAppName = appName,
+                        triggeringPackageName = triggeringPackageNameFromIntent,
                         onPinAttempt = onPinAttemptCallback
                     )
                 }
@@ -287,7 +287,6 @@ class PasswordOverlayActivity : FragmentActivity() {
         movedToBackground = true
         AppLockManager.isLockScreenShown.set(false)
         if (!isFinishing && !isDestroyed) {
-            Log.d(TAG, "Activity moved to background: $lockedPackageNameFromIntent")
             AppLockManager.reportBiometricAuthFinished()
             finish()
         }
@@ -311,6 +310,7 @@ fun PasswordOverlayScreen(
     onBiometricAuth: () -> Unit = {},
     onAuthSuccess: () -> Unit,
     lockedAppName: String? = null,
+    triggeringPackageName: String? = null,
     onPinAttempt: ((pin: String) -> Boolean)? = null
 ) {
     val appLockRepository = LocalContext.current.appLockRepository()
@@ -377,6 +377,16 @@ fun PasswordOverlayScreen(
                 },
                 onPinIncorrect = { showError = true }
             )
+
+            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                Text(
+                    text = triggeringPackageName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
         }
     }
 

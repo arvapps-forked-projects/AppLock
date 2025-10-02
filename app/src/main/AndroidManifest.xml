@@ -26,6 +26,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
+    <uses-permission android:name="android.permission.SET_ACTIVITY_WATCHER" />
+
     <application
         android:name=".AppLockApplication"
         android:allowBackup="true"
@@ -109,7 +111,7 @@
         </receiver>
 
         <receiver
-            android:name=".services.BootReceiver"
+            android:name=".core.broadcast.BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>

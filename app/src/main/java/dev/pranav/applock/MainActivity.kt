@@ -13,57 +13,54 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.compose.rememberNavController
 import dev.pranav.applock.core.navigation.AppNavHost
+import dev.pranav.applock.core.navigation.NavigationManager
 import dev.pranav.applock.core.navigation.Screen
-import dev.pranav.applock.features.appintro.domain.AppIntroManager
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 class MainActivity : FragmentActivity() {
+
+    private lateinit var navigationManager: NavigationManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        navigationManager = NavigationManager(this)
+
         setContent {
             AppLockTheme {
-                // Add a background Box that fills the entire screen
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                 ) {
                     val navController = rememberNavController()
-                    val startDestination = determineStartDestination()
+                    val startDestination = navigationManager.determineStartDestination()
 
-                    AppNavHost(navController = navController, startDestination = startDestination)
+                    AppNavHost(
+                        navController = navController,
+                        startDestination = startDestination
+                    )
 
                     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-                        if (navController.currentDestination?.route == Screen.AppIntro.route || navController.currentDestination?.route == Screen.SetPassword.route) {
-                            // If we are on the App Intro screen, we don't need to check for accessibility service
-                            return@LifecycleEventEffect
-                        }
-                        if (navController.currentDestination?.route != Screen.PasswordOverlay.route) {
-                            navController.navigate(Screen.PasswordOverlay.route)
-                        }
+                        handleOnResume(navController)
                     }
                 }
             }
         }
     }
 
-    private fun determineStartDestination(): String {
-        // Check if we should show the app intro
-        if (AppIntroManager.shouldShowIntro(this)) {
-            return Screen.AppIntro.route
+    private fun handleOnResume(navController: androidx.navigation.NavHostController) {
+        val currentRoute = navController.currentDestination?.route
+
+        if (navigationManager.shouldSkipPasswordCheck(currentRoute)) {
+            return
         }
 
-        // Check if password is set, if not, redirect to SetPasswordActivity
-        val sharedPrefs = getSharedPreferences("app_lock_prefs", MODE_PRIVATE)
-        val isPasswordSet = sharedPrefs.contains("password")
-
-        return if (!isPasswordSet) {
-            Screen.SetPassword.route
-        } else {
-            Screen.PasswordOverlay.route
+        if (currentRoute != Screen.PasswordOverlay.route) {
+            navController.navigate(Screen.PasswordOverlay.route)
         }
     }
 }
+
+

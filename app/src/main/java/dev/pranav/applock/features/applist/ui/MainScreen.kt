@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
@@ -349,6 +350,19 @@ fun MainScreen(
                             imageVector = if (applockEnabled) Icons.Default.Shield else Icons.Outlined.Shield,
                             contentDescription = stringResource(R.string.main_screen_app_protection_cd),
                             tint = if (applockEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            navController.navigate(Screen.TriggerExclusions.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = "Trigger Exclusions",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(

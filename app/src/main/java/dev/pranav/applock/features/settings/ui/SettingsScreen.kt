@@ -134,9 +134,6 @@ fun SettingsScreen(
     var antiUninstallEnabled by remember {
         mutableStateOf(appLockRepository.isAntiUninstallEnabled())
     }
-    var shizukuExperimental by remember {
-        mutableStateOf(appLockRepository.isShizukuExperimentalEnabled())
-    }
     var disableHapticFeedback by remember {
         mutableStateOf(appLockRepository.shouldDisableHaptics())
     }
@@ -410,49 +407,10 @@ fun SettingsScreen(
                                 }
                             }
                         )
-
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                        SettingItem(
-                            icon = Icons.Default.AutoAwesome,
-                            title = stringResource(R.string.settings_screen_backend_implementation_shizuku_experimental_title),
-                            description = stringResource(R.string.settings_screen_backend_implementation_shizuku_experimental_desc),
-                            checked = shizukuExperimental,
-                            onCheckedChange = { isChecked ->
-                                if (isChecked) {
-                                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_DENIED) {
-                                        if (Shizuku.isPreV11()) {
-                                            shizukuPermissionLauncher.launch(ShizukuProvider.PERMISSION)
-                                        } else {
-                                            Shizuku.requestPermission(423)
-                                        }
-                                    } else {
-                                        shizukuExperimental = true
-                                        appLockRepository.setShizukuExperimentalEnabled(true)
-                                        context.stopService(
-                                            Intent(context, ShizukuAppLockService::class.java)
-                                        )
-                                        context.startService(
-                                            Intent(context, ShizukuAppLockService::class.java)
-                                        )
-                                    }
-                                } else {
-                                    shizukuExperimental = false
-                                    appLockRepository.setShizukuExperimentalEnabled(false)
-                                    context.stopService(
-                                        Intent(context, ShizukuAppLockService::class.java)
-                                    )
-                                    context.startService(
-                                        Intent(context, ShizukuAppLockService::class.java)
-                                    )
-                                }
-                            },
-                        )
                     }
                 }
             }
 
-            // New Backend Selection Section
             item {
                 BackendSelectionCard(
                     appLockRepository = appLockRepository,

@@ -3,64 +3,82 @@ package dev.pranav.applock.services
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.Context.KEYGUARD_SERVICE
 import android.content.Intent
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.data.repository.BackendImplementation
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
+object AppLockConstants {
+    val KNOWN_RECENTS_CLASSES = setOf(
+        "com.android.systemui.recents.RecentsActivity",
+        "com.android.quickstep.RecentsActivity",
+        "com.android.systemui.recents.RecentsView",
+        "com.android.systemui.recents.RecentsPanelView",
+    )
 
-var knownRecentsClasses = setOf(
-    "com.android.systemui.recents.RecentsActivity",
-    "com.android.quickstep.RecentsActivity",
-    "com.android.systemui.recents.RecentsView",
-    "com.android.systemui.recents.RecentsPanelView"
-)
+    val EXCLUDED_APPS = setOf(
+        "com.android.systemui",
+        "com.android.intentresolver",
+        "com.google.android.permissioncontroller",
+        "android.uid.system:1000",
+        "com.google.android.googlequicksearchbox"
+    )
 
-var knownAdminConfigClasses = setOf(
-    "com.android.settings.deviceadmin.DeviceAdminAdd",
-    "com.android.settings.applications.specialaccess.deviceadmin.DeviceAdminAdd",
-    "com.android.settings.deviceadmin.DeviceAdminSettings",
-    "com.android.settings.deviceadmin.DeviceAdminAdd"
-)
+    val ADMIN_CONFIG_CLASSES = setOf(
+        "com.android.settings.deviceadmin.DeviceAdminAdd",
+        "com.android.settings.applications.specialaccess.deviceadmin.DeviceAdminAdd",
+        "com.android.settings.deviceadmin.DeviceAdminSettings",
+    )
 
-var knownAccessibilitySettingsClasses = setOf(
-    "com.android.settings.accessibility.AccessibilitySettings",
-    "com.android.settings.accessibility.AccessibilityMenuActivity",
-    "com.android.settings.accessibility.AccessibilityShortcutActivity",
-    "com.android.settings.Settings\$AccessibilitySettingsActivity"
-)
+    val ACCESSIBILITY_SETTINGS_CLASSES = setOf(
+        "com.android.settings.accessibility.AccessibilitySettings",
+        "com.android.settings.accessibility.AccessibilityMenuActivity",
+        "com.android.settings.accessibility.AccessibilityShortcutActivity",
+        "com.android.settings.Settings\$AccessibilitySettingsActivity"
+    )
 
-val excludedApps = setOf(
-    "com.android.systemui",
-    "com.android.intentresolver",
-    "com.google.android.permissioncontroller",
-    "android.uid.system:1000"
-)
+    const val MAX_RESTART_ATTEMPTS = 3
+    const val RESTART_COOLDOWN_MS = 30000L
+    const val RESTART_INTERVAL_MS = 5000L
+}
+
+fun Context.isDeviceLocked(): Boolean {
+    val keyguardManager = getSystemService(KeyguardManager::class.java)
+    return keyguardManager?.isKeyguardLocked ?: false
+}
+
+@Suppress("DEPRECATION")
+fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
+    val manager = getSystemService(ActivityManager::class.java) ?: return false
+    return manager.getRunningServices(Int.MAX_VALUE)
+        .any { serviceClass.name == it.service.className }
+}
 
 object AppLockManager {
+    private const val TAG = "AppLockManager"
+
     var temporarilyUnlockedApp: String = ""
     val appUnlockTimes = ConcurrentHashMap<String, Long>()
-    var currentBiometricState = AppLockAccessibilityService.BiometricState.IDLE
     val isLockScreenShown = AtomicBoolean(false)
+    var currentBiometricState: Any? = null
 
     private val serviceRestartAttempts = ConcurrentHashMap<String, Int>()
     private val lastRestartTime = ConcurrentHashMap<String, Long>()
-    private const val MAX_RESTART_ATTEMPTS = 3
-    private const val RESTART_COOLDOWN_MS = 30000L // 30 seconds
-    private const val SERVICE_RESTART_INTERVAL_MS = 5000L // 5 seconds between attempts
 
+    private val ALL_APP_LOCK_SERVICES = setOf(
+        ShizukuAppLockService::class.java,
+        ExperimentalAppLockService::class.java
+    )
 
     fun unlockApp(packageName: String) {
         temporarilyUnlockedApp = packageName
         appUnlockTimes[packageName] = System.currentTimeMillis()
-        Log.d(
-            "AppLockManager",
-            "App $packageName temporarily unlocked at ${appUnlockTimes[packageName]}"
-        )
+        Log.d(TAG, "App $packageName temporarily unlocked.")
     }
 
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {
@@ -68,17 +86,11 @@ object AppLockManager {
         reportBiometricAuthFinished()
     }
 
-    fun reportBiometricAuthStarted() {
-        currentBiometricState = AppLockAccessibilityService.BiometricState.AUTH_STARTED
-    }
+    fun reportBiometricAuthStarted() {}
+    fun reportBiometricAuthFinished() {}
 
-    fun reportBiometricAuthFinished() {
-        currentBiometricState = AppLockAccessibilityService.BiometricState.IDLE
-    }
-
-    fun isAppTemporarilyUnlocked(packageName: String): Boolean {
-        return temporarilyUnlockedApp == packageName
-    }
+    fun isAppTemporarilyUnlocked(packageName: String): Boolean =
+        temporarilyUnlockedApp == packageName
 
     fun clearTemporarilyUnlockedApp() {
         temporarilyUnlockedApp = ""
@@ -87,69 +99,79 @@ object AppLockManager {
     fun startFallbackServices(context: Context, failedService: Class<*>) {
         val serviceName = failedService.simpleName
 
-        if (!shouldAttemptRestart(serviceName)) {
-            return
+        if (!shouldAttemptRestart(serviceName)) return
+
+        val targetBackend = when (failedService) {
+            ShizukuAppLockService::class.java -> BackendImplementation.USAGE_STATS
+            ExperimentalAppLockService::class.java -> BackendImplementation.ACCESSIBILITY
+            AppLockAccessibilityService::class.java -> null
+            else -> null
         }
 
-        when (failedService) {
-            ShizukuAppLockService::class.java -> {
-                startServiceByBackend(context, BackendImplementation.USAGE_STATS)
-            }
-
-            ExperimentalAppLockService::class.java -> {
-                if (AppLockAccessibilityService.isServiceRunning) {
-                    return
-                }
-
+        when (targetBackend) {
+            BackendImplementation.ACCESSIBILITY -> {
+                if (AppLockAccessibilityService.isServiceRunning) return
                 if (!context.isAccessibilityServiceEnabled()) {
                     showNoPermissionsToast(context)
                     return
                 }
-
-                startServiceByBackend(context, BackendImplementation.ACCESSIBILITY)
+                Log.d(TAG, "Attempting ACCESSIBILITY backend. Requires manual setup.")
             }
 
-            AppLockAccessibilityService::class.java -> {
+            BackendImplementation.USAGE_STATS, BackendImplementation.SHIZUKU -> {
+                startServiceByBackend(context, targetBackend)
+            }
+
+            null -> {
                 showNoPermissionsToast(context)
+                return
             }
         }
-
         recordRestartAttempt(serviceName)
     }
 
-    private fun showNoPermissionsToast(context: Context) {
-        try {
-            val handler = Handler(context.mainLooper)
-            handler.post {
-                android.widget.Toast.makeText(
-                    context,
-                    "None of the backends have required permissions. " +
-                            "Please enable the required permissions in settings.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
+    fun stopAllOtherServices(context: Context, excludeService: Class<*>) {
+        ALL_APP_LOCK_SERVICES
+            .filter { it != excludeService }
+            .forEach {
+                context.stopService(Intent(context, it))
             }
-        } catch (e: Exception) {
-            Log.e("AppLockManager", "Failed to show toast", e)
+        Log.d(TAG, "Stopped all main app lock services except ${excludeService.simpleName}.")
+    }
+
+    fun resetRestartAttempts(serviceName: String) {
+        serviceRestartAttempts.remove(serviceName)
+        lastRestartTime.remove(serviceName)
+        Log.d(TAG, "Reset restart attempts for $serviceName")
+    }
+
+    private fun showNoPermissionsToast(context: Context) {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(
+                context,
+                "None of the backends have required permissions. Please enable them.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
     private fun shouldAttemptRestart(serviceName: String): Boolean {
         val currentTime = System.currentTimeMillis()
         val attempts = serviceRestartAttempts[serviceName] ?: 0
-        val lastRestart = lastRestartTime[serviceName] ?: 0
+        val lastRestart = lastRestartTime[serviceName] ?: 0L
 
-        if (currentTime - lastRestart < SERVICE_RESTART_INTERVAL_MS) {
-            Log.d("AppLockManager", "Service $serviceName restart too recent, skipping")
+        if (currentTime - lastRestart < AppLockConstants.RESTART_INTERVAL_MS) {
+            Log.d(TAG, "Service $serviceName restart too recent, skipping")
             return false
         }
 
-        if (attempts >= MAX_RESTART_ATTEMPTS) {
-            if (currentTime - lastRestart > RESTART_COOLDOWN_MS) {
-                Log.d("AppLockManager", "Cooldown expired for $serviceName, resetting attempts")
+        if (attempts >= AppLockConstants.MAX_RESTART_ATTEMPTS) {
+            if (currentTime - lastRestart > AppLockConstants.RESTART_COOLDOWN_MS) {
+                Log.d(TAG, "Cooldown expired for $serviceName, resetting attempts")
                 serviceRestartAttempts[serviceName] = 0
                 return true
             }
-            Log.d("AppLockManager", "Max restart attempts reached for $serviceName, in cooldown")
+            Log.d(TAG, "Max restart attempts reached for $serviceName, in cooldown")
             return false
         }
 
@@ -158,69 +180,28 @@ object AppLockManager {
 
     private fun recordRestartAttempt(serviceName: String) {
         val currentTime = System.currentTimeMillis()
-        val currentAttempts = serviceRestartAttempts[serviceName] ?: 0
-        serviceRestartAttempts[serviceName] = currentAttempts + 1
+        serviceRestartAttempts.compute(serviceName) { _, attempts -> (attempts ?: 0) + 1 }
         lastRestartTime[serviceName] = currentTime
-
-        Log.d("AppLockManager", "Recorded restart attempt ${currentAttempts + 1} for $serviceName")
+        Log.d(
+            TAG,
+            "Recorded restart attempt ${serviceRestartAttempts[serviceName]} for $serviceName"
+        )
     }
 
     private fun startServiceByBackend(context: Context, backend: BackendImplementation) {
         try {
-            // Stop all other services first to ensure only one runs at a time
-            stopAllServices(context)
+            stopAllOtherServices(context, Nothing::class.java)
 
-            when (backend) {
-                BackendImplementation.SHIZUKU -> {
-                    Log.d("AppLockManager", "Starting Shizuku service as fallback")
-                    context.startService(Intent(context, ShizukuAppLockService::class.java))
-                }
-
-                BackendImplementation.USAGE_STATS -> {
-                    Log.d("AppLockManager", "Starting Experimental service as fallback")
-                    context.startService(Intent(context, ExperimentalAppLockService::class.java))
-                }
-
-                BackendImplementation.ACCESSIBILITY -> {
-                    Log.d(
-                        "AppLockManager",
-                        "Accessibility service runs automatically when enabled, cannot start programmatically"
-                    )
-                }
+            val serviceClass = when (backend) {
+                BackendImplementation.SHIZUKU -> ShizukuAppLockService::class.java
+                BackendImplementation.USAGE_STATS -> ExperimentalAppLockService::class.java
+                else -> return
             }
+
+            Log.d(TAG, "Starting $backend service as fallback.")
+            context.startService(Intent(context, serviceClass))
         } catch (e: Exception) {
-            Log.e("AppLockManager", "Failed to start fallback service for backend: $backend", e)
+            Log.e(TAG, "Failed to start fallback service for backend: $backend", e)
         }
     }
-
-    private fun stopAllServices(context: Context) {
-        try {
-            context.stopService(Intent(context, ExperimentalAppLockService::class.java))
-            context.stopService(Intent(context, ShizukuAppLockService::class.java))
-        } catch (e: Exception) {
-            Log.e("AppLockManager", "Error stopping services", e)
-        }
-    }
-
-    fun resetRestartAttempts(serviceName: String) {
-        serviceRestartAttempts.remove(serviceName)
-        lastRestartTime.remove(serviceName)
-        Log.d("AppLockManager", "Reset restart attempts for $serviceName")
-    }
-
-
-    fun Context.isServiceRunning(serviceClass: Class<*>): Boolean {
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        for (service in manager.getRunningServices(Int.Companion.MAX_VALUE)) {
-            if (serviceClass.name == service.service.className) {
-                return true
-            }
-        }
-        return false
-    }
-}
-
-fun Context.isDeviceLocked(): Boolean {
-    val keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-    return keyguardManager.isKeyguardLocked
 }
