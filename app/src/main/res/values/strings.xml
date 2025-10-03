@@ -207,8 +207,8 @@ Make sure you have Shizuku installed and enabled via ADB. Tap \'Next\' to grant 
     <string name="accessibility_guide_dialog_text_1">App Lock needs accessibility permission to detect when protected apps are launched.</string>
     <string name="accessibility_guide_dialog_text_2">Please follow these steps:</string>
     <string name="accessibility_guide_dialog_text_3">
-1. Tap \'Open Settings\' below
-2. Toggle the switch to ON
+1. Tap \'Open Settings\' below\n
+2. Toggle the switch to ON\n
 3. Tap \'Allow\' in the confirmation dialog.
     </string>
     <string name="accessibility_guide_open_settings_button">Open Settings</string>

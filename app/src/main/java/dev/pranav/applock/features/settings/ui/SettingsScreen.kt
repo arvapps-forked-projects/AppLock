@@ -141,7 +141,7 @@ fun SettingsScreen(
     var showDeviceAdminDialog by remember { mutableStateOf(false) }
     var showAccessibilityDialog by remember { mutableStateOf(false) }
 
-    val biometricManager = BiometricManager.from(context)
+    val biometricManager = remember { BiometricManager.from(context) }
 
     val isBiometricAvailable = remember {
         biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
@@ -158,7 +158,7 @@ fun SettingsScreen(
                         context.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                "https://paypal.me/pranavpurwar".toUri()
+                                "https://pranavpurwar.github.io/donate.html".toUri()
                             )
                         )
                         showDialog = false
