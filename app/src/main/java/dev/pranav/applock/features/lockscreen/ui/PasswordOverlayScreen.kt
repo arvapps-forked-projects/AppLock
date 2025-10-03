@@ -542,7 +542,7 @@ fun KeypadSection(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(screenWidth / 20),
+        verticalArrangement = Arrangement.spacedBy(screenWidth / 24),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
     ) {
@@ -674,14 +674,14 @@ fun KeypadRow(
     val numKeys = keys.size.toFloat()
 
     // Keypad dimension calculation remains the same
-    val totalSpacing = screenWidth / 5
+    val totalSpacing = screenWidth / 3
     val maxButtonDiameter = (screenWidth - totalSpacing) / numKeys
     val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 60.dp, maximumValue = 100.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = (totalSpacing / 4)),
+            .padding(horizontal = (totalSpacing / 6)),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -693,7 +693,7 @@ fun KeypadRow(
             val targetColor = if (isPressed) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
-                if (icons.isNotEmpty() && index < icons.size && icons[index] != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                if (icons.isNotEmpty() && index < icons.size && icons[index] != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceBright
             }
 
             val animatedContainerColor by animateColorAsState(

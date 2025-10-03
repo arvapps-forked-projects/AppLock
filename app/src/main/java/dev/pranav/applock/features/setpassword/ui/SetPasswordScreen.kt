@@ -247,7 +247,7 @@ fun SetPasswordScreen(
             val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
             Column(
-                verticalArrangement = Arrangement.spacedBy(screenWidth / 20),
+                verticalArrangement = Arrangement.spacedBy(screenWidth / 24),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 val onKeyClick: (String) -> Unit = { key ->

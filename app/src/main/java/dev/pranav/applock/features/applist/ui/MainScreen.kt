@@ -330,6 +330,7 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             MediumFlexibleTopAppBar(
                 title = {
@@ -381,7 +382,7 @@ fun MainScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
                 )
             )
         }
@@ -483,7 +484,7 @@ private fun MainContent(
                     .padding(bottom = 8.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = SearchBarDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 content = {},
             )
