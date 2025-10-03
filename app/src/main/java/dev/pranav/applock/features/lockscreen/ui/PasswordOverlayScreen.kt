@@ -673,10 +673,9 @@ fun KeypadRow(
     val screenWidth = configuration.screenWidthDp.dp
     val numKeys = keys.size.toFloat()
 
-    // Keypad dimension calculation remains the same
     val totalSpacing = screenWidth / 3
     val maxButtonDiameter = (screenWidth - totalSpacing) / numKeys
-    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 60.dp, maximumValue = 100.dp)
+    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 40.dp, maximumValue = 100.dp)
 
     Row(
         modifier = Modifier
