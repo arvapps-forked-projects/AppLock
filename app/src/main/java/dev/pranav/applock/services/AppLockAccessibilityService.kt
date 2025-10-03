@@ -73,6 +73,11 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+
+        if (appLockRepository.isAntiUninstallEnabled() && event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
+            checkForDeviceAdminDeactivation(event)
+        }
+
         if (!appLockRepository.isProtectEnabled() || !isServiceRunning) return
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -124,10 +129,6 @@ class AppLockAccessibilityService : AccessibilityService() {
             AppLockManager.appUnlockTimes.clear()
             AppLockManager.clearTemporarilyUnlockedApp()
             return
-        }
-
-        if (appLockRepository.isAntiUninstallEnabled() && packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
-            checkForDeviceAdminDeactivation(event)
         }
 
         if (!shouldAccessibilityHandleLocking()) return
@@ -203,9 +204,17 @@ class AppLockAccessibilityService : AccessibilityService() {
     private fun checkForDeviceAdminDeactivation(event: AccessibilityEvent) {
         val rootNode = rootInActiveWindow ?: return
 
-        if ((event.className == "com.android.settings.SubSettings" && event.text.first() == "App Lock") || (event.className == "android.app.AlertDialog" && event.text.first()
-                .contains("App Lock")) || (event.className in ACCESSIBILITY_SETTINGS_CLASSES && event.text.any { it == "App Lock" })
+        Log.d(TAG, "Checking for device admin deactivation for event: $event")
+
+
+        if ((event.className == "com.android.settings.SubSettings" && event.text.any { it.contains("App Lock") }) || (event.className == "android.app.AlertDialog" && event.text.first()
+                .contains("App Lock")) || (event.className in ACCESSIBILITY_SETTINGS_CLASSES && event.text.any {
+                it.contains(
+                    "App Lock"
+                )
+            })
         ) {
+            Log.d(TAG, "Blocking accessibility service deactivation")
             // there ain't no way someone bypasses this without root/shizuku lol
 
             performGlobalAction(GLOBAL_ACTION_BACK)
