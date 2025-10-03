@@ -341,7 +341,7 @@ fun PasswordOverlayScreen(
 
             Text(
                 text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    lockedAppName
+                    "Continue to $lockedAppName"
                 else
                     stringResource(R.string.enter_password_to_continue),
                 style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
@@ -350,6 +350,15 @@ fun PasswordOverlayScreen(
                     MaterialTheme.typography.headlineMediumEmphasized,
                 textAlign = TextAlign.Center
             )
+
+            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                Text(
+                    text = triggeringPackageName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -385,16 +394,6 @@ fun PasswordOverlayScreen(
                 },
                 onPinIncorrect = { showError = true }
             )
-
-            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                Text(
-                    text = triggeringPackageName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
         }
     }
 
@@ -546,6 +545,24 @@ fun KeypadSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
     ) {
+        if (showBiometricButton) {
+            Spacer(modifier = Modifier.height(4.dp))
+            FilledTonalIconButton(
+                onClick = onBiometricAuth,
+                modifier = Modifier
+                    .size(52.dp),
+                shape = RoundedCornerShape(40),
+            ) {
+                Icon(
+                    imageVector = Fingerprint,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentDescription = stringResource(R.string.biometric_authentication_cd),
+                    tint = MaterialTheme.colorScheme.surfaceTint
+                )
+            }
+        }
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("1", "2", "3"),
@@ -567,24 +584,6 @@ fun KeypadSection(
             icons = listOf(Backspace, null, Icons.AutoMirrored.Rounded.KeyboardArrowRight),
             onKeyClick = onSpecialKeyClick
         )
-        if (showBiometricButton) {
-            Spacer(modifier = Modifier.height(8.dp))
-            FilledTonalIconButton(
-                onClick = onBiometricAuth,
-                modifier = Modifier
-                    .size(52.dp),
-                shape = RoundedCornerShape(40),
-            ) {
-                Icon(
-                    imageVector = Fingerprint,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    contentDescription = stringResource(R.string.biometric_authentication_cd),
-                    tint = MaterialTheme.colorScheme.surfaceTint
-                )
-            }
-        }
     }
 }
 
