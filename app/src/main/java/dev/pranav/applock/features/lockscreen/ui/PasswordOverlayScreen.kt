@@ -341,7 +341,7 @@ fun PasswordOverlayScreen(
 
             Text(
                 text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    lockedAppName
+                    "Continue to $lockedAppName"
                 else
                     stringResource(R.string.enter_password_to_continue),
                 style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
@@ -350,6 +350,15 @@ fun PasswordOverlayScreen(
                     MaterialTheme.typography.headlineMediumEmphasized,
                 textAlign = TextAlign.Center
             )
+
+            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                Text(
+                    text = triggeringPackageName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -385,16 +394,6 @@ fun PasswordOverlayScreen(
                 },
                 onPinIncorrect = { showError = true }
             )
-
-            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                Text(
-                    text = triggeringPackageName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
         }
     }
 
@@ -542,10 +541,28 @@ fun KeypadSection(
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(screenWidth / 20),
+        verticalArrangement = Arrangement.spacedBy(screenWidth / 24),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
     ) {
+        if (showBiometricButton) {
+            Spacer(modifier = Modifier.height(4.dp))
+            FilledTonalIconButton(
+                onClick = onBiometricAuth,
+                modifier = Modifier
+                    .size(52.dp),
+                shape = RoundedCornerShape(40),
+            ) {
+                Icon(
+                    imageVector = Fingerprint,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentDescription = stringResource(R.string.biometric_authentication_cd),
+                    tint = MaterialTheme.colorScheme.surfaceTint
+                )
+            }
+        }
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("1", "2", "3"),
@@ -567,24 +584,6 @@ fun KeypadSection(
             icons = listOf(Backspace, null, Icons.AutoMirrored.Rounded.KeyboardArrowRight),
             onKeyClick = onSpecialKeyClick
         )
-        if (showBiometricButton) {
-            Spacer(modifier = Modifier.height(8.dp))
-            FilledTonalIconButton(
-                onClick = onBiometricAuth,
-                modifier = Modifier
-                    .size(52.dp),
-                shape = RoundedCornerShape(40),
-            ) {
-                Icon(
-                    imageVector = Fingerprint,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    contentDescription = stringResource(R.string.biometric_authentication_cd),
-                    tint = MaterialTheme.colorScheme.surfaceTint
-                )
-            }
-        }
     }
 }
 
@@ -673,15 +672,14 @@ fun KeypadRow(
     val screenWidth = configuration.screenWidthDp.dp
     val numKeys = keys.size.toFloat()
 
-    // Keypad dimension calculation remains the same
-    val totalSpacing = screenWidth / 5
+    val totalSpacing = screenWidth / 3
     val maxButtonDiameter = (screenWidth - totalSpacing) / numKeys
-    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 60.dp, maximumValue = 100.dp)
+    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 40.dp, maximumValue = 100.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = (totalSpacing / 4)),
+            .padding(horizontal = (totalSpacing / 6)),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -693,7 +691,7 @@ fun KeypadRow(
             val targetColor = if (isPressed) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
-                if (icons.isNotEmpty() && index < icons.size && icons[index] != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                if (icons.isNotEmpty() && index < icons.size && icons[index] != null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceBright
             }
 
             val animatedContainerColor by animateColorAsState(
