@@ -43,8 +43,7 @@ AppLock is a modern, open-source Android app locker designed to protect your pri
 data. Lock any app, prevent unauthorized access, and enjoy a seamless Material You experience. No
 root required.
 
-
-<b><b>
+<br/>
 
 > [!CAUTION]
 > Google Play Protect is blocking some people from installing/updating App Lock because it uses Overlay Permission. It uses a false pretext of "this app may try to access sensitive information"
@@ -53,7 +52,7 @@ root required.
 > You may enable it back later after you install the app. We understand this introduces unnecessary friction but there's nothing we can do about it. Google does not like it
 > when other developers try to fill the gaps they create themselves.
 
-<b><b>
+<br/>
 
 > [!NOTE]
 > You may confirm that the app is completely secure
@@ -62,7 +61,7 @@ root required.
 > 
 > Exodus Privacy: [Privacy Report](https://reports.exodus-privacy.eu.org/en/reports/dev.pranav.applock/latest)
 
-<b></b>
+<br/>
 
 ## Features
 
@@ -78,7 +77,7 @@ root required.
 - Real-time background protection
 - Lightweight and fast
 
-<b></b>
+<br/>
 
 ## Download
 
@@ -95,7 +94,7 @@ as [Github Releases](https://github.com/PranavPurwar/AppLock/releases/latest).
 Beta Builds can be
 found [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/debug/app-debug.apk)
 
-<b></b>
+<br/>
 
 ## Use Cases
 
@@ -104,52 +103,30 @@ found [here](https://github.com/PranavPurwar/AppLock/raw/refs/heads/master/app/d
 - Protecting work apps
 - General privacy
 
-<b></b>
+<br/>
 
-## Developer Guide
+## Support Development
 
-AppLock demonstrates:
+If you find AppLock useful, please consider supporting its development with a small donation.
+Every contribution matters.
 
-- Jetpack Compose + Material 3
-- BiometricPrompt integration
-- Accessibility Service for app monitoring
-- Encrypted on-device storage
-- Clean Architecture
 
-```bash
-git clone https://github.com/PranavPurwar/AppLock.git
-cd AppLock
-./gradlew assembleDebug
-```
+**Bitcoin (BTC):** `bc1qec5ccz85qn90a6zxnqnes0rx274cv6vw7j5x4g`
 
-<b></b>
+**Ethereum (ETH):** `0xD80A8D6E0fa433A8bDFC2D3F325159Db70605816`
 
-## Contributing
+**Solana (SOL):** `7FxTAJLmhXFp6wxVbUTpf8jDmzEX1CKVMdE8oLPNQvyb`
 
-Contributions are welcome! Please follow these steps:
+**Litecoin (LTC):** `ltc1q3pqyj5ge5rdmqr00w03x4tlhm6rhcc6wrfyx8k`
 
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/rootSupport`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add direct root support'`)
-5. Push to the branch (`git push origin feature/rootSupport`)
-6. Open a pull request
+**Monero (XMR):**
+`44w9JtiXxwifyH5CU6Ln1BNViyWNz4z7pEZ4nqbCvUejiK3yEjdyAv6bAofXX2Eh6Fbe3DXJ6eCX6YWKh9SF15fyKBjeJ5H`
 
-<b></b>
+<br/>
 
-### Code Style
+**UPI (India):** `pranavpurwar@fam`
 
-- Follow Kotlin coding conventions
-- Use meaningful commit messages
-- Ensure code is well-documented
-
-<b></b>
-
-## Support
-
-If you find AppLock useful, consider supporting development:
-
-[![Donate via PayPal](https://img.shields.io/badge/Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/pranavpurwar)
+<img src="https://github.com/PranavPurwar/Reef/raw/refs/heads/main/upi.jpeg" width="200" />
 
 ---
 
