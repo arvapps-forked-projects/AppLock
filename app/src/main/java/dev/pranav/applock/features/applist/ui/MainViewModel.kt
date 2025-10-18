@@ -35,6 +35,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _debouncedQuery = MutableStateFlow("")
 
+    private val _showSystemApps = MutableStateFlow(appLockRepository.shouldShowSystemApps())
+    val showSystemApps: StateFlow<Boolean> = _showSystemApps.asStateFlow()
+
     val filteredApps: StateFlow<Set<ApplicationInfo>> =
         combine(_allApps, _debouncedQuery) { apps, query ->
             if (query.isBlank()) {
@@ -69,7 +72,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _isLoading.value = true
             try {
                 val apps = withContext(Dispatchers.IO) {
-                    appSearchManager.loadApps()
+                    appSearchManager.loadApps(_showSystemApps.value)
                 }
                 _allApps.value = apps
             } catch (e: Exception) {
@@ -105,5 +108,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isAppLocked(packageName: String): Boolean {
         return _lockedApps.value.contains(packageName)
+    }
+
+    fun toggleShowSystemApps() {
+        val newValue = !_showSystemApps.value
+        _showSystemApps.value = newValue
+        appLockRepository.setShowSystemApps(newValue)
+        loadAllApplications()
     }
 }

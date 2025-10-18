@@ -67,6 +67,15 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_DISABLE_HAPTICS, false)
     }
 
+    // Display Settings
+    fun setShowSystemApps(enabled: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_SHOW_SYSTEM_APPS, enabled) }
+    }
+
+    fun shouldShowSystemApps(): Boolean {
+        return settingsPrefs.getBoolean(KEY_SHOW_SYSTEM_APPS, false)
+    }
+
     // Security Settings
     fun setAntiUninstallEnabled(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_ANTI_UNINSTALL, enabled) }
@@ -182,6 +191,7 @@ class PreferencesRepository(context: Context) {
         private const val KEY_APPLOCK_ENABLED = "applock_enabled"
         private const val KEY_AUTO_UNLOCK = "auto_unlock"
         private const val KEY_UNLOCK_BEHAVIOR = "unlock_behavior"
+        private const val KEY_SHOW_SYSTEM_APPS = "show_system_apps"
 
         // Default values
         private const val DEFAULT_PROMPT_BIOMETRIC = true
