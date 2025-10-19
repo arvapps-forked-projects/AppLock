@@ -24,11 +24,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,8 +64,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -77,7 +85,6 @@ import dev.pranav.applock.ui.theme.AppLockTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
-
 
 class PasswordOverlayActivity : FragmentActivity() {
     private lateinit var executor: Executor
@@ -322,6 +329,12 @@ fun PasswordOverlayScreen(
     onPinAttempt: ((pin: String) -> Boolean)? = null
 ) {
     val appLockRepository = LocalContext.current.appLockRepository()
+    val windowInfo = LocalWindowInfo.current
+
+    val screenWidth = windowInfo.containerSize.width
+    val screenHeight = windowInfo.containerSize.height
+    val isLandscape = screenWidth > screenHeight
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surfaceContainer
@@ -330,70 +343,145 @@ fun PasswordOverlayScreen(
         var showError by remember { mutableStateOf(false) }
         val minLength = 4
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = if (fromMainActivity) 40.dp else 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            Spacer(modifier = Modifier.height(48.dp))
+        if (isLandscape) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
+                            "Continue to $lockedAppName"
+                        else
+                            stringResource(R.string.enter_password_to_continue),
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
 
-            Text(
-                text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    "Continue to $lockedAppName"
-                else
-                    stringResource(R.string.enter_password_to_continue),
-                style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                    MaterialTheme.typography.titleLargeEmphasized
-                else
-                    MaterialTheme.typography.headlineMediumEmphasized,
-                textAlign = TextAlign.Center
-            )
+                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = triggeringPackageName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
 
-            if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    PasswordIndicators(
+                        passwordLength = passwordState.value.length,
+                    )
+
+                    if (showError) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.incorrect_pin_try_again),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    KeypadSection(
+                        passwordState = passwordState,
+                        minLength = minLength,
+                        showBiometricButton = showBiometricButton,
+                        fromMainActivity = fromMainActivity,
+                        onBiometricAuth = onBiometricAuth,
+                        onAuthSuccess = onAuthSuccess,
+                        onPinAttempt = onPinAttempt,
+                        onPasswordChange = {
+                            showError = false
+
+                            if (appLockRepository.isAutoUnlockEnabled()) {
+                                onPinAttempt?.invoke(passwordState.value)
+                            }
+                        },
+                        onPinIncorrect = { showError = true }
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = if (fromMainActivity) 24.dp else 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Spacer(modifier = Modifier.height(48.dp))
+
                 Text(
-                    text = triggeringPackageName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
+                        "Continue to $lockedAppName"
+                    else
+                        stringResource(R.string.enter_password_to_continue),
+                    style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
+                        MaterialTheme.typography.titleLargeEmphasized
+                    else
+                        MaterialTheme.typography.headlineMediumEmphasized,
                     textAlign = TextAlign.Center
                 )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+                    Text(
+                        text = triggeringPackageName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-            PasswordIndicators(
-                passwordLength = passwordState.value.length,
-            )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (showError) {
-                Text(
-                    text = stringResource(R.string.incorrect_pin_try_again),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
+                PasswordIndicators(
+                    passwordLength = passwordState.value.length,
+                )
+
+                if (showError) {
+                    Text(
+                        text = stringResource(R.string.incorrect_pin_try_again),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                KeypadSection(
+                    passwordState = passwordState,
+                    minLength = minLength,
+                    showBiometricButton = showBiometricButton,
+                    fromMainActivity = fromMainActivity,
+                    onBiometricAuth = onBiometricAuth,
+                    onAuthSuccess = onAuthSuccess,
+                    onPinAttempt = onPinAttempt,
+                    onPasswordChange = {
+                        showError = false
+
+                        if (appLockRepository.isAutoUnlockEnabled()) {
+                            onPinAttempt?.invoke(passwordState.value)
+                        }
+                    },
+                    onPinIncorrect = { showError = true }
                 )
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            KeypadSection(
-                passwordState = passwordState,
-                minLength = minLength,
-                showBiometricButton = showBiometricButton,
-                fromMainActivity = fromMainActivity,
-                onBiometricAuth = onBiometricAuth,
-                onAuthSuccess = onAuthSuccess,
-                onPinAttempt = onPinAttempt,
-                onPasswordChange = {
-                    showError = false
-
-                    if (appLockRepository.isAutoUnlockEnabled()) {
-                        onPinAttempt?.invoke(passwordState.value)
-                    }
-                },
-                onPinIncorrect = { showError = true }
-            )
         }
     }
 
@@ -407,86 +495,141 @@ fun PasswordOverlayScreen(
 fun PasswordIndicators(
     passwordLength: Int
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.padding(vertical = 16.dp)
+    val windowInfo = LocalWindowInfo.current
+    val configuration = LocalConfiguration.current
+
+    val screenWidth = windowInfo.containerSize.width
+    val screenHeight = windowInfo.containerSize.height
+    val screenWidthDp = configuration.screenWidthDp.dp
+    val isLandscape = screenWidth > screenHeight
+
+    val indicatorSize = remember(screenWidthDp) {
+        when {
+            screenWidthDp >= 900.dp -> 32.dp
+            screenWidthDp >= 600.dp -> 28.dp
+            isLandscape -> 26.dp
+            else -> 22.dp
+        }
+    }
+
+    val indicatorSpacing = remember(screenWidthDp) {
+        when {
+            screenWidthDp >= 900.dp -> 16.dp
+            screenWidthDp >= 600.dp -> 14.dp
+            isLandscape -> 12.dp
+            else -> 8.dp
+        }
+    }
+
+    val maxWidth = if (isLandscape) {
+        minOf(screenWidthDp * 0.5f, 500.dp)
+    } else {
+        screenWidthDp * 0.85f
+    }
+
+    val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(passwordLength) {
+        if (passwordLength > 0) {
+            lazyListState.animateScrollToItem(
+                index = passwordLength - 1,
+                scrollOffset = 0
+            )
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .width(maxWidth)
+            .height(indicatorSize + 32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        repeat(passwordLength) { index ->
-            key("digit_$index") {
-                val isNewest = index == passwordLength - 1
-                var animStarted by remember { mutableStateOf(false) }
+        LazyRow(
+            state = lazyListState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(
+                indicatorSpacing,
+                Alignment.CenterHorizontally
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(passwordLength) { index ->
+                key("digit_$index") {
+                    val isNewest = index == passwordLength - 1
+                    var animationTarget by remember { mutableStateOf(0f) }
 
-                LaunchedEffect(isNewest) {
-                    if (isNewest) {
-                        animStarted = true
+                    LaunchedEffect(Unit) {
+                        animationTarget = 1f
                     }
-                }
 
-                val animationProgress by animateFloatAsState(
-                    targetValue = if (animStarted && isNewest) 1f else if (isNewest) 0f else 1f,
-                    animationSpec = tween(
-                        durationMillis = 600,
-                        easing = FastOutSlowInEasing
-                    ),
-                    label = "indicatorProgress"
-                )
+                    val animationProgress by animateFloatAsState(
+                        targetValue = animationTarget,
+                        animationSpec = tween(
+                            durationMillis = 600,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "indicatorProgress"
+                    )
 
-                val scale = when {
-                    isNewest && animationProgress < 0.6f -> 1.1f + (1f - animationProgress) * 0.4f
-                    isNewest && animationProgress < 0.9f -> 1.1f + (1f - animationProgress) * 0.2f
-                    else -> 1f
-                }
-
-                val shape = when {
-                    isNewest -> shapes[index % shapes.size].toShape()
-                    else -> CircleShape
-                }
-
-                val color = when {
-                    isNewest && animationProgress < 0.6f -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.primary
-                }
-
-                val collapseProgress = if (isNewest && animationProgress > 0.6f) {
-                    ((animationProgress - 0.6f) / 0.4f).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
-
-                val originalShapeScale = 1f - collapseProgress
-
-                Box(
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
+                    val scale = if (isNewest && animationProgress < 1f) {
+                        when {
+                            animationProgress < 0.6f -> 1.1f + (1f - animationProgress) * 0.4f
+                            animationProgress < 0.9f -> 1.1f + (1f - animationProgress) * 0.2f
+                            else -> 1f
                         }
-                        .size(22.dp)
-                ) {
-                    if (collapseProgress > 0f) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(color = color, shape = CircleShape)
-                        )
+                    } else {
+                        1f
                     }
+
+                    val shape = when {
+                        isNewest && animationProgress < 1f -> shapes[index % shapes.size].toShape()
+                        else -> CircleShape
+                    }
+
+                    val color = MaterialTheme.colorScheme.primary
+
+                    val collapseProgress = if (isNewest && animationProgress > 0.6f) {
+                        ((animationProgress - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+
+                    val originalShapeScale = 1f - collapseProgress
 
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
                             .graphicsLayer {
-                                scaleX = originalShapeScale
-                                scaleY = originalShapeScale
+                                scaleX = scale
+                                scaleY = scale
                             }
-                            .background(color = color, shape = shape)
-                    )
+                            .size(indicatorSize)
+                    ) {
+                        if (collapseProgress > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(color = color, shape = CircleShape)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = originalShapeScale
+                                    scaleY = originalShapeScale
+                                }
+                                .background(color = color, shape = shape)
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun KeypadSection(
     passwordState: MutableState<String>,
@@ -500,6 +643,50 @@ fun KeypadSection(
     onPinIncorrect: () -> Unit
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val windowInfo = LocalWindowInfo.current
+
+    val screenWidth = windowInfo.containerSize.width
+    val screenHeight = windowInfo.containerSize.height
+    val screenWidthDp = configuration.screenWidthDp.dp
+    val screenHeightDp = configuration.screenHeightDp.dp
+
+    val isLandscape = screenWidth > screenHeight
+
+    val horizontalPadding = remember(screenWidthDp, isLandscape) {
+        if (isLandscape) {
+            0.dp
+        } else {
+            screenWidthDp * 0.12f
+        }
+    }
+
+    val buttonSpacing = remember(screenWidthDp, screenHeightDp, isLandscape) {
+        if (isLandscape) {
+            screenHeightDp * 0.015f
+        } else {
+            screenWidthDp * 0.02f
+        }
+    }
+
+    val buttonSize =
+        remember(screenWidthDp, screenHeightDp, isLandscape, buttonSpacing, horizontalPadding) {
+            if (isLandscape) {
+                val availableHeight = screenHeightDp * 0.8f
+                val totalVerticalSpacing = buttonSpacing * 3
+                val heightBasedSize = (availableHeight - totalVerticalSpacing) / 4f
+
+                val availableWidth = (screenWidthDp * 0.45f)
+                val totalHorizontalSpacing = buttonSpacing * 2
+                val widthBasedSize = (availableWidth - totalHorizontalSpacing) / 3f
+
+                minOf(heightBasedSize, widthBasedSize)
+            } else {
+                val availableWidth = screenWidthDp - (horizontalPadding * 2)
+                val totalSpacing = buttonSpacing * 2
+                (availableWidth - totalSpacing) / 3f
+            }
+        }
 
     val onDigitKeyClick = remember(passwordState, minLength, onPasswordChange) {
         { key: String ->
@@ -538,19 +725,21 @@ fun KeypadSection(
         }
     }
 
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-
     Column(
-        verticalArrangement = Arrangement.spacedBy(screenWidth / 24),
+        verticalArrangement = Arrangement.spacedBy(buttonSpacing),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = if (isLandscape) {
+            Modifier.padding(WindowInsets.navigationBars.asPaddingValues())
+        } else {
+            Modifier
+                .padding(horizontal = horizontalPadding)
+                .padding(WindowInsets.navigationBars.asPaddingValues())
+        }
     ) {
         if (showBiometricButton) {
-            Spacer(modifier = Modifier.height(4.dp))
             FilledTonalIconButton(
                 onClick = onBiometricAuth,
-                modifier = Modifier
-                    .size(52.dp),
+                modifier = Modifier.size(buttonSize * 0.75f),
                 shape = RoundedCornerShape(40),
             ) {
                 Icon(
@@ -566,23 +755,31 @@ fun KeypadSection(
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("1", "2", "3"),
-            onKeyClick = onDigitKeyClick
+            onKeyClick = onDigitKeyClick,
+            buttonSize = buttonSize,
+            buttonSpacing = buttonSpacing
         )
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("4", "5", "6"),
-            onKeyClick = onDigitKeyClick
+            onKeyClick = onDigitKeyClick,
+            buttonSize = buttonSize,
+            buttonSpacing = buttonSpacing
         )
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("7", "8", "9"),
-            onKeyClick = onDigitKeyClick
+            onKeyClick = onDigitKeyClick,
+            buttonSize = buttonSize,
+            buttonSpacing = buttonSpacing
         )
         KeypadRow(
             disableHaptics = disableHaptics,
             keys = listOf("backspace", "0", "proceed"),
             icons = listOf(Backspace, null, Icons.AutoMirrored.Rounded.KeyboardArrowRight),
-            onKeyClick = onSpecialKeyClick
+            onKeyClick = onSpecialKeyClick,
+            buttonSize = buttonSize,
+            buttonSpacing = buttonSpacing
         )
     }
 }
@@ -665,22 +862,15 @@ fun KeypadRow(
     disableHaptics: Boolean = false,
     keys: List<String>,
     icons: List<ImageVector?> = emptyList(),
-    onKeyClick: (String) -> Unit
+    onKeyClick: (String) -> Unit,
+    buttonSize: Dp,
+    buttonSpacing: Dp
 ) {
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val numKeys = keys.size.toFloat()
-
-    val totalSpacing = screenWidth / 3
-    val maxButtonDiameter = (screenWidth - totalSpacing) / numKeys
-    val buttonSize = maxButtonDiameter.coerceIn(minimumValue = 40.dp, maximumValue = 100.dp)
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = (totalSpacing / 6)),
-        horizontalArrangement = Arrangement.SpaceAround,
+        modifier = Modifier,
+        horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
         keys.forEachIndexed { index, key ->
@@ -715,11 +905,8 @@ fun KeypadRow(
                     if (!disableHaptics) vibrate(context, 100)
                     onKeyClick(key)
                 },
-                modifier = Modifier
-                    .size(buttonSize),
-
+                modifier = Modifier.size(buttonSize),
                 interactionSource = interactionSource,
-
                 shapes = ButtonShapes(
                     shape = CircleShape,
                     pressedShape = RoundedCornerShape(25),
@@ -735,8 +922,7 @@ fun KeypadRow(
                     Icon(
                         imageVector = icons[index]!!,
                         contentDescription = key,
-                        modifier = Modifier
-                            .size(buttonSize * 0.45f),
+                        modifier = Modifier.size(buttonSize * 0.45f),
                         tint = contentColor
                     )
                 } else {

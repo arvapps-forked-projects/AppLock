@@ -52,6 +52,8 @@ class AppLockRepository(private val context: Context) {
     fun shouldUseMaxBrightness(): Boolean = preferencesRepository.shouldUseMaxBrightness()
     fun setDisableHaptics(enabled: Boolean) = preferencesRepository.setDisableHaptics(enabled)
     fun shouldDisableHaptics(): Boolean = preferencesRepository.shouldDisableHaptics()
+    fun setShowSystemApps(enabled: Boolean) = preferencesRepository.setShowSystemApps(enabled)
+    fun shouldShowSystemApps(): Boolean = preferencesRepository.shouldShowSystemApps()
 
     // Delegate security settings
     fun setAntiUninstallEnabled(enabled: Boolean) =

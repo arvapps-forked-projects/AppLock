@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -357,19 +360,6 @@ fun MainScreen(
                     }
                     IconButton(
                         onClick = {
-                            navController.navigate(Screen.TriggerExclusions.route) {
-                                launchSingleTop = true
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Block,
-                            contentDescription = "Trigger Exclusions",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(
-                        onClick = {
                             navController.navigate(Screen.Settings.route) {
                                 launchSingleTop = true
                             }
@@ -379,6 +369,64 @@ fun MainScreen(
                             imageVector = Icons.Default.Settings,
                             contentDescription = stringResource(R.string.main_screen_settings_cd),
                             tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    var expanded by remember { mutableStateOf(false) }
+                    IconButton(
+                        onClick = { expanded = !expanded }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filter and Options",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        val showSystemApps by mainViewModel.showSystemApps.collectAsState()
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "Show system apps",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            trailingIcon = {
+                                Switch(
+                                    checked = showSystemApps,
+                                    onCheckedChange = {
+                                        mainViewModel.toggleShowSystemApps()
+                                    }
+                                )
+                            },
+                            onClick = {
+                                mainViewModel.toggleShowSystemApps()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "Trigger exclusions",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Block,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                navController.navigate(Screen.TriggerExclusions.route) {
+                                    launchSingleTop = true
+                                }
+                            }
                         )
                     }
                 },

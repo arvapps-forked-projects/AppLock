@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,51 @@ fun SetPasswordScreen(
     val appLockRepository = remember {
         (context.applicationContext as? AppLockApplication)?.appLockRepository
     }
+
+    val configuration = LocalConfiguration.current
+    val windowInfo = LocalWindowInfo.current
+
+    val screenWidth = windowInfo.containerSize.width
+    val screenHeight = windowInfo.containerSize.height
+    val screenWidthDp = configuration.screenWidthDp.dp
+    val screenHeightDp = configuration.screenHeightDp.dp
+
+    val isLandscape = screenWidth > screenHeight
+
+    val horizontalPadding = remember(screenWidthDp, isLandscape) {
+        if (isLandscape) {
+            0.dp
+        } else {
+            screenWidthDp * 0.12f
+        }
+    }
+
+    val buttonSpacing = remember(screenWidthDp, screenHeightDp, isLandscape) {
+        if (isLandscape) {
+            screenHeightDp * 0.025f
+        } else {
+            screenWidthDp * 0.03f
+        }
+    }
+
+    val buttonSize =
+        remember(screenWidthDp, screenHeightDp, isLandscape, buttonSpacing, horizontalPadding) {
+            if (isLandscape) {
+                val availableHeight = screenHeightDp * 0.8f
+                val totalVerticalSpacing = buttonSpacing * 3
+                val heightBasedSize = (availableHeight - totalVerticalSpacing) / 4f
+
+                val availableWidth = (screenWidthDp * 0.45f)
+                val totalHorizontalSpacing = buttonSpacing * 2
+                val widthBasedSize = (availableWidth - totalHorizontalSpacing) / 3f
+
+                minOf(heightBasedSize, widthBasedSize)
+            } else {
+                val availableWidth = screenWidthDp - (horizontalPadding * 2)
+                val totalSpacing = buttonSpacing * 2
+                (availableWidth - totalSpacing) / 3f
+            }
+        }
 
     BackHandler {
         if (isFirstTimeSetup) {
@@ -114,247 +160,491 @@ fun SetPasswordScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = when {
-                            isFirstTimeSetup -> stringResource(R.string.welc_applock)
-                            isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_title)
-                            isConfirmationMode -> stringResource(R.string.confirm_pin_title)
-                            else -> stringResource(R.string.set_new_pin_title)
-                        },
-                        style = MaterialTheme.typography.titleLargeEmphasized,
+            if (isFirstTimeSetup && !isLandscape) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = when {
+                                isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_title)
+                                isConfirmationMode -> stringResource(R.string.confirm_pin_title)
+                                else -> stringResource(R.string.set_new_pin_title)
+                            },
+                            style = MaterialTheme.typography.titleMediumEmphasized,
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
-            )
+            }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-
+        if (isLandscape) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = when {
-                        isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
-                        isConfirmationMode -> stringResource(R.string.confirm_new_pin_label)
-                        else -> stringResource(R.string.create_new_pin_label)
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            if (showMismatchError) {
-                Text(
-                    text = stringResource(R.string.pins_dont_match_error),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-            if (showLengthError) {
-                Text(
-                    text = stringResource(R.string.pin_min_length_error),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-            if (showInvalidOldPasswordError) {
-                Text(
-                    text = stringResource(R.string.incorrect_pin_try_again),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-
-            val currentPassword = when {
-                isVerifyOldPasswordMode -> passwordState
-                isConfirmationMode -> confirmPasswordState
-                else -> passwordState
-            }
-
-            PasswordIndicators(
-                passwordLength = currentPassword.length
-            )
-
-            Text(
-                text = when {
-                    isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
-                    isConfirmationMode -> stringResource(R.string.re_enter_new_pin_confirm_label)
-                    else -> stringResource(R.string.tooltip_create_pin_min_length)
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.alpha(0.8f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            if (isVerifyOldPasswordMode) {
-                TextButton(onClick = { launchDeviceCredentialAuth() }) {
-                    Text(stringResource(R.string.reset_using_device_password_button))
-                }
-            }
-
-            if (isVerifyOldPasswordMode || isConfirmationMode) {
-                TextButton(
-                    onClick = {
-                        if (isVerifyOldPasswordMode) {
-                            if (navController.previousBackStackEntry != null) {
-                                navController.popBackStack()
-                            } else {
-                                activity?.finish()
-                            }
-                        } else {
-                            isConfirmationMode = false
-                            if (!isFirstTimeSetup) {
-                                isVerifyOldPasswordMode = true
-                            }
-                        }
-                        passwordState = ""
-                        confirmPasswordState = ""
-                        showMismatchError = false
-                        showLengthError = false
-                        showInvalidOldPasswordError = false
-                    },
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Column(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .padding(end = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        if (isVerifyOldPasswordMode) stringResource(R.string.cancel_button) else stringResource(
-                            R.string.start_over_button
-                        )
+                        text = when {
+                            isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                            isConfirmationMode -> stringResource(R.string.confirm_new_pin_label)
+                            else -> stringResource(R.string.create_new_pin_label)
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
                     )
-                }
-            }
 
-            val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+                    Spacer(modifier = Modifier.height(16.dp))
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(screenWidth / 24),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                val onKeyClick: (String) -> Unit = { key ->
-                    val currentActivePassword = when {
+                    if (showMismatchError) {
+                        Text(
+                            text = stringResource(R.string.pins_dont_match_error),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    if (showLengthError) {
+                        Text(
+                            text = stringResource(R.string.pin_min_length_error),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    if (showInvalidOldPasswordError) {
+                        Text(
+                            text = stringResource(R.string.incorrect_pin_try_again),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+
+                    val currentPassword = when {
                         isVerifyOldPasswordMode -> passwordState
                         isConfirmationMode -> confirmPasswordState
                         else -> passwordState
                     }
-                    val updatePassword: (String) -> Unit = when {
-                        isVerifyOldPasswordMode -> { newPass -> passwordState = newPass }
-                        isConfirmationMode -> { newPass -> confirmPasswordState = newPass }
-                        else -> { newPass -> passwordState = newPass }
+
+                    PasswordIndicators(
+                        passwordLength = currentPassword.length
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = when {
+                            isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                            isConfirmationMode -> stringResource(R.string.re_enter_new_pin_confirm_label)
+                            else -> stringResource(R.string.tooltip_create_pin_min_length)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.alpha(0.8f),
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (isVerifyOldPasswordMode) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextButton(onClick = { launchDeviceCredentialAuth() }) {
+                            Text(stringResource(R.string.reset_using_device_password_button))
+                        }
                     }
 
-                    when (key) {
-                        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" -> {
-                            updatePassword(currentActivePassword + key)
-                        }
-
-                        "backspace" -> {
-                            if (currentActivePassword.isNotEmpty()) {
-                                updatePassword(currentActivePassword.dropLast(1))
-                            }
-                            showMismatchError = false
-                            showLengthError = false
-                            showInvalidOldPasswordError = false
-                        }
-
-                        "proceed" -> {
-                            if (currentActivePassword.length >= minLength) {
-                                when {
-                                    isVerifyOldPasswordMode -> {
-                                        if (appLockRepository!!.validatePassword(passwordState)) {
-                                            isVerifyOldPasswordMode = false
-                                            passwordState = ""
-                                            showInvalidOldPasswordError = false
-                                        } else {
-                                            showInvalidOldPasswordError = true
-                                            passwordState = ""
-                                        }
+                    if (isVerifyOldPasswordMode || isConfirmationMode) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(
+                            onClick = {
+                                if (isVerifyOldPasswordMode) {
+                                    if (navController.previousBackStackEntry != null) {
+                                        navController.popBackStack()
+                                    } else {
+                                        activity?.finish()
                                     }
-
-                                    !isConfirmationMode -> {
-                                        isConfirmationMode = true
-                                        showLengthError = false
-                                    }
-
-                                    else -> {
-                                        if (passwordState == confirmPasswordState) {
-                                            appLockRepository?.setPassword(passwordState)
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.password_set_successfully_toast),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-
-                                            navController.navigate(Screen.Main.route) {
-                                                popUpTo(Screen.SetPassword.route) {
-                                                    inclusive = true
-                                                }
-                                                if (isFirstTimeSetup) {
-                                                    popUpTo(Screen.AppIntro.route) {
-                                                        inclusive = true
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            showMismatchError = true
-                                            confirmPasswordState = ""
-                                        }
+                                } else {
+                                    isConfirmationMode = false
+                                    if (!isFirstTimeSetup) {
+                                        isVerifyOldPasswordMode = true
                                     }
                                 }
-                            } else {
-                                showLengthError = true
+                                passwordState = ""
+                                confirmPasswordState = ""
+                                showMismatchError = false
+                                showLengthError = false
+                                showInvalidOldPasswordError = false
                             }
+                        ) {
+                            Text(
+                                if (isVerifyOldPasswordMode) stringResource(R.string.cancel_button) else stringResource(
+                                    R.string.start_over_button
+                                )
+                            )
                         }
                     }
                 }
 
-                val disableHaptics = appLockRepository!!.shouldDisableHaptics()
+                Column(
+                    modifier = Modifier.weight(0.4f),
+                    verticalArrangement = Arrangement.spacedBy(buttonSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val onKeyClick: (String) -> Unit = { key ->
+                        val currentActivePassword = when {
+                            isVerifyOldPasswordMode -> passwordState
+                            isConfirmationMode -> confirmPasswordState
+                            else -> passwordState
+                        }
+                        val updatePassword: (String) -> Unit = when {
+                            isVerifyOldPasswordMode -> { newPass -> passwordState = newPass }
+                            isConfirmationMode -> { newPass -> confirmPasswordState = newPass }
+                            else -> { newPass -> passwordState = newPass }
+                        }
 
-                KeypadRow(
-                    disableHaptics = disableHaptics,
-                    keys = listOf("1", "2", "3"),
-                    onKeyClick = onKeyClick,
-                )
-                KeypadRow(
-                    disableHaptics = disableHaptics,
-                    keys = listOf("4", "5", "6"),
-                    onKeyClick = onKeyClick,
-                )
-                KeypadRow(
-                    disableHaptics = disableHaptics,
-                    keys = listOf("7", "8", "9"),
-                    onKeyClick = onKeyClick,
+                        when (key) {
+                            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" -> {
+                                updatePassword(currentActivePassword + key)
+                            }
+
+                            "backspace" -> {
+                                if (currentActivePassword.isNotEmpty()) {
+                                    updatePassword(currentActivePassword.dropLast(1))
+                                }
+                                showMismatchError = false
+                                showLengthError = false
+                                showInvalidOldPasswordError = false
+                            }
+
+                            "proceed" -> {
+                                if (currentActivePassword.length >= minLength) {
+                                    when {
+                                        isVerifyOldPasswordMode -> {
+                                            if (appLockRepository!!.validatePassword(passwordState)) {
+                                                isVerifyOldPasswordMode = false
+                                                passwordState = ""
+                                                showInvalidOldPasswordError = false
+                                            } else {
+                                                showInvalidOldPasswordError = true
+                                                passwordState = ""
+                                            }
+                                        }
+
+                                        !isConfirmationMode -> {
+                                            isConfirmationMode = true
+                                            showLengthError = false
+                                        }
+
+                                        else -> {
+                                            if (passwordState == confirmPasswordState) {
+                                                appLockRepository?.setPassword(passwordState)
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.password_set_successfully_toast),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+
+                                                navController.navigate(Screen.Main.route) {
+                                                    popUpTo(Screen.SetPassword.route) {
+                                                        inclusive = true
+                                                    }
+                                                    if (isFirstTimeSetup) {
+                                                        popUpTo(Screen.AppIntro.route) {
+                                                            inclusive = true
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                showMismatchError = true
+                                                confirmPasswordState = ""
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    showLengthError = true
+                                }
+                            }
+                        }
+                    }
+
+                    val disableHaptics = appLockRepository!!.shouldDisableHaptics()
+
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("1", "2", "3"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("4", "5", "6"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("7", "8", "9"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("backspace", "0", "proceed"),
+                        icons = listOf(
+                            Backspace,
+                            null,
+                            if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
+                        ),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = when {
+                            isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                            isConfirmationMode -> stringResource(R.string.confirm_new_pin_label)
+                            else -> stringResource(R.string.create_new_pin_label)
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                if (showMismatchError) {
+                    Text(
+                        text = stringResource(R.string.pins_dont_match_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                if (showLengthError) {
+                    Text(
+                        text = stringResource(R.string.pin_min_length_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                if (showInvalidOldPasswordError) {
+                    Text(
+                        text = stringResource(R.string.incorrect_pin_try_again),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+
+                val currentPassword = when {
+                    isVerifyOldPasswordMode -> passwordState
+                    isConfirmationMode -> confirmPasswordState
+                    else -> passwordState
+                }
+
+                PasswordIndicators(
+                    passwordLength = currentPassword.length
                 )
 
-                KeypadRow(
-                    disableHaptics = disableHaptics,
-                    keys = listOf("backspace", "0", "proceed"),
-                    icons = listOf(
-                        Backspace,
-                        null,
-                        if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
-                    ),
-                    onKeyClick = onKeyClick,
+                Text(
+                    text = when {
+                        isVerifyOldPasswordMode -> stringResource(R.string.enter_current_pin_label)
+                        isConfirmationMode -> stringResource(R.string.re_enter_new_pin_confirm_label)
+                        else -> stringResource(R.string.tooltip_create_pin_min_length)
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.alpha(0.8f),
+                    textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (isVerifyOldPasswordMode) {
+                    TextButton(onClick = { launchDeviceCredentialAuth() }) {
+                        Text(stringResource(R.string.reset_using_device_password_button))
+                    }
+                }
+
+                if (isVerifyOldPasswordMode || isConfirmationMode) {
+                    TextButton(
+                        onClick = {
+                            if (isVerifyOldPasswordMode) {
+                                if (navController.previousBackStackEntry != null) {
+                                    navController.popBackStack()
+                                } else {
+                                    activity?.finish()
+                                }
+                            } else {
+                                isConfirmationMode = false
+                                if (!isFirstTimeSetup) {
+                                    isVerifyOldPasswordMode = true
+                                }
+                            }
+                            passwordState = ""
+                            confirmPasswordState = ""
+                            showMismatchError = false
+                            showLengthError = false
+                            showInvalidOldPasswordError = false
+                        },
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            if (isVerifyOldPasswordMode) stringResource(R.string.cancel_button) else stringResource(
+                                R.string.start_over_button
+                            )
+                        )
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(buttonSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = horizontalPadding)
+                ) {
+                    val onKeyClick: (String) -> Unit = { key ->
+                        val currentActivePassword = when {
+                            isVerifyOldPasswordMode -> passwordState
+                            isConfirmationMode -> confirmPasswordState
+                            else -> passwordState
+                        }
+                        val updatePassword: (String) -> Unit = when {
+                            isVerifyOldPasswordMode -> { newPass -> passwordState = newPass }
+                            isConfirmationMode -> { newPass -> confirmPasswordState = newPass }
+                            else -> { newPass -> passwordState = newPass }
+                        }
+
+                        when (key) {
+                            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" -> {
+                                updatePassword(currentActivePassword + key)
+                            }
+
+                            "backspace" -> {
+                                if (currentActivePassword.isNotEmpty()) {
+                                    updatePassword(currentActivePassword.dropLast(1))
+                                }
+                                showMismatchError = false
+                                showLengthError = false
+                                showInvalidOldPasswordError = false
+                            }
+
+                            "proceed" -> {
+                                if (currentActivePassword.length >= minLength) {
+                                    when {
+                                        isVerifyOldPasswordMode -> {
+                                            if (appLockRepository!!.validatePassword(passwordState)) {
+                                                isVerifyOldPasswordMode = false
+                                                passwordState = ""
+                                                showInvalidOldPasswordError = false
+                                            } else {
+                                                showInvalidOldPasswordError = true
+                                                passwordState = ""
+                                            }
+                                        }
+
+                                        !isConfirmationMode -> {
+                                            isConfirmationMode = true
+                                            showLengthError = false
+                                        }
+
+                                        else -> {
+                                            if (passwordState == confirmPasswordState) {
+                                                appLockRepository?.setPassword(passwordState)
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.password_set_successfully_toast),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+
+                                                navController.navigate(Screen.Main.route) {
+                                                    popUpTo(Screen.SetPassword.route) {
+                                                        inclusive = true
+                                                    }
+                                                    if (isFirstTimeSetup) {
+                                                        popUpTo(Screen.AppIntro.route) {
+                                                            inclusive = true
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                showMismatchError = true
+                                                confirmPasswordState = ""
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    showLengthError = true
+                                }
+                            }
+                        }
+                    }
+
+                    val disableHaptics = appLockRepository!!.shouldDisableHaptics()
+
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("1", "2", "3"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("4", "5", "6"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("7", "8", "9"),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+
+                    KeypadRow(
+                        disableHaptics = disableHaptics,
+                        keys = listOf("backspace", "0", "proceed"),
+                        icons = listOf(
+                            Backspace,
+                            null,
+                            if (isConfirmationMode || isVerifyOldPasswordMode) Icons.Default.Check else Icons.AutoMirrored.Rounded.KeyboardArrowRight
+                        ),
+                        onKeyClick = onKeyClick,
+                        buttonSize = buttonSize,
+                        buttonSpacing = buttonSpacing
+                    )
+                }
             }
         }
     }
