@@ -167,7 +167,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     private fun isRecentlyOpened(event: AccessibilityEvent): Boolean {
         return (event.packageName == getSystemDefaultLauncherPackageName() && 
                 event.contentChangeTypes == AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED) ||
-                (event.className?.lowercase()?.contains("recent apps") == true)
+                (event.text.toString().lowercase().contains("recent apps"))
     }
 
     private fun isHomeScreen(event: AccessibilityEvent): Boolean {
