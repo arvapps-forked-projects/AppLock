@@ -16,7 +16,6 @@ class PreferencesRepository(context: Context) {
     private val settingsPrefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME_SETTINGS, Context.MODE_PRIVATE)
 
-    // Authentication Settings
     fun setPassword(password: String) {
         appLockPrefs.edit { putString(KEY_PASSWORD, password) }
     }
@@ -30,7 +29,27 @@ class PreferencesRepository(context: Context) {
         return storedPassword != null && inputPassword == storedPassword
     }
 
-    // Biometric Settings
+    fun setPattern(pattern: String) {
+        appLockPrefs.edit { putString(KEY_PATTERN, pattern) }
+    }
+
+    fun getPattern(): String? {
+        return appLockPrefs.getString(KEY_PATTERN, null)
+    }
+
+    fun validatePattern(inputPattern: String): Boolean {
+        val storedPattern = getPattern()
+        return storedPattern != null && inputPattern == storedPattern
+    }
+
+    fun setLockType(lockType: String) {
+        settingsPrefs.edit { putString(KEY_LOCK_TYPE, lockType) }
+    }
+
+    fun getLockType(): String {
+        return settingsPrefs.getString(KEY_LOCK_TYPE, LOCK_TYPE_PIN) ?: LOCK_TYPE_PIN
+    }
+
     fun setBiometricAuthEnabled(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_BIOMETRIC_AUTH_ENABLED, enabled) }
     }
@@ -39,18 +58,6 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_BIOMETRIC_AUTH_ENABLED, false)
     }
 
-    fun setPromptForBiometricAuth(enabled: Boolean) {
-        settingsPrefs.edit { putBoolean(KEY_PROMPT_FOR_BIOMETRIC_AUTH, enabled) }
-    }
-
-    fun shouldPromptForBiometricAuth(): Boolean {
-        return isBiometricAuthEnabled() && settingsPrefs.getBoolean(
-            KEY_PROMPT_FOR_BIOMETRIC_AUTH,
-            DEFAULT_PROMPT_BIOMETRIC
-        )
-    }
-
-    // UI Settings
     fun setUseMaxBrightness(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_USE_MAX_BRIGHTNESS, enabled) }
     }
@@ -67,7 +74,6 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_DISABLE_HAPTICS, false)
     }
 
-    // Display Settings
     fun setShowSystemApps(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_SHOW_SYSTEM_APPS, enabled) }
     }
@@ -76,7 +82,6 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_SHOW_SYSTEM_APPS, false)
     }
 
-    // Security Settings
     fun setAntiUninstallEnabled(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_ANTI_UNINSTALL, enabled) }
     }
@@ -93,7 +98,6 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_APPLOCK_ENABLED, DEFAULT_PROTECT_ENABLED)
     }
 
-    // Unlock Settings
     fun setUnlockTimeDuration(minutes: Int) {
         settingsPrefs.edit { putInt(KEY_UNLOCK_TIME_DURATION, minutes) }
     }
@@ -110,15 +114,6 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_AUTO_UNLOCK, false)
     }
 
-    fun setUnlockBehavior(behavior: Int) {
-        settingsPrefs.edit { putInt(KEY_UNLOCK_BEHAVIOR, behavior) }
-    }
-
-    fun getUnlockBehavior(): Int {
-        return settingsPrefs.getInt(KEY_UNLOCK_BEHAVIOR, DEFAULT_UNLOCK_BEHAVIOR)
-    }
-
-    // Backend Settings
     fun setBackendImplementation(backend: BackendImplementation) {
         settingsPrefs.edit { putString(KEY_BACKEND_IMPLEMENTATION, backend.name) }
     }
@@ -135,19 +130,6 @@ class PreferencesRepository(context: Context) {
         }
     }
 
-    fun getFallbackBackend(): BackendImplementation {
-        val fallback = settingsPrefs.getString(
-            KEY_FALLBACK_BACKEND,
-            BackendImplementation.ACCESSIBILITY.name
-        )
-        return try {
-            BackendImplementation.valueOf(fallback ?: BackendImplementation.ACCESSIBILITY.name)
-        } catch (_: IllegalArgumentException) {
-            BackendImplementation.ACCESSIBILITY
-        }
-    }
-
-    // App State
     fun isShowCommunityLink(): Boolean {
         return !settingsPrefs.getBoolean(KEY_COMMUNITY_LINK_SHOWN, false)
     }
@@ -159,7 +141,7 @@ class PreferencesRepository(context: Context) {
     fun isShowDonateLink(context: Context): Boolean {
         val currentVersionCode = try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionCode
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             return false
         }
 
@@ -176,27 +158,25 @@ class PreferencesRepository(context: Context) {
         private const val PREFS_NAME_APP_LOCK = "app_lock_prefs"
         private const val PREFS_NAME_SETTINGS = "app_lock_settings"
 
-        // Keys
         private const val KEY_PASSWORD = "password"
+        private const val KEY_PATTERN = "pattern"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
-        private const val KEY_PROMPT_FOR_BIOMETRIC_AUTH = "prompt_for_biometric_auth"
         private const val KEY_DISABLE_HAPTICS = "disable_haptics"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
         private const val KEY_BACKEND_IMPLEMENTATION = "backend_implementation"
-        private const val KEY_FALLBACK_BACKEND = "fallback_backend"
         private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
         private const val LAST_VERSION_CODE = "last_version_code"
         private const val KEY_APPLOCK_ENABLED = "applock_enabled"
         private const val KEY_AUTO_UNLOCK = "auto_unlock"
-        private const val KEY_UNLOCK_BEHAVIOR = "unlock_behavior"
         private const val KEY_SHOW_SYSTEM_APPS = "show_system_apps"
+        private const val KEY_LOCK_TYPE = "lock_type"
 
-        // Default values
-        private const val DEFAULT_PROMPT_BIOMETRIC = true
         private const val DEFAULT_PROTECT_ENABLED = true
         private const val DEFAULT_UNLOCK_DURATION = 0
-        private const val DEFAULT_UNLOCK_BEHAVIOR = 1
+
+        const val LOCK_TYPE_PIN = "pin"
+        const val LOCK_TYPE_PATTERN = "pattern"
     }
 }

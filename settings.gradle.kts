@@ -23,3 +23,4 @@ rootProject.name = "App Lock"
 include(":app")
 include(":appintro")
 include(":hidden-api")
+include(":patternlock")

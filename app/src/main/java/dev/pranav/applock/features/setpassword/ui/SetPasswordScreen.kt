@@ -43,6 +43,7 @@ import androidx.navigation.NavController
 import dev.pranav.applock.AppLockApplication
 import dev.pranav.applock.R
 import dev.pranav.applock.core.navigation.Screen
+import dev.pranav.applock.data.repository.PreferencesRepository
 import dev.pranav.applock.features.lockscreen.ui.KeypadRow
 import dev.pranav.applock.features.lockscreen.ui.PasswordIndicators
 import dev.pranav.applock.ui.icons.Backspace
@@ -93,9 +94,9 @@ fun SetPasswordScreen(
 
     val buttonSpacing = remember(screenWidthDp, screenHeightDp, isLandscape) {
         if (isLandscape) {
-            screenHeightDp * 0.025f
+            screenHeightDp * 0.015f
         } else {
-            screenWidthDp * 0.03f
+            screenWidthDp * 0.02f
         }
     }
 
@@ -114,7 +115,7 @@ fun SetPasswordScreen(
             } else {
                 val availableWidth = screenWidthDp - (horizontalPadding * 2)
                 val totalSpacing = buttonSpacing * 2
-                (availableWidth - totalSpacing) / 3f
+                (availableWidth - totalSpacing) / 3.5f
             }
         }
 
@@ -526,6 +527,17 @@ fun SetPasswordScreen(
                     }
                 }
 
+                TextButton(
+                    onClick = {
+                        navController.navigate(Screen.SetPasswordPattern.route)
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        stringResource(R.string.use_pattern_button)
+                    )
+                }
+
                 Column(
                     verticalArrangement = Arrangement.spacedBy(buttonSpacing),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -578,6 +590,7 @@ fun SetPasswordScreen(
 
                                         else -> {
                                             if (passwordState == confirmPasswordState) {
+                                                appLockRepository?.setLockType(PreferencesRepository.LOCK_TYPE_PIN)
                                                 appLockRepository?.setPassword(passwordState)
                                                 Toast.makeText(
                                                     context,

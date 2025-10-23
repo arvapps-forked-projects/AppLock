@@ -15,9 +15,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.pranav.applock.AppLockApplication
+import dev.pranav.applock.data.repository.PreferencesRepository
 import dev.pranav.applock.features.appintro.ui.AppIntroScreen
 import dev.pranav.applock.features.applist.ui.MainScreen
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayScreen
+import dev.pranav.applock.features.lockscreen.ui.PatternLockScreen
+import dev.pranav.applock.features.setpassword.ui.PatternSetPasswordScreen
 import dev.pranav.applock.features.setpassword.ui.SetPasswordScreen
 import dev.pranav.applock.features.settings.ui.SettingsScreen
 import dev.pranav.applock.features.triggerexclusions.ui.TriggerExclusionsScreen
@@ -47,7 +50,15 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
         }
 
         composable(Screen.ChangePassword.route) {
-            SetPasswordScreen(navController, isFirstTimeSetup = false)
+            if (application.appLockRepository.getLockType() == PreferencesRepository.LOCK_TYPE_PATTERN) {
+                PatternSetPasswordScreen(navController, false)
+            } else {
+                SetPasswordScreen(navController, isFirstTimeSetup = false)
+            }
+        }
+
+        composable(Screen.SetPasswordPattern.route) {
+            PatternSetPasswordScreen(navController, isFirstTimeSetup = true)
         }
 
         composable(Screen.Main.route) {
@@ -56,17 +67,38 @@ fun AppNavHost(navController: NavHostController, startDestination: String) {
 
         composable(Screen.PasswordOverlay.route) {
             val context = LocalActivity.current as FragmentActivity
+            val lockType = application.appLockRepository.getLockType()
 
-            PasswordOverlayScreen(
-                showBiometricButton = application.appLockRepository.isBiometricAuthEnabled(),
-                fromMainActivity = true,
-                onBiometricAuth = {
-                    handleBiometricAuthentication(context, navController)
-                },
-                onAuthSuccess = {
-                    handleAuthenticationSuccess(navController)
+            when (lockType) {
+                PreferencesRepository.LOCK_TYPE_PATTERN -> {
+                    PatternLockScreen(
+                        fromMainActivity = true,
+                        onPatternAttempt = { pattern ->
+                            val isValid = application.appLockRepository.validatePattern(pattern)
+                            if (isValid) {
+                                handleAuthenticationSuccess(navController)
+                            }
+                            isValid
+                        },
+                        onBiometricAuth = {
+                            handleBiometricAuthentication(context, navController)
+                        }
+                    )
                 }
-            )
+
+                else -> {
+                    PasswordOverlayScreen(
+                        showBiometricButton = application.appLockRepository.isBiometricAuthEnabled(),
+                        fromMainActivity = true,
+                        onBiometricAuth = {
+                            handleBiometricAuthentication(context, navController)
+                        },
+                        onAuthSuccess = {
+                            handleAuthenticationSuccess(navController)
+                        }
+                    )
+                }
+            }
         }
 
         composable(Screen.Settings.route) {
@@ -147,5 +179,3 @@ private const val SCALE_INITIAL = 0.9f
 private const val BIOMETRIC_TITLE = "Confirm password"
 private const val BIOMETRIC_SUBTITLE = "Confirm biometric to continue"
 private const val BIOMETRIC_NEGATIVE_BUTTON = "Use PIN"
-
-

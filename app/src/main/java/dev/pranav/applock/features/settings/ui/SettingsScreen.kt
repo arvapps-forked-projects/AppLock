@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CropSquare
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -74,6 +73,7 @@ import dev.pranav.applock.core.utils.isAccessibilityServiceEnabled
 import dev.pranav.applock.core.utils.openAccessibilitySettings
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
+import dev.pranav.applock.features.admin.AdminDisableActivity
 import dev.pranav.applock.services.ExperimentalAppLockService
 import dev.pranav.applock.services.ShizukuAppLockService
 import dev.pranav.applock.ui.icons.Accessibility
@@ -116,10 +116,6 @@ fun SettingsScreen(
 
     var autoUnlock by remember {
         mutableStateOf(appLockRepository.isAutoUnlockEnabled())
-    }
-
-    var unlockBehavior by remember {
-        mutableIntStateOf(appLockRepository.getUnlockBehavior())
     }
 
     var useMaxBrightness by remember {
@@ -262,7 +258,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -324,17 +321,6 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 autoUnlock = isChecked
                                 appLockRepository.setAutoUnlockEnabled(isChecked)
-                            }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingItem(
-                            icon = Icons.Default.CropSquare,
-                            title = stringResource(R.string.settings_screen_unlock_behavior_title),
-                            description = stringResource(R.string.settings_screen_unlock_behavior_desc),
-                            checked = unlockBehavior == 1,
-                            onCheckedChange = { isChecked ->
-                                unlockBehavior = if (isChecked) 1 else 0
-                                appLockRepository.setUnlockBehavior(unlockBehavior)
                             }
                         )
                     }
@@ -408,8 +394,12 @@ fun SettingsScreen(
                                         }
                                     }
                                 } else {
-                                    antiUninstallEnabled = false
-                                    appLockRepository.setAntiUninstallEnabled(false)
+                                    context.startActivity(
+                                        Intent(
+                                            context,
+                                            AdminDisableActivity::class.java
+                                        )
+                                    )
                                 }
                             }
                         )
