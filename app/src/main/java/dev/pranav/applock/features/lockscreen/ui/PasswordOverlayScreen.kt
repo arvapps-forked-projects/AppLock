@@ -174,25 +174,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     AppLockManager.unlockApp(pkgName)
 
-                    when (appLockRepository.getUnlockBehavior()) {
-                        0 -> {
-                            finishAndRemoveTask()
-                        }
-
-                        1 -> {
-                            val intent = packageManager.getLaunchIntentForPackage(pkgName)
-                            if (intent != null) {
-                                intent.addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                                )
-                                startActivity(intent)
-                            } else {
-                                Log.e(TAG, "No launch intent found for package: $pkgName")
-                            }
-                            finishAffinity()
-                        }
-                    }
+                    finishAfterTransition()
                 }
             }
             isValid
@@ -259,7 +241,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                         Log.e(TAG, "No launch intent found for package: $pkgName")
                     }
                 }
-                finishAndRemoveTask()
+                finishAfterTransition()
             }
         }
 
