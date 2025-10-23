@@ -684,7 +684,7 @@ fun KeypadSection(
             } else {
                 val availableWidth = screenWidthDp - (horizontalPadding * 2)
                 val totalSpacing = buttonSpacing * 2
-                (availableWidth - totalSpacing) / 4f
+                (availableWidth - totalSpacing) / 3.5f
             }
         }
 
