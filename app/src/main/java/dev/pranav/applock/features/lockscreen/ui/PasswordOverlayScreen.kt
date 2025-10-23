@@ -729,7 +729,7 @@ fun KeypadSection(
         verticalArrangement = Arrangement.spacedBy(buttonSpacing),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = if (isLandscape) {
-            Modifier.padding(WindowInsets.navigationBars.asPaddingValues())
+            Modifier.padding(WindowInsets.navigationBars.asPaddingValues()).padding(bottom = 12.dp)
         } else {
             Modifier
                 .padding(horizontal = horizontalPadding)
