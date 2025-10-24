@@ -152,7 +152,7 @@ object AppLockManager {
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(
                 context,
-                "None of the backends have required permissions. Please enable them.",
+                "Selected backend has insufficient permissions. Please provide necessary permissions.",
                 Toast.LENGTH_LONG
             ).show()
         }
