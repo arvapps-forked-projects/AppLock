@@ -2,6 +2,7 @@ package dev.pranav.applock.features.lockscreen.ui
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
@@ -78,6 +79,7 @@ import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.data.repository.PreferencesRepository
 import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
@@ -142,8 +144,10 @@ class PasswordOverlayActivity : FragmentActivity() {
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                     WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         )
-        setShowWhenLocked(true)
-        setTurnScreenOn(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
 
         val layoutParams = window.attributes
         layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -174,25 +178,19 @@ class PasswordOverlayActivity : FragmentActivity() {
                 lockedPackageNameFromIntent?.let { pkgName ->
                     AppLockManager.unlockApp(pkgName)
 
-                    when (appLockRepository.getUnlockBehavior()) {
-                        0 -> {
-                            finishAndRemoveTask()
-                        }
+                    finishAfterTransition()
+                }
+            }
+            isValid
+        }
 
-                        1 -> {
-                            val intent = packageManager.getLaunchIntentForPackage(pkgName)
-                            if (intent != null) {
-                                intent.addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                                )
-                                startActivity(intent)
-                            } else {
-                                Log.e(TAG, "No launch intent found for package: $pkgName")
-                            }
-                            finishAffinity()
-                        }
-                    }
+        val onPatternAttemptCallback = { pattern: String ->
+            val isValid = appLockRepository.validatePattern(pattern)
+            if (isValid) {
+                lockedPackageNameFromIntent?.let { pkgName ->
+                    AppLockManager.unlockApp(pkgName)
+
+                    finishAfterTransition()
                 }
             }
             isValid
@@ -204,16 +202,31 @@ class PasswordOverlayActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     contentColor = MaterialTheme.colorScheme.primaryContainer
                 ) { innerPadding ->
-                    PasswordOverlayScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
-                        fromMainActivity = false,
-                        onBiometricAuth = { triggerBiometricPrompt() },
-                        onAuthSuccess = {},
-                        lockedAppName = appName,
-                        triggeringPackageName = triggeringPackageNameFromIntent,
-                        onPinAttempt = onPinAttemptCallback
-                    )
+                    val lockType = remember { appLockRepository.getLockType() }
+                    when (lockType) {
+                        PreferencesRepository.LOCK_TYPE_PATTERN -> {
+                            PatternLockScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                fromMainActivity = false,
+                                lockedAppName = appName,
+                                triggeringPackageName = triggeringPackageNameFromIntent,
+                                onPatternAttempt = onPatternAttemptCallback
+                            )
+                        }
+
+                        else -> {
+                            PasswordOverlayScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
+                                fromMainActivity = false,
+                                onBiometricAuth = { triggerBiometricPrompt() },
+                                onAuthSuccess = {},
+                                lockedAppName = appName,
+                                triggeringPackageName = triggeringPackageNameFromIntent,
+                                onPinAttempt = onPinAttemptCallback
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -259,7 +272,7 @@ class PasswordOverlayActivity : FragmentActivity() {
                         Log.e(TAG, "No launch intent found for package: $pkgName")
                     }
                 }
-                finishAndRemoveTask()
+                finishAfterTransition()
             }
         }
 
@@ -684,7 +697,7 @@ fun KeypadSection(
             } else {
                 val availableWidth = screenWidthDp - (horizontalPadding * 2)
                 val totalSpacing = buttonSpacing * 2
-                (availableWidth - totalSpacing) / 4f
+                (availableWidth - totalSpacing) / 3.5f
             }
         }
 
@@ -729,7 +742,9 @@ fun KeypadSection(
         verticalArrangement = Arrangement.spacedBy(buttonSpacing),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = if (isLandscape) {
-            Modifier.padding(WindowInsets.navigationBars.asPaddingValues())
+            Modifier
+                .padding(WindowInsets.navigationBars.asPaddingValues())
+                .padding(bottom = 12.dp)
         } else {
             Modifier
                 .padding(horizontal = horizontalPadding)
@@ -739,14 +754,14 @@ fun KeypadSection(
         if (showBiometricButton) {
             FilledTonalIconButton(
                 onClick = onBiometricAuth,
-                modifier = Modifier.size(buttonSize * 0.75f),
+                modifier = Modifier.size(44.dp),
                 shape = RoundedCornerShape(40),
             ) {
                 Icon(
                     imageVector = Fingerprint,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(12.dp),
+                        .padding(10.dp),
                     contentDescription = stringResource(R.string.biometric_authentication_cd),
                     tint = MaterialTheme.colorScheme.surfaceTint
                 )

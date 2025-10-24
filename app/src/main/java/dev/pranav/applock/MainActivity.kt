@@ -57,7 +57,7 @@ class MainActivity : FragmentActivity() {
             return
         }
 
-        if (currentRoute != Screen.PasswordOverlay.route) {
+        if (currentRoute != Screen.PasswordOverlay.route && currentRoute != Screen.SetPassword.route && currentRoute != Screen.SetPasswordPattern.route) {
             navController.navigate(Screen.PasswordOverlay.route)
         }
     }

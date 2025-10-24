@@ -29,8 +29,10 @@ import dev.pranav.applock.R
 import dev.pranav.applock.core.broadcast.DeviceAdmin
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository
+import dev.pranav.applock.data.repository.PreferencesRepository
 import dev.pranav.applock.features.lockscreen.ui.KeypadSection
 import dev.pranav.applock.features.lockscreen.ui.PasswordIndicators
+import dev.pranav.applock.features.lockscreen.ui.PatternLockScreen
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 class AdminDisableActivity : ComponentActivity() {
@@ -57,37 +59,84 @@ class AdminDisableActivity : ComponentActivity() {
         setContent {
             AppLockTheme {
                 Scaffold { padding ->
-                    AdminDisableScreen(
-                        modifier = Modifier.padding(padding),
-                        onPasswordVerified = {
-                            val deviceAdmin = DeviceAdmin()
-                            deviceAdmin.setPasswordVerified(this, true)
+                    val lockType = appLockRepository.getLockType()
+                    when (lockType) {
+                        PreferencesRepository.LOCK_TYPE_PATTERN -> {
+                            AdminDisablePatternScreen(
+                                modifier = Modifier.padding(padding),
+                                onPatternVerified = {
+                                    val deviceAdmin = DeviceAdmin()
+                                    deviceAdmin.setPasswordVerified(this@AdminDisableActivity, true)
 
-                            Toast.makeText(
-                                this,
-                                R.string.password_verified_admin,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            appLockRepository.setAntiUninstallEnabled(false)
-                            finish()
-                        },
-                        onCancel = {
-                            val deviceAdmin = DeviceAdmin()
-                            deviceAdmin.setPasswordVerified(this, false)
-                            finish()
-                        },
-                        validatePassword = { inputPassword ->
-                            appLockRepository.validatePassword(inputPassword).also { isValid ->
-                                if (!isValid) {
                                     Toast.makeText(
-                                        this,
-                                        R.string.incorrect_pin_try_again,
+                                        this@AdminDisableActivity,
+                                        R.string.password_verified_admin,
                                         Toast.LENGTH_SHORT
                                     ).show()
+                                    appLockRepository.setAntiUninstallEnabled(false)
+                                    finish()
+                                },
+                                validatePattern = { inputPattern ->
+                                    appLockRepository.validatePattern(inputPattern)
+                                        .also { isValid ->
+                                            if (!isValid) {
+                                                Toast.makeText(
+                                                    this@AdminDisableActivity,
+                                                    R.string.incorrect_pattern_try_again,
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                },
+                                onCancel = {
+                                    val deviceAdmin = DeviceAdmin()
+                                    deviceAdmin.setPasswordVerified(
+                                        this@AdminDisableActivity,
+                                        false
+                                    )
+                                    finish()
                                 }
-                            }
+                            )
                         }
-                    )
+
+                        else -> {
+                            AdminDisableScreen(
+                                modifier = Modifier.padding(padding),
+                                onPasswordVerified = {
+                                    val deviceAdmin = DeviceAdmin()
+                                    deviceAdmin.setPasswordVerified(this@AdminDisableActivity, true)
+
+                                    Toast.makeText(
+                                        this@AdminDisableActivity,
+                                        R.string.password_verified_admin,
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    appLockRepository.setAntiUninstallEnabled(false)
+                                    finish()
+                                },
+                                onCancel = {
+                                    val deviceAdmin = DeviceAdmin()
+                                    deviceAdmin.setPasswordVerified(
+                                        this@AdminDisableActivity,
+                                        false
+                                    )
+                                    finish()
+                                },
+                                validatePassword = { inputPassword ->
+                                    appLockRepository.validatePassword(inputPassword)
+                                        .also { isValid ->
+                                            if (!isValid) {
+                                                Toast.makeText(
+                                                    this@AdminDisableActivity,
+                                                    R.string.incorrect_pin_try_again,
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -158,6 +207,51 @@ fun AdminDisableScreen(
                 },
                 onPasswordChange = { showError.value = false },
                 onPinIncorrect = { showError.value = true }
+            )
+        }
+    }
+}
+
+@Composable
+fun AdminDisablePatternScreen(
+    modifier: Modifier = Modifier,
+    onPatternVerified: () -> Unit,
+    onCancel: () -> Unit,
+    validatePattern: (String) -> Boolean
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Spacer(modifier = Modifier.height(48.dp))
+
+            Text(
+                text = stringResource(R.string.unlock_to_disable_admin),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            PatternLockScreen(
+                modifier = Modifier.weight(1f),
+                fromMainActivity = false,
+                lockedAppName = null,
+                triggeringPackageName = null,
+                onPatternAttempt = { pattern ->
+                    val isValid = validatePattern(pattern)
+                    if (isValid) {
+                        onPatternVerified()
+                    }
+                    isValid
+                }
             )
         }
     }

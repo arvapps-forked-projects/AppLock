@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/appintro" />
             <option value="$PROJECT_DIR$/hidden-api" />
+            <option value="$PROJECT_DIR$/patternlock" />
           </set>
         </option>
       </GradleProjectSettings>

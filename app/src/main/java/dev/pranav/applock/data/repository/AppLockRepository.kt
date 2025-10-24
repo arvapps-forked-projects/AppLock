@@ -36,18 +36,20 @@ class AppLockRepository(private val context: Context) {
     fun validatePassword(inputPassword: String): Boolean =
         preferencesRepository.validatePassword(inputPassword)
 
+    fun getPattern(): String? = preferencesRepository.getPattern()
+    fun setPattern(pattern: String) = preferencesRepository.setPattern(pattern)
+    fun validatePattern(inputPattern: String): Boolean =
+        preferencesRepository.validatePattern(inputPattern)
+
+    fun setLockType(lockType: String) = preferencesRepository.setLockType(lockType)
+    fun getLockType(): String = preferencesRepository.getLockType()
+
     // Delegate biometric operations
     fun setBiometricAuthEnabled(enabled: Boolean) =
         preferencesRepository.setBiometricAuthEnabled(enabled)
 
     fun isBiometricAuthEnabled(): Boolean = preferencesRepository.isBiometricAuthEnabled()
-    fun setPromptForBiometricAuth(enabled: Boolean) =
-        preferencesRepository.setPromptForBiometricAuth(enabled)
 
-    fun shouldPromptForBiometricAuth(): Boolean =
-        preferencesRepository.shouldPromptForBiometricAuth()
-
-    // Delegate UI settings
     fun setUseMaxBrightness(enabled: Boolean) = preferencesRepository.setUseMaxBrightness(enabled)
     fun shouldUseMaxBrightness(): Boolean = preferencesRepository.shouldUseMaxBrightness()
     fun setDisableHaptics(enabled: Boolean) = preferencesRepository.setDisableHaptics(enabled)
@@ -55,7 +57,6 @@ class AppLockRepository(private val context: Context) {
     fun setShowSystemApps(enabled: Boolean) = preferencesRepository.setShowSystemApps(enabled)
     fun shouldShowSystemApps(): Boolean = preferencesRepository.shouldShowSystemApps()
 
-    // Delegate security settings
     fun setAntiUninstallEnabled(enabled: Boolean) =
         preferencesRepository.setAntiUninstallEnabled(enabled)
 
@@ -63,38 +64,23 @@ class AppLockRepository(private val context: Context) {
     fun setProtectEnabled(enabled: Boolean) = preferencesRepository.setProtectEnabled(enabled)
     fun isProtectEnabled(): Boolean = preferencesRepository.isProtectEnabled()
 
-    // Delegate unlock settings
     fun setUnlockTimeDuration(minutes: Int) = preferencesRepository.setUnlockTimeDuration(minutes)
     fun getUnlockTimeDuration(): Int = preferencesRepository.getUnlockTimeDuration()
     fun setAutoUnlockEnabled(enabled: Boolean) = preferencesRepository.setAutoUnlockEnabled(enabled)
     fun isAutoUnlockEnabled(): Boolean = preferencesRepository.isAutoUnlockEnabled()
-    fun setUnlockBehavior(behavior: Int) = preferencesRepository.setUnlockBehavior(behavior)
-    fun getUnlockBehavior(): Int = preferencesRepository.getUnlockBehavior()
 
-    // Delegate backend operations
     fun setBackendImplementation(backend: BackendImplementation) =
         preferencesRepository.setBackendImplementation(backend)
 
     fun getBackendImplementation(): BackendImplementation =
         preferencesRepository.getBackendImplementation()
 
-    fun getFallbackBackend(): BackendImplementation = preferencesRepository.getFallbackBackend()
-
-    // Delegate app state operations
     fun isShowCommunityLink(): Boolean = preferencesRepository.isShowCommunityLink()
     fun setCommunityLinkShown(shown: Boolean) = preferencesRepository.setCommunityLinkShown(shown)
     fun isShowDonateLink(): Boolean = preferencesRepository.isShowDonateLink(context)
 
-    // Backend service management
     fun setActiveBackend(backend: BackendImplementation) =
         backendServiceManager.setActiveBackend(backend)
-
-    fun getActiveBackend(): BackendImplementation? = backendServiceManager.getActiveBackend()
-    fun startBackendService(backend: BackendImplementation): Boolean =
-        backendServiceManager.startService(backend)
-
-    fun stopBackendService(backend: BackendImplementation): Boolean =
-        backendServiceManager.stopService(backend)
 
     companion object {
         private const val TAG = "AppLockRepository"
