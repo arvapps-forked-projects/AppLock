@@ -135,16 +135,16 @@ fun PatternLockScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
-
-                        if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = triggeringPackageName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+//
+//                        if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                            Spacer(modifier = Modifier.height(8.dp))
+//                            Text(
+//                                text = triggeringPackageName,
+//                                style = MaterialTheme.typography.bodySmall,
+//                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                textAlign = TextAlign.Center
+//                            )
+//                        }
 
                         if (showError) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -218,15 +218,15 @@ fun PatternLockScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = triggeringPackageName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+//                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(
+//                            text = triggeringPackageName,
+//                            style = MaterialTheme.typography.labelLarge,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
 
                     if (showError) {
                         Spacer(modifier = Modifier.height(8.dp))

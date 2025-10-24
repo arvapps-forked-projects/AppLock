@@ -380,15 +380,15 @@ fun PasswordOverlayScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = triggeringPackageName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
+//                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(
+//                            text = triggeringPackageName,
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -451,14 +451,14 @@ fun PasswordOverlayScreen(
                     textAlign = TextAlign.Center
                 )
 
-                if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                    Text(
-                        text = triggeringPackageName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center
-                    )
-                }
+//                if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                    Text(
+//                        text = triggeringPackageName,
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
