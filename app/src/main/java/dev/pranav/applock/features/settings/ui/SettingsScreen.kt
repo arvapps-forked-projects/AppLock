@@ -5,49 +5,56 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.ShieldMoon
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,11 +64,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
@@ -78,16 +88,16 @@ import dev.pranav.applock.services.ExperimentalAppLockService
 import dev.pranav.applock.services.ShizukuAppLockService
 import dev.pranav.applock.ui.icons.Accessibility
 import dev.pranav.applock.ui.icons.BrightnessHigh
+import dev.pranav.applock.ui.icons.Discord
 import dev.pranav.applock.ui.icons.Fingerprint
 import dev.pranav.applock.ui.icons.FingerprintOff
-import dev.pranav.applock.ui.icons.Github
 import dev.pranav.applock.ui.icons.Timer
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
 import kotlin.math.abs
 
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController
@@ -167,7 +177,7 @@ fun SettingsScreen(
                     showDialog = false
                 }) { Text(stringResource(R.string.cancel_button)) }
             },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -229,16 +239,16 @@ fun SettingsScreen(
         )
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
-                    Text(
-                        stringResource(R.string.settings_screen_title),
-                        style = MaterialTheme.typography.titleLargeEmphasized
-                    )
+                    Text(stringResource(R.string.settings_screen_title))
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -248,33 +258,35 @@ fun SettingsScreen(
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 24.dp,
+                end = 24.dp,
+                top = innerPadding.calculateTopPadding(),
+                bottom = innerPadding.calculateBottomPadding() + 24.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             item {
-                Text(
-                    text = stringResource(R.string.settings_screen_lock_screen_customization_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                SupportCard()
+            }
+            item {
+                SectionTitle(text = stringResource(R.string.settings_screen_lock_screen_customization_title))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     Column {
                         SettingItem(
@@ -287,7 +299,6 @@ fun SettingsScreen(
                                 appLockRepository.setUseMaxBrightness(isChecked)
                             }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = if (useBiometricAuth) Fingerprint else FingerprintOff,
                             title = stringResource(R.string.settings_screen_biometric_auth_title),
@@ -301,7 +312,6 @@ fun SettingsScreen(
                                 appLockRepository.setBiometricAuthEnabled(isChecked)
                             }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = Icons.Default.Vibration,
                             title = stringResource(R.string.settings_screen_haptic_feedback_title),
@@ -312,7 +322,6 @@ fun SettingsScreen(
                                 appLockRepository.setDisableHaptics(isChecked)
                             }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         SettingItem(
                             icon = Icons.Default.ShieldMoon,
                             title = stringResource(R.string.settings_screen_auto_unlock_title),
@@ -327,18 +336,11 @@ fun SettingsScreen(
                 }
             }
             item {
-                Text(
-                    text = stringResource(R.string.settings_screen_security_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                SectionTitle(text = stringResource(R.string.settings_screen_security_title))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                 ) {
                     Column {
                         ActionSettingItem(
@@ -349,8 +351,6 @@ fun SettingsScreen(
                                 navController.navigate(Screen.ChangePassword.route)
                             }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
                         ActionSettingItem(
                             icon = Timer,
                             title = stringResource(R.string.settings_screen_unlock_duration_title),
@@ -362,8 +362,6 @@ fun SettingsScreen(
                             } else stringResource(R.string.settings_screen_unlock_duration_summary_immediate),
                             onClick = { showUnlockTimeDialog = true }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-
                         SettingItem(
                             icon = Icons.Default.Lock,
                             title = stringResource(R.string.settings_screen_anti_uninstall_title),
@@ -417,53 +415,21 @@ fun SettingsScreen(
                 )
             }
             item {
-                Text(
-                    text = stringResource(R.string.settings_screen_about_and_support_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 0.dp, bottom = 12.dp)
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Column {
-                        ActionSettingItem(
-                            icon = Icons.Filled.Favorite,
-                            title = stringResource(R.string.settings_screen_support_development_title),
-                            onClick = { showDialog = true })
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        ActionSettingItem(
-                            icon = Github,
-                            title = stringResource(R.string.settings_screen_source_code_title),
-                            onClick = {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        "https://github.com/PranavPurwar/AppLock".toUri()
-                                    )
-                                )
-                            })
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        ActionSettingItem(
-                            icon = Icons.Filled.Person,
-                            title = stringResource(R.string.settings_screen_join_community_title),
-                            onClick = {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        "https://discord.gg/46wCMRVAre".toUri()
-                                    )
-                                )
-                            })
-                    }
-                }
+                LinksSection()
             }
         }
     }
+}
+
+@Composable
+fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, start = 16.dp, end = 16.dp)
+    )
 }
 
 @Composable
@@ -479,39 +445,32 @@ fun SettingItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { if (enabled) onCheckedChange(!checked) }
-            .padding(20.dp),
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = title,
-            modifier = Modifier.size(28.dp),
-            tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
-                alpha = 0.38f
-            )
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.surfaceTint
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
-                    alpha = 0.38f
-                )
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(
-                    alpha = 0.38f
-                )
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Switch(
             checked = checked,
             onCheckedChange = null,
-            enabled = enabled,
-            modifier = Modifier.padding(start = 8.dp)
+            enabled = enabled
         )
     }
 }
@@ -523,20 +482,20 @@ fun ActionSettingItem(
     title: String,
     description: String? = null,
     onClick: () -> Unit,
-    iconTint: Color = MaterialTheme.colorScheme.primary
+    iconTint: Color = MaterialTheme.colorScheme.surfaceTint
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(20.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = title,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(24.dp),
             tint = iconTint
         )
         Column(
@@ -544,13 +503,13 @@ fun ActionSettingItem(
         ) {
             Text(
                 title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
             if (description != null) {
                 Text(
                     description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -584,7 +543,7 @@ fun UnlockTimeDurationDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { selectedDuration = duration }
-                            .padding(vertical = 12.dp),
+                            .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
@@ -634,19 +593,12 @@ fun BackendSelectionCard(
     var selectedBackend by remember { mutableStateOf(appLockRepository.getBackendImplementation()) }
 
     Column {
-        Text(
-            text = stringResource(R.string.settings_screen_backend_implementation_title),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        SectionTitle(text = stringResource(R.string.settings_screen_backend_implementation_title))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.elevatedCardColors().copy(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             Column {
                 BackendImplementation.entries.forEach { backend ->
@@ -720,15 +672,13 @@ fun BackendSelectionCard(
                             }
                         }
                     )
-                    if (backend != BackendImplementation.entries.last()) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun BackendSelectionItem(
     backend: BackendImplementation,
@@ -739,25 +689,23 @@ fun BackendSelectionItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(modifier = Modifier.width(12.dp))
         Icon(
             imageVector = getBackendIcon(backend),
             contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            modifier = Modifier.size(24.dp),
+            tint = MaterialTheme.colorScheme.surfaceTint
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(24.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = getBackendDisplayName(backend),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    style = MaterialTheme.typography.titleMedium,
                     color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 if (backend == BackendImplementation.SHIZUKU) {
@@ -775,7 +723,7 @@ fun BackendSelectionItem(
             }
             Text(
                 text = getBackendDescription(backend),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -801,8 +749,8 @@ private fun getBackendDisplayName(backend: BackendImplementation): String {
 private fun getBackendDescription(backend: BackendImplementation): String {
     return when (backend) {
         BackendImplementation.ACCESSIBILITY -> "Standard method that works on most devices"
-        BackendImplementation.USAGE_STATS -> "Experimental method with better performance"
-        BackendImplementation.SHIZUKU -> "Advanced method with superior experience"
+        BackendImplementation.USAGE_STATS -> "Experimental method using app usage statistics"
+        BackendImplementation.SHIZUKU -> "Advanced method using Shizuku and internal APIs"
     }
 }
 
@@ -895,3 +843,164 @@ fun AccessibilityDialog(
         }
     )
 }
+
+@Composable
+fun SupportCard() {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier.padding(horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.errorContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Support Development",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Help keep this project maintained and growing",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        FilledTonalButton(
+            onClick = {
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://PranavPurwar.github.io/donate.html")
+                )
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            Icon(
+                Icons.Default.Favorite,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Donate")
+        }
+    }
+}
+
+@Composable
+fun LinksSection() {
+    val context = LocalContext.current
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "Links",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 8.dp, bottom = 8.dp, start = 16.dp, end = 16.dp)
+        )
+
+        LinkCard(
+            title = "Discord Community",
+            icon = Discord,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = {
+                val intent = Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://discord.gg/46wCMRVAre")
+                )
+                context.startActivity(intent)
+            }
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            LinkCard(
+                title = "Source Code",
+                icon = Icons.Outlined.Code,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/PranavPurwar/AppLock")
+                    )
+                    context.startActivity(intent)
+                }
+            )
+
+            LinkCard(
+                title = "Report Issue",
+                icon = Icons.Outlined.BugReport,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/PranavPurwar/AppLock/issues")
+                    )
+                    context.startActivity(intent)
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun LinkCard(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        modifier = modifier,
+        onClick = onClick,
+        colors = ButtonDefaults.outlinedButtonColors(),
+        shapes = ButtonDefaults.shapes()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.surfaceTint
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
