@@ -139,19 +139,11 @@ class PreferencesRepository(context: Context) {
     }
 
     fun isShowDonateLink(context: Context): Boolean {
-        val currentVersionCode = try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
-        } catch (_: Exception) {
-            return false
-        }
+        return settingsPrefs.getBoolean(KEY_SHOW_DONATE_LINK, false)
+    }
 
-        val savedVersionCode = settingsPrefs.getInt(LAST_VERSION_CODE, -1)
-
-        if (currentVersionCode > savedVersionCode) {
-            settingsPrefs.edit { putInt(LAST_VERSION_CODE, currentVersionCode) }
-            return true
-        }
-        return false
+    fun setShowDonateLink(context: Context, show: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_SHOW_DONATE_LINK, show) }
     }
 
     companion object {
@@ -167,6 +159,7 @@ class PreferencesRepository(context: Context) {
         private const val KEY_UNLOCK_TIME_DURATION = "unlock_time_duration"
         private const val KEY_BACKEND_IMPLEMENTATION = "backend_implementation"
         private const val KEY_COMMUNITY_LINK_SHOWN = "community_link_shown"
+        private const val KEY_SHOW_DONATE_LINK = "show_donate_link"
         private const val LAST_VERSION_CODE = "last_version_code"
         private const val KEY_APPLOCK_ENABLED = "applock_enabled"
         private const val KEY_AUTO_UNLOCK = "auto_unlock"

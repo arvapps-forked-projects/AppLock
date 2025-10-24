@@ -60,6 +60,7 @@ class ShizukuActivityManager(
                 Intent.ACTION_SCREEN_OFF -> {
                     Log.d(TAG, "Screen turned off, will lock apps on return")
                     shouldLockAppsOnReturn = true
+                    lastForegroundApp = ""
                 }
 
                 Intent.ACTION_USER_PRESENT -> {
@@ -81,23 +82,12 @@ class ShizukuActivityManager(
             startForegroundAppMonitoring()
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start ShizukuActivityManager", e)
+            e.printStackTrace()
             return false
         }
     }
 
     private fun registerEventReceivers() {
-        windowManager.javaClass.declaredMethods.forEach {
-            // Print method name, signature, and return type
-            Log.d(
-                TAG,
-                "Method: ${it.name}, Signature: ${it.parameters}, Return Type: ${it.returnType}"
-            )
-        }
-
-        windowManager.javaClass.declaredFields.forEach {
-            Log.d(TAG, "Field: ${it.name}, Type: ${it.type}")
-        }
         // Register home button and system events receiver
         val homeFilter = IntentFilter().apply {
             addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
@@ -114,7 +104,6 @@ class ShizukuActivityManager(
         }
 
         context.registerReceiver(homeButtonReceiver, homeFilter, RECEIVER_EXPORTED)
-        Log.d(TAG, "Home button and system events receiver registered")
 
         // Keep the device unlock receiver for compatibility
         val unlockFilter = IntentFilter().apply {
@@ -125,7 +114,6 @@ class ShizukuActivityManager(
             shouldLockAppsOnReturn = true
         }
         context.registerReceiver(deviceUnlockReceiver, unlockFilter)
-        Log.d(TAG, "Device unlock receiver registered")
     }
 
     val windowManager: IWindowManager
@@ -142,7 +130,6 @@ class ShizukuActivityManager(
     private fun checkForegroundApp() {
         if (!appLockRepository.isProtectEnabled()) return
         if (appLockRepository.getBackendImplementation() != BackendImplementation.SHIZUKU) {
-            Log.w(TAG, "Shizuku backend is not active, stopping timer")
             handler.removeCallbacks(checkForegroundRunnable)
             return
         }

@@ -86,7 +86,6 @@ class ExperimentalAppLockService : Service() {
                 if (applicationContext.isDeviceLocked()) {
                     AppLockManager.appUnlockTimes.clear()
                 }
-                AppLockManager.clearTemporarilyUnlockedApp()
                 return@timerTask
             }
 
@@ -101,10 +100,7 @@ class ExperimentalAppLockService : Service() {
                 return@timerTask
             }
 
-            // CRITICAL FIX: Clear temporary unlock if a NEW app (that isn't the temporarily unlocked one) is foreground.
-            if (currentPackage != AppLockManager.temporarilyUnlockedApp) {
-                AppLockManager.clearTemporarilyUnlockedApp()
-            }
+            if (currentPackage == triggeringPackage) return@timerTask
 
             checkAndLockApp(currentPackage, triggeringPackage, System.currentTimeMillis())
         }, 0, 250)
@@ -134,7 +130,7 @@ class ExperimentalAppLockService : Service() {
             events.getNextEvent(event)
 
             if (event.eventType != UsageEvents.Event.ACTIVITY_RESUMED) continue
-            if (event.packageName == "dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity") continue
+            if (event.className == "dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity") continue
 
             if (event.className in AppLockConstants.KNOWN_RECENTS_CLASSES ||
                 event.className in AppLockConstants.ADMIN_CONFIG_CLASSES ||
@@ -148,31 +144,45 @@ class ExperimentalAppLockService : Service() {
         return recentApp
     }
 
-    // --- Core Lock Logic ---
-
     private fun checkAndLockApp(packageName: String, triggeringPackage: String, currentTime: Long) {
-        if (AppLockManager.isLockScreenShown.get() || AppLockManager.currentBiometricState.toString() == biometricAuthStarted) return
-
         val lockedApps = appLockRepository.getLockedApps()
         if (packageName !in lockedApps) return
-
-        // App is locked. Check for temporary unlock/grace period.
-        if (AppLockManager.isAppTemporarilyUnlocked(packageName)) return
 
         val unlockDurationMinutes = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0L
 
+        Log.d(
+            TAG,
+            "checkAndLockApp: pkg=$packageName, duration=$unlockDurationMinutes min, unlockTime=$unlockTimestamp, currentTime=$currentTime, isLockScreenShown=${AppLockManager.isLockScreenShown.get()}"
+        )
+
         if (unlockDurationMinutes > 0 && unlockTimestamp > 0) {
-            val durationMillis = unlockDurationMinutes * 60 * 1000L
+            if (unlockDurationMinutes >= 10_000) {
+                return
+            }
+
+            val durationMillis = unlockDurationMinutes.toLong() * 60_000L
+
             val elapsedMillis = currentTime - unlockTimestamp
 
-            if (elapsedMillis < durationMillis) return
+            Log.d(
+                TAG,
+                "Grace period check: elapsed=${elapsedMillis}ms (${elapsedMillis / 1000}s), duration=${durationMillis}ms (${durationMillis / 1000}s)"
+            )
 
-            // Grace period expired, clear
+            if (elapsedMillis < durationMillis) {
+                return
+            }
+
+            Log.d(TAG, "Unlock grace period expired for $packageName. Clearing timestamp.")
             AppLockManager.appUnlockTimes.remove(packageName)
         }
 
-        // Execute Lock
+        if (AppLockManager.isLockScreenShown.get() || AppLockManager.currentBiometricState.toString() == biometricAuthStarted) {
+            Log.d(TAG, "Lock screen already shown or biometric auth in progress, skipping")
+            return
+        }
+
         Log.d(TAG, "Locked app: $packageName. Showing overlay.")
         AppLockManager.isLockScreenShown.set(true)
 
@@ -193,8 +203,6 @@ class ExperimentalAppLockService : Service() {
             AppLockManager.isLockScreenShown.set(false)
         }
     }
-
-    // --- Foreground Service Setup ---
 
     private fun startForegroundService() {
         createNotificationChannel()
@@ -238,7 +246,7 @@ class ExperimentalAppLockService : Service() {
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("App Lock")
-            .setContentText("Protecting your apps (Experimental)")
+            .setContentText("Protecting your apps")
             .setSmallIcon(R.drawable.baseline_shield_24)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)

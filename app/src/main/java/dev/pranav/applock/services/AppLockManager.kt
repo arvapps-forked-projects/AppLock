@@ -78,7 +78,10 @@ object AppLockManager {
     fun unlockApp(packageName: String) {
         temporarilyUnlockedApp = packageName
         appUnlockTimes[packageName] = System.currentTimeMillis()
-        Log.d(TAG, "App $packageName temporarily unlocked.")
+        Log.d(
+            TAG,
+            "App $packageName unlocked at timestamp: ${appUnlockTimes[packageName]}, current time: ${System.currentTimeMillis()}"
+        )
     }
 
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {

@@ -354,10 +354,12 @@ fun SettingsScreen(
                         ActionSettingItem(
                             icon = Timer,
                             title = stringResource(R.string.settings_screen_unlock_duration_title),
-                            description = if (unlockTimeDuration > 0) stringResource(
-                                R.string.settings_screen_unlock_duration_summary_minutes,
-                                unlockTimeDuration
-                            ) else stringResource(R.string.settings_screen_unlock_duration_summary_immediate),
+                            description = if (unlockTimeDuration > 0) {
+                                if (unlockTimeDuration > 10_000) "Until screen off" else stringResource(
+                                    R.string.settings_screen_unlock_duration_summary_minutes,
+                                    unlockTimeDuration
+                                )
+                            } else stringResource(R.string.settings_screen_unlock_duration_summary_immediate),
                             onClick = { showUnlockTimeDialog = true }
                         )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -562,7 +564,7 @@ fun UnlockTimeDurationDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    val durations = listOf(0, 1, 5, 15, 30, 60)
+    val durations = listOf(0, 1, 5, 15, 30, 60, Integer.MAX_VALUE)
     var selectedDuration by remember { mutableIntStateOf(currentDuration) }
 
     // If the current duration is not in our list, default to the closest value
@@ -598,6 +600,7 @@ fun UnlockTimeDurationDialog(
                                 )
 
                                 60 -> stringResource(R.string.settings_screen_unlock_duration_dialog_option_hour)
+                                Integer.MAX_VALUE -> "Until Screen Off"
                                 else -> stringResource(
                                     R.string.settings_screen_unlock_duration_summary_minutes,
                                     duration

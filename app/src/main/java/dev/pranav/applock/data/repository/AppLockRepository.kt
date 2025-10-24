@@ -13,13 +13,11 @@ class AppLockRepository(private val context: Context) {
     private val lockedAppsRepository = LockedAppsRepository(context)
     private val backendServiceManager = BackendServiceManager(context)
 
-    // Delegate locked apps operations
     fun getLockedApps(): Set<String> = lockedAppsRepository.getLockedApps()
     fun addLockedApp(packageName: String) = lockedAppsRepository.addLockedApp(packageName)
     fun removeLockedApp(packageName: String) = lockedAppsRepository.removeLockedApp(packageName)
     fun isAppLocked(packageName: String): Boolean = lockedAppsRepository.isAppLocked(packageName)
 
-    // Delegate trigger exclusions operations
     fun getTriggerExcludedApps(): Set<String> = lockedAppsRepository.getTriggerExcludedApps()
     fun addTriggerExcludedApp(packageName: String) =
         lockedAppsRepository.addTriggerExcludedApp(packageName)
@@ -30,7 +28,6 @@ class AppLockRepository(private val context: Context) {
     fun isAppTriggerExcluded(packageName: String): Boolean =
         lockedAppsRepository.isAppTriggerExcluded(packageName)
 
-    // Delegate authentication operations
     fun getPassword(): String? = preferencesRepository.getPassword()
     fun setPassword(password: String) = preferencesRepository.setPassword(password)
     fun validatePassword(inputPassword: String): Boolean =
@@ -44,7 +41,6 @@ class AppLockRepository(private val context: Context) {
     fun setLockType(lockType: String) = preferencesRepository.setLockType(lockType)
     fun getLockType(): String = preferencesRepository.getLockType()
 
-    // Delegate biometric operations
     fun setBiometricAuthEnabled(enabled: Boolean) =
         preferencesRepository.setBiometricAuthEnabled(enabled)
 
@@ -78,6 +74,7 @@ class AppLockRepository(private val context: Context) {
     fun isShowCommunityLink(): Boolean = preferencesRepository.isShowCommunityLink()
     fun setCommunityLinkShown(shown: Boolean) = preferencesRepository.setCommunityLinkShown(shown)
     fun isShowDonateLink(): Boolean = preferencesRepository.isShowDonateLink(context)
+    fun setShowDonateLink(show: Boolean) = preferencesRepository.setShowDonateLink(context, show)
 
     fun setActiveBackend(backend: BackendImplementation) =
         backendServiceManager.setActiveBackend(backend)

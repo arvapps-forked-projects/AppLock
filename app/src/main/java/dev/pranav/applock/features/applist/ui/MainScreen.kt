@@ -318,12 +318,14 @@ fun MainScreen(
                             )
                         )
                         showDonateDialog = false
+                        appLockRepository.setShowDonateLink(false)
                     }
                 ) { Text(stringResource(R.string.main_screen_support_development_donate_button)) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showDonateDialog = false
+                    appLockRepository.setShowDonateLink(false)
                 }) { Text(stringResource(R.string.cancel_button)) }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainer
