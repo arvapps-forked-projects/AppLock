@@ -23,7 +23,6 @@ import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import dev.pranav.applock.services.AppLockConstants.ACCESSIBILITY_SETTINGS_CLASSES
 import dev.pranav.applock.services.AppLockConstants.ADMIN_CONFIG_CLASSES
 import dev.pranav.applock.services.AppLockConstants.EXCLUDED_APPS
-import dev.pranav.applock.services.AppLockConstants.KNOWN_RECENTS_CLASSES
 import rikka.shizuku.Shizuku
 
 @SuppressLint("AccessibilityPolicy")
@@ -89,7 +88,7 @@ class AppLockAccessibilityService : AccessibilityService() {
 
     private fun handleAccessibilityEvent(event: AccessibilityEvent) {
         // Check for device admin deactivation (anti-uninstall feature)
-        if (appLockRepository.isAntiUninstallEnabled() && 
+        if (appLockRepository.isAntiUninstallEnabled() &&
             event.packageName == DEVICE_ADMIN_SETTINGS_PACKAGE) {
             try {
                 checkForDeviceAdminDeactivation(event)
@@ -165,7 +164,7 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun isRecentlyOpened(event: AccessibilityEvent): Boolean {
-        return (event.packageName == getSystemDefaultLauncherPackageName() && 
+        return (event.packageName == getSystemDefaultLauncherPackageName() &&
                 event.contentChangeTypes == AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED) ||
                 (event.text.toString().lowercase().contains("recent apps"))
     }
@@ -186,8 +185,8 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun clearTemporarilyUnlockedAppIfNeeded(newPackage: String? = null) {
-        val shouldClear = newPackage == null || 
-                (newPackage != AppLockManager.temporarilyUnlockedApp && 
+        val shouldClear = newPackage == null ||
+                (newPackage != AppLockManager.temporarilyUnlockedApp &&
                  newPackage !in appLockRepository.getTriggerExcludedApps())
 
         if (shouldClear) {
@@ -210,8 +209,8 @@ class AppLockAccessibilityService : AccessibilityService() {
         }
 
         // Skip excluded packages
-        if (packageName == APP_PACKAGE_PREFIX || 
-            packageName in keyboardPackages || 
+        if (packageName == APP_PACKAGE_PREFIX ||
+            packageName in keyboardPackages ||
             packageName in EXCLUDED_APPS) {
             return false
         }
@@ -265,29 +264,45 @@ class AppLockAccessibilityService : AccessibilityService() {
 
         AppLockManager.clearTemporarilyUnlockedApp()
 
-        // Check if unlock duration is still valid
-        if (isUnlockStillValid(packageName, currentTime)) {
-            AppLockManager.unlockApp(packageName)
-            return
-        }
-
-        // Show lock screen overlay
-        showLockScreenOverlay(packageName, triggeringPackage)
-    }
-
-    private fun isUnlockStillValid(packageName: String, currentTime: Long): Boolean {
         val unlockDurationMinutes = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0L
 
+        Log.d(
+            TAG,
+            "checkAndLockApp: pkg=$packageName, duration=$unlockDurationMinutes min, unlockTime=$unlockTimestamp, currentTime=$currentTime, isLockScreenShown=${AppLockManager.isLockScreenShown.get()}"
+        )
+
         if (unlockDurationMinutes > 0 && unlockTimestamp > 0) {
-            val durationMillis = unlockDurationMinutes * 60 * 1000L
-            if (currentTime - unlockTimestamp < durationMillis) {
-                return true
+            if (unlockDurationMinutes >= 10_000) {
+                return
             }
+
+            val durationMillis = unlockDurationMinutes.toLong() * 60L * 1000L
+
+            val elapsedMillis = currentTime - unlockTimestamp
+
+            Log.d(
+                TAG,
+                "Grace period check: elapsed=${elapsedMillis}ms (${elapsedMillis / 1000}s), duration=${durationMillis}ms (${durationMillis / 1000}s)"
+            )
+
+            if (elapsedMillis < durationMillis) {
+                return
+            }
+
+            Log.d(TAG, "Unlock grace period expired for $packageName. Clearing timestamp.")
             AppLockManager.appUnlockTimes.remove(packageName)
             AppLockManager.clearTemporarilyUnlockedApp()
         }
-        return false
+
+        if (AppLockManager.isLockScreenShown.get() ||
+            AppLockManager.currentBiometricState == BiometricState.AUTH_STARTED
+        ) {
+            Log.d(TAG, "Lock screen already shown or biometric auth in progress, skipping")
+            return
+        }
+
+        showLockScreenOverlay(packageName, triggeringPackage)
     }
 
     private fun showLockScreenOverlay(packageName: String, triggeringPackage: String) {
@@ -337,11 +352,11 @@ class AppLockAccessibilityService : AccessibilityService() {
     }
 
     private fun isDeactivationAttempt(event: AccessibilityEvent): Boolean {
-        val isAccessibilitySettings = event.className in ACCESSIBILITY_SETTINGS_CLASSES && 
+        val isAccessibilitySettings = event.className in ACCESSIBILITY_SETTINGS_CLASSES &&
                 event.text.any { it.contains("App Lock") }
-        val isSubSettings = event.className == "com.android.settings.SubSettings" && 
+        val isSubSettings = event.className == "com.android.settings.SubSettings" &&
                 event.text.any { it.contains("App Lock") }
-        val isAlertDialog = event.className == "android.app.AlertDialog" && 
+        val isAlertDialog = event.className == "android.app.AlertDialog" &&
                 event.text.isNotEmpty() && event.text.first().contains("App Lock")
 
         return isAccessibilitySettings || isSubSettings || isAlertDialog
@@ -432,7 +447,7 @@ class AppLockAccessibilityService : AccessibilityService() {
             )
 
             val systemLauncher = resolveInfoList.find { resolveInfo ->
-                val isSystemApp = (resolveInfo.activityInfo.applicationInfo.flags and 
+                val isSystemApp = (resolveInfo.activityInfo.applicationInfo.flags and
                         android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
                 val isOurApp = resolveInfo.activityInfo.packageName == packageName
 

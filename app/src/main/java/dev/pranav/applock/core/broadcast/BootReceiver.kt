@@ -12,8 +12,12 @@ import dev.pranav.applock.services.ShizukuAppLockService
 
 class BootReceiver : BroadcastReceiver() {
 
-    override fun onReceive(context: Context?, intent: Intent?) {
-        if (context == null || intent?.action != Intent.ACTION_BOOT_COMPLETED) {
+    override fun onReceive(context: Context, intent: Intent) {
+        val repository = context.appLockRepository()
+        if (intent.action == Intent.ACTION_PACKAGE_REPLACED) {
+            repository.setShowDonateLink(true)
+        }
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) {
             Log.w(TAG, "Invalid context or intent action")
             return
         }

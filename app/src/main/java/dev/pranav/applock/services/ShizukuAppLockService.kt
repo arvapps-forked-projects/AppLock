@@ -168,10 +168,6 @@ class ShizukuAppLockService : Service() {
                     return@ShizukuActivityManager
                 }
 
-                if (packageName != AppLockManager.temporarilyUnlockedApp) {
-                    AppLockManager.temporarilyUnlockedApp = ""
-                }
-
                 val triggerExclusions = appLockRepository.getTriggerExcludedApps()
                 if (triggeringPackage in triggerExclusions) {
                     Log.d(
@@ -190,30 +186,40 @@ class ShizukuAppLockService : Service() {
         val lockedApps = appLockRepository.getLockedApps()
 
         if (packageName !in lockedApps) return
-        if (AppLockManager.isLockScreenShown.get()) return
-        if (AppLockManager.isAppTemporarilyUnlocked(packageName)) {
-            Log.d(TAG, "App $packageName is temporarily unlocked, skipping app lock")
-            return
-        }
 
         val unlockDurationMinutes = appLockRepository.getUnlockTimeDuration()
         val unlockTimestamp = AppLockManager.appUnlockTimes[packageName] ?: 0L
 
+        Log.d(
+            TAG,
+            "checkAndLockApp: pkg=$packageName, duration=$unlockDurationMinutes min, unlockTime=$unlockTimestamp, currentTime=$currentTime, isLockScreenShown=${AppLockManager.isLockScreenShown.get()}"
+        )
+
         if (unlockDurationMinutes > 0 && unlockTimestamp > 0) {
-            val durationMillis = unlockDurationMinutes * 60 * 1000L
+            if (unlockDurationMinutes >= 10_000) {
+                return
+            }
+
+            val durationMillis = unlockDurationMinutes.toLong() * 60_000L
+
             val elapsedMillis = currentTime - unlockTimestamp
 
+            Log.d(
+                TAG,
+                "Grace period check: elapsed=${elapsedMillis}ms (${elapsedMillis / 1000}s), duration=${durationMillis}ms (${durationMillis / 1000}s)"
+            )
+
             if (elapsedMillis < durationMillis) {
-                Log.d(
-                    TAG,
-                    "App $packageName is within the unlock grace period. Elapsed: ${elapsedMillis / 1000}s"
-                )
                 return
             }
 
             Log.d(TAG, "Unlock grace period expired for $packageName. Clearing timestamp.")
             AppLockManager.appUnlockTimes.remove(packageName)
-            AppLockManager.clearTemporarilyUnlockedApp()
+        }
+
+        if (AppLockManager.isLockScreenShown.get()) {
+            Log.d(TAG, "Lock screen already shown, skipping")
+            return
         }
 
         Log.d(TAG, "Locked app detected: $packageName. Showing overlay.")
@@ -223,7 +229,8 @@ class ShizukuAppLockService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
                     Intent.FLAG_ACTIVITY_NO_ANIMATION or
-                    Intent.FLAG_FROM_BACKGROUND
+                    Intent.FLAG_FROM_BACKGROUND or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             putExtra("locked_package", packageName)
             putExtra("triggering_package", triggeringPackage)
         }

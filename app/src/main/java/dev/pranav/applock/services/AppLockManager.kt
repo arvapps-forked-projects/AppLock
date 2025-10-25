@@ -78,7 +78,10 @@ object AppLockManager {
     fun unlockApp(packageName: String) {
         temporarilyUnlockedApp = packageName
         appUnlockTimes[packageName] = System.currentTimeMillis()
-        Log.d(TAG, "App $packageName temporarily unlocked.")
+        Log.d(
+            TAG,
+            "App $packageName unlocked at timestamp: ${appUnlockTimes[packageName]}, current time: ${System.currentTimeMillis()}"
+        )
     }
 
     fun temporarilyUnlockAppWithBiometrics(packageName: String) {
@@ -149,7 +152,7 @@ object AppLockManager {
         Handler(Looper.getMainLooper()).post {
             Toast.makeText(
                 context,
-                "None of the backends have required permissions. Please enable them.",
+                "Selected backend has insufficient permissions. Please provide necessary permissions.",
                 Toast.LENGTH_LONG
             ).show()
         }

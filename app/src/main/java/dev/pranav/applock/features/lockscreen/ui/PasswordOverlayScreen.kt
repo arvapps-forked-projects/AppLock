@@ -25,12 +25,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -380,15 +378,15 @@ fun PasswordOverlayScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = triggeringPackageName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
+//                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(
+//                            text = triggeringPackageName,
+//                            style = MaterialTheme.typography.labelSmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -451,14 +449,14 @@ fun PasswordOverlayScreen(
                     textAlign = TextAlign.Center
                 )
 
-                if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                    Text(
-                        text = triggeringPackageName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Center
-                    )
-                }
+//                if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                    Text(
+//                        text = triggeringPackageName,
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -743,12 +741,12 @@ fun KeypadSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = if (isLandscape) {
             Modifier
-                .padding(WindowInsets.navigationBars.asPaddingValues())
+                .navigationBarsPadding()
                 .padding(bottom = 12.dp)
         } else {
             Modifier
                 .padding(horizontal = horizontalPadding)
-                .padding(WindowInsets.navigationBars.asPaddingValues())
+                .navigationBarsPadding()
         }
     ) {
         if (showBiometricButton) {

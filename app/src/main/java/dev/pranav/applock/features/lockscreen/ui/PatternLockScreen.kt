@@ -8,15 +8,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -111,7 +109,7 @@ fun PatternLockScreen(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(WindowInsets.statusBars.asPaddingValues())
+                    .statusBarsPadding()
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -135,16 +133,16 @@ fun PatternLockScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
-
-                        if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = triggeringPackageName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+//
+//                        if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                            Spacer(modifier = Modifier.height(8.dp))
+//                            Text(
+//                                text = triggeringPackageName,
+//                                style = MaterialTheme.typography.bodySmall,
+//                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                textAlign = TextAlign.Center
+//                            )
+//                        }
 
                         if (showError) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -194,7 +192,7 @@ fun PatternLockScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(WindowInsets.statusBars.asPaddingValues())
+                    .statusBarsPadding()
                     .padding(vertical = 24.dp, horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
@@ -218,15 +216,15 @@ fun PatternLockScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = triggeringPackageName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+//                    if (!fromMainActivity && !triggeringPackageName.isNullOrEmpty()) {
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Text(
+//                            text = triggeringPackageName,
+//                            style = MaterialTheme.typography.labelLarge,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
 
                     if (showError) {
                         Spacer(modifier = Modifier.height(8.dp))
